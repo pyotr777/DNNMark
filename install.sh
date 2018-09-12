@@ -13,7 +13,7 @@ if [[ $# -lt 1 ]]; then
     echo "$usage"
     exit 1
 fi
-i
+
 ADDRESS=$1
 shift
 

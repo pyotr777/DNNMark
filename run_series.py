@@ -59,7 +59,7 @@ for imsize in imsizes:
 print "Have",len(tasks),"tasks"
 gpu = -1
 for i in range(0,len(tasks)):
-    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu+1,c=2,d=1,nvsmi=tasks[i]["nvsmi"],mode="dmon",debug=False)
+    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu+1,c=3,d=1,nvsmi=tasks[i]["nvsmi"],mode="dmon",debug=False)
     gpu_info = multigpuexec.getGPUinfo(gpu)
     f = open(tasks[i]["logfile"],"w+")
     f.write(tasks[i]["comm"]+"\n")
