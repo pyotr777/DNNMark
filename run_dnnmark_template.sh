@@ -24,8 +24,6 @@ Configuration saved in temporary file conf_tmp.dnnmark
 USAGEBLOCK
 )
 
-#echo "Pars: $@"
-#echo "env:$(env)"
 
 template="conf_multiconv_mod.dnntemplate"
 config_file="conf_tmp.dnnmark"
@@ -77,7 +75,6 @@ while test $# -gt 0; do
             CBFA="$2";shift;
             ;;
         --iter)
-            echo "Using iterations $2";
             ITER="$2";shift;
             ;;
         --debug)
