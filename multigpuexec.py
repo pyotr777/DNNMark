@@ -104,6 +104,7 @@ def runTask(task,gpu,nvsmi=False,delay=3,debug=True):
 	# Set GPU for execution with env var CUDA_VISIBLE_DEVICES
 	my_env = os.environ.copy()
 	my_env[b"CUDA_VISIBLE_DEVICES"] = str(gpu)
+	my_env[b"NVIDIA_VISIBLE_DEVICES"] = str(gpu)
         if debug:
 	    for k in my_env.keys():
 	        print("{}={}".format(k,my_env[k]))	
@@ -112,7 +113,7 @@ def runTask(task,gpu,nvsmi=False,delay=3,debug=True):
         command = re.sub(' \s+',' ',command).strip()
         print("Starting")
         message(command)
-        pid = subprocess.Popen(command.split(" "),stdout=f,stderr=subprocess.STDOUT,bufsize=1,env=my_env,shell=True).pid
+        pid = subprocess.Popen(command.split(" "),stdout=f,stderr=subprocess.STDOUT,bufsize=1,env=my_env).pid
         print(pid)
 
     if (nvsmi):

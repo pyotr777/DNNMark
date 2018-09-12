@@ -62,7 +62,7 @@ for i in range(0,len(tasks)):
     gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu+1,c=4,d=1,nvsmi=tasks[i]["nvsmi"],mode="dmon",debug=False)
     gpu_info = multigpuexec.getGPUinfo(gpu)
     f = open(tasks[i]["logfile"],"w+")
-    f.write(tasks[i]["comm"])
+    f.write(tasks[i]["comm"]+"\n")
     f.write("b{} conv{}\n".format(tasks[i]["batch"],tasks[i]["conv"]))
     f.write("GPU{}: {}\n".format(gpu,gpu_info))
     f.close()
