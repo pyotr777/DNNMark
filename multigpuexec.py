@@ -5,7 +5,7 @@ from __future__ import print_function
 import subprocess
 import re
 import time
-
+import os
 
 def message(s,col=112):
     print("\033[38;5;{}m{}\033[0m".format(col,s))
@@ -29,7 +29,7 @@ def GPUisFree(i,c=4,d=1,mode="dmon",debug=False):
     for line in iter(proc.stdout.readline, b''):
         line = line.decode('utf-8')
         if debug:
-            print(line)
+            print(line.strip(" "),end="")
         m = out_pattern.search(line)
         if m:
             print(".",end="")
@@ -98,15 +98,21 @@ def runTaskContainer(task,gpu,verbose=False):
     f.close()
 
 # Runs a task on specified GPU
-def runTask(task,gpu,nvsmi=False,delay=10):
+def runTask(task,gpu,nvsmi=False,delay=3,debug=True):
     with open(task["logfile"],"ab") as f:
         #f.write("gpu"+str(gpu)+"\n")
+	# Set GPU for execution with env var CUDA_VISIBLE_DEVICES
+	my_env = os.environ.copy()
+	my_env[b"CUDA_VISIBLE_DEVICES"] = str(gpu)
+        if debug:
+	    for k in my_env.keys():
+	        print("{}={}".format(k,my_env[k]))	
         command = task["comm"]
         # IMPORTANT: remove double spaces or they will become empty arguments!
         command = re.sub(' \s+',' ',command).strip()
         print("Starting")
         message(command)
-        pid = subprocess.Popen(command.split(" "),stdout=f,stderr=subprocess.STDOUT,bufsize=1).pid
+        pid = subprocess.Popen(command.split(" "),stdout=f,stderr=subprocess.STDOUT,bufsize=1,env=my_env,shell=True).pid
         print(pid)
 
     if (nvsmi):

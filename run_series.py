@@ -10,7 +10,7 @@ import time
 import os
 import math
 
-gpus = range(0,1)
+gpus = range(0,7)
 runs = 2
 # batchsizes = range(10,110,10) + range(120,510,20)
 batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,50)
@@ -23,20 +23,20 @@ imsizes = [2,4]
 nvprof = False
 with_memory = False
 tasks = []
-logdir = "logs/dnnmark_composed_model_microseries/"
+logdir = "/home/peter/host/logs/DL/dnnmark_composed_model_microseries/"
 
 command = "./run_dnnmark_template.sh"
 if not os.path.exists(logdir):
     os.makedirs(logdir)
 print "Logdir",logdir
 
-logfile_base="dnnmark_mouse_composedmodel"
+logfile_base="dnnmark_DL_composedmodel"
 for imsize in imsizes:
     for channels in channels_sizes:
         for conv in conv_sizes:
             for batch in batchsizes:
                 iterations = int(math.ceil(datasetsize/batch))
-                print "BS: {}, Iterations: {}".format(batch,iterations)
+                # print "BS: {}, Iterations: {}".format(batch,iterations)
                 for algo in backfilterconvalgos:
                     for run in range(runs):
                         logname = "{}_imsize{}_channels{}_conv{}_bs{}_algo{}".format(logfile_base,imsize,channels,conv,batch,algo)
@@ -59,15 +59,16 @@ for imsize in imsizes:
 print "Have",len(tasks),"tasks"
 gpu = -1
 for i in range(0,len(tasks)):
-    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu+1,c=4,d=1,nvsmi=tasks[i]["nvsmi"])
+    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu+1,c=4,d=1,nvsmi=tasks[i]["nvsmi"],mode="dmon",debug=False)
     gpu_info = multigpuexec.getGPUinfo(gpu)
     f = open(tasks[i]["logfile"],"w+")
+    f.wrtie(tasks[i]["comm"])
     f.write("b{} conv{}\n".format(tasks[i]["batch"],tasks[i]["conv"]))
-    f.write("GPU: {}\n".format(gpu_info))
+    f.write("GPU{}: {}\n".format(gpu,gpu_info))
     f.close()
-    multigpuexec.runTask(tasks[i],gpu,nvsmi=tasks[i]["nvsmi"],delay=0)
+    multigpuexec.runTask(tasks[i],gpu,nvsmi=tasks[i]["nvsmi"],delay=0,debug=False)
     print tasks[i]["logfile"]
     print "{}/{} tasks".format(i+1,len(tasks))
-    time.sleep(1)
+    time.sleep(0)
 
 
