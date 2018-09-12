@@ -73,7 +73,7 @@ def getNextFreeGPU(gpus,start=-1,c=4,d=1,nvsmi=False,mode="dmon",debug=False):
             if GPUisFree(gpu,c=c,d=d,mode=mode,debug=debug):
                 return gpu
             print("busy")
-            time.sleep(3)
+            time.sleep(0)
             start = -1 # Next loop check from 1
 
 
