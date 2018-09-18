@@ -196,6 +196,16 @@ class ConvolutionLayer : public Layer<T> {
                                          conv_param_.conv_bwd_filter_pref_);
         LOG(INFO) << "Set cuDNN recommended conv. bwd filter alg. to " << conv_algo_.GetBwdFilterAlgo();
         printf("cuDNN recommended bwd convolution filter algorithm: %d\n",conv_algo_.GetBwdFilterAlgo());
+    } else if (!conv_param_.algo_.compare("auto")) {
+        // Query cuDNN for the fastest BWD convolution filter gradient algorithm.
+        // Use cuDNN function cudnnFindConvolutionBackwardFilterAlgorithm (called inside FindBwdFilterAlgo())
+        conv_algo_.FindBwdFilterAlgo(*(p_dnnmark_->GetHandle()),
+                                         p_dnnmark_->getRunMode(), layer_id_,
+                                         bottom_desc_,
+                                         desc_,
+                                         top_desc_);
+        LOG(INFO) << "cuDNN fastest bwd conv. filter algo.:" << conv_algo_.GetBwdFilterAlgo();
+        printf("cuDNN fastest bwd conv. filter algorithm: %d\n",conv_algo_.GetBwdFilterAlgo());
     } else {
         conv_algo_.SetBwdFilterAlgo(conv_param_.algo_);
     }
