@@ -107,10 +107,12 @@ def runTask(task,gpu,nvsmi=False,delay=3,debug=True):
 	my_env[b"NVIDIA_VISIBLE_DEVICES"] = str(gpu)
         if debug:
 	    for k in my_env.keys():
-	        print("{}={}".format(k,my_env[k]))	
+	        print("{}={}".format(k,my_env[k]))
         command = task["comm"]
         # IMPORTANT: remove double spaces or they will become empty arguments!
         command = re.sub(' \s+',' ',command).strip()
+	# Insert GPU number into command instead of gpu_num pattern
+	command = command.replace("gpu_num",str(gpu))
         print("Starting")
         message(command)
         pid = subprocess.Popen(command.split(" "),stdout=f,stderr=subprocess.STDOUT,bufsize=1,env=my_env).pid
@@ -130,3 +132,4 @@ def runTask(task,gpu,nvsmi=False,delay=3,debug=True):
         time.sleep(sampling_period)
         p.kill()
         fl.close()
+
