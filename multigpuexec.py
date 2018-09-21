@@ -10,9 +10,14 @@ import os
 def message(s,col=112):
     print("\033[38;5;{}m{}\033[0m".format(col,s))
 
+
+running_pids = {}
+
 # Returns True if GPU #i is not used.
 # Uses nvidia-smi command to monitor GPU SM usage.
 def GPUisFree(i,c=4,d=1,mode="dmon",debug=False):
+    global running_pids
+    gpu_free = False
     if mode=="dmon":
         # Doesn't work in (AWS) VMs
         command = "nvidia-smi dmon -c {} -d {} -i {} -s u".format(c,d,i)
@@ -40,8 +45,24 @@ def GPUisFree(i,c=4,d=1,mode="dmon",debug=False):
                 pass
             u += uplus
     if u < 1:
-        return True
-    return False
+        gpu_free = True
+    # Check PIDs
+    if gpu_free:
+        print("GPU looks free. PIDS:",running_pids)
+        if i in running_pids:
+            pid = running_pids[i]
+            # Check if process still alive
+            try:
+                os.kill(pid, 0)
+                # If no exception, process is still running
+                print("Process {} on {} is running".format(pid,i))
+                gpu_free = False
+            except Exception as e:
+                # Process died                   
+                # Remove pid from running_pids
+                print("Exception:",e)
+                del running_pids[i]
+    return gpu_free
 
 
 # Returns GPU info
@@ -99,6 +120,7 @@ def runTaskContainer(task,gpu,verbose=False):
 
 # Runs a task on specified GPU
 def runTask(task,gpu,nvsmi=False,delay=3,debug=True):
+    global running_pids
     with open(task["logfile"],"ab") as f:
         #f.write("gpu"+str(gpu)+"\n")
 	# Set GPU for execution with env var CUDA_VISIBLE_DEVICES
@@ -117,6 +139,8 @@ def runTask(task,gpu,nvsmi=False,delay=3,debug=True):
         message(command)
         pid = subprocess.Popen(command.split(" "),stdout=f,stderr=subprocess.STDOUT,bufsize=1,env=my_env).pid
         print(pid)
+        # Save pid to runnning processes dictionary
+        running_pids[gpu] = pid
 
     if (nvsmi):
         # Save memory usage info

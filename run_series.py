@@ -10,7 +10,7 @@ import time
 import os
 import math
 
-gpus = range(0,8)
+gpus = range(1,2)
 runs = 2
 # batchsizes = range(10,110,10) + range(120,510,20)
 batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,50)
@@ -52,7 +52,7 @@ for imsize in imsizes:
                         if os.path.isfile(logfile):
                             print "file",logfile,"exists."
                         else:
-                            profcommand = "nvprof -u s --devices gpunum --profile-api-trace none --unified-memory-profiling off --profile-child-processes --csv --log-file {} {}".format(logfile,command_pars)
+                            profcommand = "nvprof -u s --profile-api-trace none --unified-memory-profiling off --profile-child-processes --csv --log-file {} {}".format(logfile,command_pars)
                             task = {"comm":profcommand,"logfile":logfile,"batch":batch,"conv":conv,"nvsmi":False}
                         tasks.append(task)
 
