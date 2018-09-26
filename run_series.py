@@ -10,8 +10,8 @@ import time
 import os
 import math
 
-gpus = range(1,2)
-runs = 2
+gpus = range(0,1)
+runs = 1
 # batchsizes = range(10,110,10) + range(120,510,20)
 batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,50)
 datasetsize = 50000
@@ -23,14 +23,14 @@ imsizes = [2,4]
 nvprof = True
 with_memory = False
 tasks = []
-logdir = "../host/logs/DL/dnnmark_composed_model_microseries/"
+logdir = "logs/dnnmark_composed_model_microseries/"
 
 command = "./run_dnnmark_template.sh"
 if not os.path.exists(logdir):
     os.makedirs(logdir)
 print "Logdir",logdir
 
-logfile_base="dnnmark_DL_composedmodel"
+logfile_base="dnnmark_mouse_composedmodel"
 for imsize in imsizes:
     for channels in channels_sizes:
         for conv in conv_sizes:
@@ -66,6 +66,7 @@ for i in range(0,len(tasks)):
     f.write("b{} conv{}\n".format(tasks[i]["batch"],tasks[i]["conv"]))
     f.write("GPU{}: {}\n".format(gpu,gpu_info))
     f.close()
+    print time.strftime("%d,%H:%M:%S")
     multigpuexec.runTask(tasks[i],gpu,nvsmi=tasks[i]["nvsmi"],delay=0,debug=False)
     print tasks[i]["logfile"]
     print "{}/{} tasks".format(i+1,len(tasks))
