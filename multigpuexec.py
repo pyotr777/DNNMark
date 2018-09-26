@@ -48,7 +48,7 @@ def GPUisFree(i,c=4,d=1,mode="dmon",debug=False):
         gpu_free = True
     # Check PIDs
     if gpu_free:
-        print("GPU looks free. PIDS:",running_pids)
+        print("GPU looks free. PIDS:", [pid for _,pid in running_pids.iteritems()])
         if i in running_pids:
             pid = running_pids[i]
             # Check if process still alive
@@ -58,9 +58,9 @@ def GPUisFree(i,c=4,d=1,mode="dmon",debug=False):
                 print("Process {} on {} is running".format(pid,i))
                 gpu_free = False
             except Exception as e:
-                # Process died                   
+                # Process died
                 # Remove pid from running_pids
-                print("Exception:",e)
+                print("Exception on {} : {}".format(pid,e))
                 del running_pids[i]
     return gpu_free
 
@@ -94,7 +94,7 @@ def getNextFreeGPU(gpus,start=-1,c=4,d=1,nvsmi=False,mode="dmon",debug=False):
             if GPUisFree(gpu,c=c,d=d,mode=mode,debug=debug):
                 return gpu
             print("busy")
-            time.sleep(0)
+            time.sleep(1)
             start = -1 # Next loop check from 1
 
 

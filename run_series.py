@@ -38,32 +38,33 @@ for imsize in imsizes:
             for batch in batchsizes:
                 for algo in backfilterconvalgos:
                     iterations = int(math.ceil(datasetsize/batch))
-                    print "BS: {}, Iterations: {}".format(batch,iterations)
+                    # print "BS: {}, Iterations: {}".format(batch,iterations)
+                    logname = "{}_imsize{}_channels{}_conv{}_bs{}_algo{}".format(logfile_base,imsize,channels,conv,batch,algo)
                     for run in range(runs):
-                        logname = "{}_imsize{}_channels{}_conv{}_bs{}_algo{}".format(logfile_base,imsize,channels,conv,batch,algo)
                         logfile = os.path.join(logdir,"{}_{}.log".format(logname,run))
-                        command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --iter {}".format(channels,batch,conv,imsize,imsize,algo,iterations)
-                        task = {"comm":command_pars,"logfile":logfile,"batch":batch,"conv":conv,"nvsmi":with_memory}
                         if os.path.isfile(logfile):
                             print "file",logfile,"exists."
                         else:
+                            command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --iter {}".format(channels,batch,conv,imsize,imsize,algo,iterations)
+                            task = {"comm":command_pars,"logfile":logfile,"batch":batch,"conv":conv,"nvsmi":with_memory}
                             tasks.append(task)
                     if nvprof:
                         iterations = int(math.ceil(nvprof_data/batch))
-                        print "BS: {}, Iterations: {}".format(batch,iterations)
+                        # print "BS: {}, Iterations: {}".format(batch,iterations)
+                        nvlogname = "{}_iter{}".format(logname,iterations)
                         command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --iter {}".format(channels,batch,conv,imsize,imsize,algo,iterations)
-                        logfile = os.path.join(logdir,"{}_%p.nvprof".format(logname))
+                        logfile = os.path.join(logdir,"{}_%p.nvprof".format(nvlogname))
                         if os.path.isfile(logfile):
                             print "file",logfile,"exists."
                         else:
                             profcommand = "nvprof -u s --profile-api-trace none --unified-memory-profiling off --profile-child-processes --csv --log-file {} {}".format(logfile,command_pars)
                             task = {"comm":profcommand,"logfile":logfile,"batch":batch,"conv":conv,"nvsmi":False}
-                        tasks.append(task)
+                            tasks.append(task)
 
 print "Have",len(tasks),"tasks"
 gpu = -1
 for i in range(0,len(tasks)):
-    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu+1,c=3,d=1,nvsmi=tasks[i]["nvsmi"],mode="dmon",debug=False)
+    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu+1,c=4,d=1,nvsmi=tasks[i]["nvsmi"],mode="dmon",debug=False)
     gpu_info = multigpuexec.getGPUinfo(gpu)
     f = open(tasks[i]["logfile"],"w+")
     f.write(tasks[i]["comm"]+"\n")
