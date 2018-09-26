@@ -586,12 +586,14 @@ class ConvAlgo {
   cudnnConvolutionFwdAlgo_t fwd_algo_;
   cudnnConvolutionBwdFilterAlgo_t bwd_filter_algo_;
   cudnnConvolutionBwdDataAlgo_t bwd_data_algo_;
+  std::string bwd_filter_algo_par;
 
  public:
   ConvAlgo()
   : fwd_algo_(CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM),
     bwd_filter_algo_(CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0),
-    bwd_data_algo_(CUDNN_CONVOLUTION_BWD_DATA_ALGO_0) {}
+    bwd_data_algo_(CUDNN_CONVOLUTION_BWD_DATA_ALGO_0),
+    bwd_filter_algo_par("") {}
 
   void SetFwdAlgo(std::string algo) {
     if (!algo.compare("fft")) {
@@ -654,6 +656,9 @@ class ConvAlgo {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
     } else if (!algo.compare("3")) {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3;
+    } else {
+      std::cout << "Using algo "<< algo << "\n";
+      bwd_filter_algo_par = algo;
     }
     LOG(INFO) << "Set Bwd Filter Algo to " << bwd_filter_algo_;
   }
@@ -686,8 +691,12 @@ class ConvAlgo {
                top_desc.Get(),
                conv_desc.GetConv(),
                conv_desc.GetFilter(),
-               1, returned_algo_count,
+               3, returned_algo_count,
                perf_results));
+    std::cout << "cuDNN call returned_algo_count :" << *returned_algo_count <<"\n";
+    cudnnConvolutionBwdFilterAlgo_t algo = static_cast<cudnnConvolutionBwdFilterAlgo_t>(perf_results->algo);
+    std::cout << "cuDNN call result :" << perf_results->algo <<"\n";
+    std::cout << "cuDNN casted result :" << algo <<"\n";
     if (*returned_algo_count > 0) {
       bwd_filter_algo_ = perf_results->algo;
     } else {
@@ -712,7 +721,7 @@ class ConvAlgo {
                handle.GetCudnn(idx) : handle.GetCudnn(),
                bottom_desc.Get(), w,
                top_desc.Get(), dy,
-               conv_desc.GetConv(), 
+               conv_desc.GetConv(),
                conv_desc.GetFilter(), dx,
                1, returned_algo_count,
                perf_results,
@@ -793,6 +802,12 @@ class ConvAlgo {
                fwd_algo_,
                workspace_size));
   }
+
+  std::string GetBwdFilterAlgoParameter() {
+    return bwd_filter_algo_par;
+  }
+
+
   cudnnConvolutionBwdFilterAlgo_t GetBwdFilterAlgo() const {
     return bwd_filter_algo_;
   }
@@ -829,6 +844,39 @@ class ConvAlgo {
                bwd_data_algo_,
                workspace_size));
   }
+
+  // Dictionary for storing best bwd convolution algorithms
+  std::map<std::string, int> Algo4DataShape;
+
+  void checkAlgo4DataShape(const cudnnTensorDescriptor_t x,
+                                            const cudnnTensorDescriptor_t dy,
+                                            const cudnnFilterDescriptor_t dw)
+                                             // size_t workspace_in_bytes)
+  {
+
+    int n,c,h, w, k, nStride, cStride, hStride, wStride;
+    cudnnDataType_t datat;
+    cudnnTensorFormat_t format;
+    std::cout << "Call to checkAlgo4DataShape \n";
+    CUDNN_CALL(cudnnGetTensor4dDescriptor(x,
+                                          &datat,
+                                          &n, &c, &h, &w,
+                                          &nStride, &cStride, &hStride, &wStride));
+    std::cout << "x shape: " << n <<" "<< c << " " << h << "x" << w << "\n";
+    CUDNN_CALL(cudnnGetTensor4dDescriptor(dy,
+                                          &datat,
+                                          &n, &c, &h, &w,
+                                          &nStride, &cStride, &hStride, &wStride));
+    std::cout << "dy shape: " << n <<" "<< c << " " << h << "x" << w << "\n";
+    CUDNN_CALL(cudnnGetFilter4dDescriptor(dw,
+                                          &datat, &format,
+                                          &k, &c, &h, &w));
+    std::cout << "dw shape: " << k <<" "<< c << " " << h << "x" << w << "\n";
+    // std::string hash = std::to_string(x)+"/"+std::to_string(*dy)+"/"+std::to_string(*dw)+"/"+std::to_string(workspace_in_bytes);
+    // std::cout << "datashape hash:" << hash << "x:" << x << "dy:" << y << "w:" << w  "\n";
+  }
+
+
 #endif
 #ifdef AMD_MIOPEN
  private:

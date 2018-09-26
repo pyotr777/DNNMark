@@ -24,7 +24,7 @@
 #define CORE_INCLUDE_LAYERS_CONV_LAYER_H_
 
 #include "dnn_layer.h"
-#include "stdio.h"
+#include <iostream>
 
 namespace dnnmark {
 
@@ -195,18 +195,23 @@ class ConvolutionLayer : public Layer<T> {
                                          desc_,
                                          conv_param_.conv_bwd_filter_pref_);
         LOG(INFO) << "Set cuDNN recommended conv. bwd filter alg. to " << conv_algo_.GetBwdFilterAlgo();
-        printf("cuDNN recommended bwd convolution filter algorithm: %d\n",conv_algo_.GetBwdFilterAlgo());
-    } else if (!conv_param_.algo_.compare("auto")) {
+        std::cout << "cuDNN recommended bwd convolution filter algorithm:"<<conv_algo_.GetBwdFilterAlgo()<<"\n";
+    } else if (conv_param_.algo_ == "auto" ) {
         // Query cuDNN for the fastest BWD convolution filter gradient algorithm.
         // Use cuDNN function cudnnFindConvolutionBackwardFilterAlgorithm (called inside FindBwdFilterAlgo())
+
+        // NOTE: The below code selects algorithms prior to run, during setup phase.
+        // FindBwdFilterAlgoEx must be called during run phase through dnn_wrapper.
+        //conv_algo_.SetBwdFilterAlgo("autoex");
         conv_algo_.FindBwdFilterAlgo(*(p_dnnmark_->GetHandle()),
                                          p_dnnmark_->getRunMode(), layer_id_,
                                          bottom_desc_,
                                          desc_,
                                          top_desc_);
         LOG(INFO) << "cuDNN fastest bwd conv. filter algo.:" << conv_algo_.GetBwdFilterAlgo();
-        printf("cuDNN fastest bwd conv. filter algorithm: %d\n",conv_algo_.GetBwdFilterAlgo());
+        std::cout << "cuDNN fastest bwd conv. filter algorithm:"<<conv_algo_.GetBwdFilterAlgo()<<"\n";
     } else {
+        std::cout << "Using autoex option for bwd conv. filter algorithm\n";
         conv_algo_.SetBwdFilterAlgo(conv_param_.algo_);
     }
 
