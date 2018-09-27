@@ -156,24 +156,24 @@ inline void dnnmarkConvolutionBackwardFilter(const Handle &handle,
                                              const void *beta,
                                              void *dw) {
 #ifdef NVIDIA_CUDNN
-  std::string conv_algo_param;
+  // std::string conv_algo_param;
   cudnnFilterDescriptor_t filter_t = conv_desc.GetFilter();
   ProfilerStart(handle, mode, idx, timer, "ConvBwdFilter");
-  conv_algo_param = conv_algo->GetBwdFilterAlgoParameter();
-  std::cout << "algo_param "<< conv_algo_param <<"\n";
-  if (conv_algo_param == "autoex") {
-    conv_algo->checkAlgo4DataShape(bottom_desc.Get(),top_desc.Get(), filter_t);
-    // ,workspace_in_bytes);
-    conv_algo->FindBwdFilterAlgoEx(handle, mode, idx,
-                              bottom_desc,
-                              conv_desc,
-                              top_desc,
-                              x, dy, dw,
-                              workspace, workspace_in_bytes);
+  // conv_algo_param = conv_algo->GetBwdFilterAlgoParameter();
+  // // std::cout << "algo_param "<< conv_algo_param <<"\n";
+  // if (conv_algo_param == "autoex") {
+  //   conv_algo->checkAlgo4DataShape(bottom_desc.Get(),top_desc.Get(), filter_t);
+  //   // ,workspace_in_bytes);
+  //   conv_algo->FindBwdFilterAlgoEx(handle, mode, idx,
+  //                             bottom_desc,
+  //                             conv_desc,
+  //                             top_desc,
+  //                             x, dy, dw,
+  //                             workspace, workspace_in_bytes);
 
-    LOG(INFO) << "cuDNN AUTO selected conv. bwd filter alg. to " << conv_algo->GetBwdFilterAlgo();
-    std::cout << "cuDNN AUTO selected bwd convolution filter algorithm:"<<conv_algo->GetBwdFilterAlgo()<<"\n";
-  }
+  //   LOG(INFO) << "cuDNN AUTO selected conv. bwd filter alg. to " << conv_algo->GetBwdFilterAlgo();
+  //   std::cout << "cuDNN AUTO selected bwd convolution filter algorithm:"<<conv_algo->GetBwdFilterAlgo()<<"\n";
+  // }
   CUDNN_CALL(cudnnConvolutionBackwardFilter(
              mode == COMPOSED ?
              handle.GetCudnn(idx) : handle.GetCudnn(),
