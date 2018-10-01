@@ -211,7 +211,7 @@ class ConvolutionLayer : public Layer<T> {
         LOG(INFO) << "cuDNN fastest bwd conv. filter algo.:" << conv_algo_.GetBwdFilterAlgo();
         std::cout << "cuDNN fastest bwd conv. filter algorithm:"<<conv_algo_.GetBwdFilterAlgo()<<"\n";
     } else {
-        std::cout << "Using autoex option for bwd conv. filter algorithm\n";
+        // std::cout << "Using autoex option for bwd conv. filter algorithm\n";
         conv_algo_.SetBwdFilterAlgo(conv_param_.algo_);
     }
 
