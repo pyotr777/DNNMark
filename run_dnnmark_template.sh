@@ -24,7 +24,7 @@ Configuration saved in temporary file conf_tmp.dnnmark
 USAGEBLOCK
 )
 
-template="conf_multiconv_mod.dnntemplate"
+template="conf_conv_mod.dnntemplate"
 config_file="conf_tmp.dnnmark"
 # Defaults
 N=64
