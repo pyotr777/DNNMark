@@ -10,7 +10,7 @@ import time
 import os
 import math
 
-gpus = range(0,1)
+gpus = range(0,7)
 runs = 1
 # batchsizes = range(10,110,10) + range(120,510,20)
 batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,50)
@@ -25,14 +25,14 @@ configs = [(2,512,512),(4,512,512),(4,256,512),(8,256,256),(8,128,256),(16,128,1
 nvprof = False
 with_memory = False
 tasks = []
-logdir = "logs/dnnmark_composed_model_microseries/"
+logdir = "logs/dnnmark_conv_model_microseries/"
 
 command = "./run_dnnmark_template.sh"
 if not os.path.exists(logdir):
     os.makedirs(logdir)
 print "Logdir",logdir
 
-logfile_base="dnnmark_DL_composedmodel"
+logfile_base="dnnmark_DL_convlayer"
 for config in configs:
     imsize,channels,conv = config
 # for imsize in imsizes:
