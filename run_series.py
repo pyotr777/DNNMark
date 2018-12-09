@@ -24,6 +24,10 @@ backfilterconvalgos=[0,1,3,"cudnn"]
 configs = [(2,512,512),(4,512,512),(4,256,512),(8,256,256),(8,128,256),(16,128,128),(16,64,128),(32,64,64),(32,3,64)]
 nvprof = False
 with_memory = False
+debuginfo = True
+debuginfo_option = ""
+if debuginfo:
+    debuginfo_option = " --debug"
 tasks = []
 logdir = "logs/dnnmark_conv_model_microseries/"
 
@@ -48,7 +52,8 @@ for config in configs:
                 if os.path.isfile(logfile):
                     print "file",logfile,"exists."
                 else:
-                    command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --iter {}".format(channels,batch,conv,imsize,imsize,algo,iterations)
+                    command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --iter {}{}".format(
+                        channels,batch,conv,imsize,imsize,algo,iterations,debuginfo_option)
                     task = {"comm":command_pars,"logfile":logfile,"batch":batch,"conv":conv,"nvsmi":with_memory}
                     tasks.append(task)
             if nvprof:
