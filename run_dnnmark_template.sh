@@ -106,7 +106,7 @@ echo "-----------"
 echo "Benchmark: $BENCH"
 echo "Iterations:$ITER"
 
-com="./build/benchmarks/${BENCH}/dnnmark_${BENCH} -config $config_file --warmup 1 --iterations $ITER --debuginfo $debug"
+com="./build/benchmarks/${BENCH}/dnnmark_${BENCH} -config $config_file --warmup 0 --iterations $ITER --debuginfo $debug"
 echo $com
 $com
 
