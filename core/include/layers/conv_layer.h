@@ -25,7 +25,7 @@
 
 #include "dnn_layer.h"
 #include <iostream>
-#include "timer.h"
+
 namespace dnnmark {
 
 template <typename T>
@@ -264,16 +264,10 @@ class ConvolutionLayer : public Layer<T> {
     // Fill the bottom data
     if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {
-      // Timer
-      StopWatch timer_c;
-      timer_c.Start();
       for (int i = 0; i < num_bottoms_; i++) {
         bottoms_[i]->Filler();
       }
-      timer_c.Stop();
-      LOG(INFO) << "FWD filler time(ms): "<<  timer_c.DiffInMs();
     }
-
     // Convolution forward computation
     for (int i = 0; i < num_bottoms_; i++) {
       dnnmarkConvolutionForward(
@@ -294,9 +288,6 @@ class ConvolutionLayer : public Layer<T> {
   void BackwardPropagation() {
     if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {
-      // Timer
-      StopWatch timer_c;
-      timer_c.Start();
       // Fill the top data and top diff data
       for (int i = 0; i < num_tops_; i++) {
         tops_[i]->Filler();
@@ -306,8 +297,6 @@ class ConvolutionLayer : public Layer<T> {
       for (int i = 0; i < num_bottoms_; i++) {
         bottoms_[i]->Filler();
       }
-      timer_c.Stop();
-      LOG(INFO) << "BWD filler time(ms): "<<  timer_c.DiffInMs();
     }
 
     // Convolution forward computation
