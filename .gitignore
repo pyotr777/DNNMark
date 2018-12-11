@@ -16,5 +16,6 @@
 libs/
 build/
 logs/
-Dockerfile
 
+# Others
+Dockerfile
