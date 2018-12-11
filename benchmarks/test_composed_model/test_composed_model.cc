@@ -29,8 +29,6 @@ int main(int argc, char **argv) {
     dnnmark.Forward();
     dnnmark.Backward();
   }
-  dnnmark.Forward();
-  dnnmark.Backward();
   dnnmark.GetTimer()->SumRecords();
   dnnmark.TearDown();
 
