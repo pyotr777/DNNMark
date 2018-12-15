@@ -10,10 +10,11 @@ import time
 import os
 import math
 
-gpus = range(0,7)
+gpus = range(0,1)
 runs = 1
 # batchsizes = range(10,110,10) + range(120,510,20)
-batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,50)
+# batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,50)
+batchsizes = [10,100,200]
 datasetsize = 50000
 nvprof_data = 500
 # List of convolutional layer configurations
@@ -24,19 +25,19 @@ backfilterconvalgos=[0,1,3,"cudnn"]
 configs = [(2,512,512),(4,512,512),(4,256,512),(8,256,256),(8,128,256),(16,128,128),(16,64,128),(32,64,64),(32,3,64)]
 nvprof = False
 with_memory = False
-debuginfo = True
+debuginfo = False
 debuginfo_option = ""
 if debuginfo:
     debuginfo_option = " --debug"
 tasks = []
-logdir = "logs/dnnmark_conv_model_microseries/"
+logdir = "logs/dnnmark_compmodel_microseries/"
 
 command = "./run_dnnmark_template.sh"
 if not os.path.exists(logdir):
     os.makedirs(logdir)
 print "Logdir",logdir
 
-logfile_base="dnnmark_DL_convlayer"
+logfile_base="dnnmark_mouse_composedmodel"
 for config in configs:
     imsize,channels,conv = config
 # for imsize in imsizes:
@@ -72,7 +73,7 @@ for config in configs:
 print "Have",len(tasks),"tasks"
 gpu = -1
 for i in range(0,len(tasks)):
-    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu+1,c=4,d=1,nvsmi=tasks[i]["nvsmi"],mode="dmon",debug=False)
+    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu+1,c=5,d=1,nvsmi=tasks[i]["nvsmi"],mode="dmon",debug=False)
     gpu_info = multigpuexec.getGPUinfo(gpu)
     f = open(tasks[i]["logfile"],"w+")
     f.write(tasks[i]["comm"]+"\n")

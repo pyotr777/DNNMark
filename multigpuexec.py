@@ -44,7 +44,7 @@ def GPUisFree(i,c=4,d=1,mode="dmon",debug=False):
             except ValueError:
                 pass
             u += uplus
-    if u < 1:
+    if u < 15:
         gpu_free = True
     # Check PIDs
     if gpu_free:
