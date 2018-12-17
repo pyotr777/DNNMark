@@ -1,0 +1,32 @@
+    [DNNMark]
+    run_mode=composed
+
+    [BatchNorm]
+    previous_layer=null
+    name=batchnorm0
+    n=$N
+    c=$C
+    h=$H
+    w=$W
+    batchnorm_mode=per_activation
+    save_intermediates=true
+    exp_avg_factor=0.5
+    epsilon=1e-5
+
+	[Convolution]
+    name=conv1
+    previous_layer=batchnorm0
+    conv_mode=convolution
+    num_output=$K
+    kernel_size=$S
+    pad=$P
+    stride=$U
+    conv_fwd_pref=fastest
+    conv_bwd_filter_pref=fastest
+    conv_bwd_data_pref=fastest
+    algo=$CBFA
+
+    [Activation]
+    name=act1
+    previous_layer=conv1
+    activation_mode=relu

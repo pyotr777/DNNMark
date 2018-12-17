@@ -15,7 +15,7 @@ running_pids = {}
 
 # Returns True if GPU #i is not used.
 # Uses nvidia-smi command to monitor GPU SM usage.
-def GPUisFree(i,c=4,d=1,mode="dmon",debug=False):
+def GPUisFree(i,c=1,d=1,mode="dmon",debug=False):
     global running_pids
     gpu_free = False
     if mode=="dmon":
@@ -37,30 +37,33 @@ def GPUisFree(i,c=4,d=1,mode="dmon",debug=False):
             print(line.strip(" "),end="")
         m = out_pattern.search(line)
         if m:
-            print(".",end="")
+            # print(".",end="")
             uplus = 0
             try:
                 uplus = int(m.group(2))
             except ValueError:
                 pass
             u += uplus
-    if u < 15:
+    if u < 11:
         gpu_free = True
     # Check PIDs
     if gpu_free:
-        print("GPU looks free. PIDS:", [pid for _,pid in running_pids.iteritems()])
+        if debug:
+            print("GPU looks free. PIDS:", [pid for _,pid in running_pids.iteritems()])
         if i in running_pids:
             pid = running_pids[i]
             # Check if process still alive
             try:
                 os.kill(pid, 0)
                 # If no exception, process is still running
-                print("Process {} on {} is running".format(pid,i))
+                if debug:
+                    print("Process {} on {} is running".format(pid,i))
                 gpu_free = False
             except Exception as e:
                 # Process died
                 # Remove pid from running_pids
-                print("Exception on {} : {}".format(pid,e))
+                if debug:
+                    print("Exception on {} : {}".format(pid,e))
                 del running_pids[i]
     return gpu_free
 
