@@ -16,9 +16,11 @@ $(basename $0)  [-n <number of images, batch size>]
                 [-u <stride>]
                 [-p <padding>]
                 [ --algo <cudnnConvolutionBwdFilterAlgo_t> - cuDNN algorithm for backward filter convolution]
+                [-b <benchmark executable, default=test_bwd_conv>]
                 [ --iter <int> - number of FWD+BWD passes to measure time]
                 [ --debug - debug info ]
                 [ --help  - usage info ]
+                [ -d <dataset size> - number of samples in dataset, derives number of iterations from batch size and datasetsize]
 
 Configuration saved in temporary file conf_tmp.dnnmark
 USAGEBLOCK
@@ -38,6 +40,7 @@ P=1
 BENCH="test_composed_model"
 ITER=1
 debug=0
+datasetsize=0
 
 
 while test $# -gt 0; do
@@ -70,6 +73,12 @@ while test $# -gt 0; do
         -p)
             P="$2";shift;
             ;;
+        -b)
+            BENCH="$2";shift;
+            ;;
+        -d)
+            datasetsize="$2";shift;
+            ;;
         --algo)
             CBFA="$2";shift;
             ;;
@@ -95,6 +104,20 @@ done
 
 if [ $CBFA ];then
     CUDNN_CBFA="algo=$CBFA"
+fi
+
+echo "datasetsize=$datasetsize"
+
+
+divide_ceil() {
+    echo "($1 + $2 - 1)/$2" | bc
+}
+
+# Calculate number of iterations from BS ($N) and dataset size
+if [ $datasetsize -gt 0 ]; then
+    # echo "$datasetsize / $N = "
+    # echo "$(divide_ceil $datasetsize $N)"
+    ITER=$(divide_ceil $datasetsize $N)
 fi
 
 conf="$(echo EOF;cat $template;echo EOF)"
