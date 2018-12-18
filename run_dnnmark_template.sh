@@ -106,15 +106,13 @@ if [ $CBFA ];then
     CUDNN_CBFA="algo=$CBFA"
 fi
 
-echo "datasetsize=$datasetsize"
-
-
 divide_ceil() {
     echo "($1 + $2 - 1)/$2" | bc
 }
 
 # Calculate number of iterations from BS ($N) and dataset size
 if [ $datasetsize -gt 0 ]; then
+    echo "datasetsize=$datasetsize"
     # echo "$datasetsize / $N = "
     # echo "$(divide_ceil $datasetsize $N)"
     ITER=$(divide_ceil $datasetsize $N)
