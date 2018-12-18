@@ -184,7 +184,6 @@ class ConvolutionLayer : public Layer<T> {
 
     // Set convolution backward filter/weights algorithm
     // Use default algorithm for now
-    LOG(INFO) << "Setting Bwd Filter Algo to " << conv_param_.algo_ << " (default was: " << conv_algo_.GetBwdFilterAlgo() << ")";
     if (!conv_param_.algo_.compare("cudnn")) {
         // Chainer default behaviour
         // Use cuDNN function cudnnGetConvolutionBackwardFilterAlgorithm
@@ -211,6 +210,8 @@ class ConvolutionLayer : public Layer<T> {
         LOG(INFO) << "cuDNN fastest bwd conv. filter algo.:" << conv_algo_.GetBwdFilterAlgo();
         std::cout << "cuDNN fastest bwd conv. filter algorithm:"<<conv_algo_.GetBwdFilterAlgo()<<"\n";
     } else {
+        // Use default algorithm for now
+        LOG(INFO) << "Setting Bwd Filter Algo to " << conv_param_.algo_;
         conv_algo_.SetBwdFilterAlgo(conv_param_.algo_);
     }
 

@@ -3,7 +3,7 @@ run_mode=composed
 
 [Convolution]
 name=block1_1_conv
-n=10
+n=100
 c=3
 h=32
 w=32

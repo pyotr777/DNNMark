@@ -646,6 +646,9 @@ class ConvAlgo {
     bwd_filter_algo_ = bwd_filter_algo;
   }
   void SetBwdFilterAlgo(std::string algo) {
+    if (algo.empty()) {
+        return;
+    }
     if (!algo.compare("fft")) {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT;
     } else if (!algo.compare("winograd")) {
