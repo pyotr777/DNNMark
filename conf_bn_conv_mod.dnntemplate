@@ -24,7 +24,8 @@
     conv_fwd_pref=fastest
     conv_bwd_filter_pref=fastest
     conv_bwd_data_pref=fastest
-    algo=$CBFA
+    $CUDNN_CBFA
+    $CUDNN_CBDA
 
     [Activation]
     name=act1

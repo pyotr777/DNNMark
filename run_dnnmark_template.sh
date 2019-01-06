@@ -16,6 +16,7 @@ $(basename $0)  [-n <number of images, batch size>]
                 [-u <stride>]
                 [-p <padding>]
                 [ --algo <cudnnConvolutionBwdFilterAlgo_t> - cuDNN algorithm for backward filter convolution]
+                [ --algod <cudnnConvolutionBwdDataAlgo_t> - cuDNN algorithm for backward data convolution]
                 [-b <benchmark executable, default=test_bwd_conv>]
                 [ --iter <int> - number of FWD+BWD passes to measure time]
                 [ --debug - debug info ]
@@ -82,6 +83,9 @@ while test $# -gt 0; do
         --algo)
             CBFA="$2";shift;
             ;;
+        --algod)
+            CBDA="$2";shift;
+            ;;
         --iter)
             ITER="$2";shift;
             ;;
@@ -104,6 +108,10 @@ done
 
 if [ $CBFA ];then
     CUDNN_CBFA="algo=$CBFA"
+fi
+
+if [ $CBDA ];then
+    CUDNN_CBDA="algod=$CBDA"
 fi
 
 echo "datasetsize=$datasetsize"

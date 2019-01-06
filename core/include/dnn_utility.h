@@ -758,10 +758,21 @@ class ConvAlgo {
     bwd_data_algo_ = bwd_data_algo;
   }
   void SetBwdDataAlgo(std::string algo) {
+    if (algo.empty()) {
+        return;
+    }
     if (!algo.compare("fft")) {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT;
     } else if (!algo.compare("winograd")) {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD;
+    } else if (stoi(algo) == 0) {
+      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+    } else if (stoi(algo) == 1) {
+      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
+    } else if (!algo.compare("winograd_nonfused")) {
+      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED;
+    } else if (!algo.compare("fft_tiling")) {
+      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING;
     }
   }
   void SetBwdDataAlgo(const Handle &handle, RunMode mode, int idx,

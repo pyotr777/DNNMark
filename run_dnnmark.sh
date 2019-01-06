@@ -15,6 +15,8 @@ $(basename $0)  [-n <number of images, batch size>]
                 [-u <stride>]
                 [-p <padding>]
                 [-b <benchmark executable, default=test_bwd_conv>]
+                [ --algo <cudnnConvolutionBwdFilterAlgo_t> - cuDNN algorithm for backward filter convolution]
+                [ --algod <cudnnConvolutionBwdDataAlgo_t> - cuDNN algorithm for backward data convolution]
                 [ --activation - add RELU activation]
                 [ --debug - debug info ]
                 [ --help  - usage info ]
@@ -74,6 +76,9 @@ while test $# -gt 0; do
         --algo)
             CBFA="$2";shift;
             ;;
+        --algod)
+            CBDA="$2";shift;
+            ;;
         --debug)
             debug=1
             ;;
@@ -104,6 +109,10 @@ if [ $CBFA ];then
     CUDNN_CBFA="algo=$CBFA"
 fi
 
+if [ $CBDA ];then
+    CUDNN_CBDA="algod=$CBDA"
+fi
+
 conf=$(cat <<SETVAR
 [DNNMark]
 run_mode=composed
@@ -124,6 +133,7 @@ conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
 $CUDNN_CBFA
+$CUDNN_CBDA
 
 $ACTIVATION
 

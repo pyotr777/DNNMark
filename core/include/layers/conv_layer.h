@@ -232,7 +232,7 @@ class ConvolutionLayer : public Layer<T> {
 
     // Set convolution backward data algorithm
     // Use default algorithm for now
-    conv_algo_.SetBwdDataAlgo(conv_param_.algo_);
+    conv_algo_.SetBwdDataAlgo(conv_param_.algod_);
 
     // Allocate workspace
     conv_algo_.GetBwdDataWorkspaceSize(*(p_dnnmark_->GetHandle()),
