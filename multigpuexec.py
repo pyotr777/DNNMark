@@ -37,7 +37,7 @@ def GPUisFree(i,c=1,d=1,mode="dmon",debug=False):
             print(line.strip(" "),end="")
         m = out_pattern.search(line)
         if m:
-            # print(".",end="")
+            print(".",end="")
             uplus = 0
             try:
                 uplus = int(m.group(2))
@@ -65,6 +65,7 @@ def GPUisFree(i,c=1,d=1,mode="dmon",debug=False):
                 if debug:
                     print("Exception on {} : {}".format(pid,e))
                 del running_pids[i]
+                print("free")
     return gpu_free
 
 

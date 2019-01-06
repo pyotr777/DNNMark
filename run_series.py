@@ -11,12 +11,13 @@ import os
 import math
 
 gpus = range(0,1)
-runs = 1
+runs = 5
 # batchsizes = range(10,110,10) + range(120,510,20)
 # batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,50)
-batchsizes = [10,100,200]
-datasetsize = 50000
+batchsizes = [7,8,9,10,12,15,20,25,50,55,60,90,100,160,170,180,190,200,500]
+# datasetsize = 50000
 nvprof_data = 500
+iterations = 1
 # List of convolutional layer configurations
 # conv_sizes = [256, 512]
 # channels_sizes = [256, 512] # Number of channel in input data
@@ -25,31 +26,31 @@ backfilterconvalgos=[0,1,3,"cudnn"]
 configs = [(2,512,512),(4,512,512),(4,256,512),(8,256,256),(8,128,256),(16,128,128),(16,64,128),(32,64,64),(32,3,64)]
 nvprof = False
 with_memory = False
-debuginfo = False
+debuginfo = True
 debuginfo_option = ""
 if debuginfo:
     debuginfo_option = " --debug"
 tasks = []
-logdir = "logs/dnnmark_compmodel_microseries/"
+logdir = "logs/dnnmark_composed_model_microseries_debuginfo/"
 
-command = "./run_dnnmark_template.sh"
+command = "./run_dnnmark_template.sh -b test_composed_model"
 if not os.path.exists(logdir):
     os.makedirs(logdir)
 print "Logdir",logdir
 
-logfile_base="dnnmark_mouse_composedmodel"
+logfile_base="dnnmark_mouse_composed_model_debuginfo"
 for config in configs:
     imsize,channels,conv = config
 # for imsize in imsizes:
 #     for channels in channels_sizes:
 #         for conv in conv_sizes:
     for batch in batchsizes:
+        #iterations = int(math.ceil(datasetsize/batch))
         for algo in backfilterconvalgos:
-            iterations = int(math.ceil(datasetsize/batch))
             # print "BS: {}, Iterations: {}".format(batch,iterations)
             logname = "{}_imsize{}_channels{}_conv{}_bs{}_algo{}".format(logfile_base,imsize,channels,conv,batch,algo)
             for run in range(runs):
-                logfile = os.path.join(logdir,"{}_{}.log".format(logname,run))
+                logfile = os.path.join(logdir,"{}_{:02d}.log".format(logname,run))
                 if os.path.isfile(logfile):
                     print "file",logfile,"exists."
                 else:
@@ -73,17 +74,17 @@ for config in configs:
 print "Have",len(tasks),"tasks"
 gpu = -1
 for i in range(0,len(tasks)):
-    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu+1,c=5,d=1,nvsmi=tasks[i]["nvsmi"],mode="dmon",debug=False)
+    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu+1,c=1,d=1,nvsmi=tasks[i]["nvsmi"],mode="dmon",debug=False)
     gpu_info = multigpuexec.getGPUinfo(gpu)
     f = open(tasks[i]["logfile"],"w+")
     f.write(tasks[i]["comm"]+"\n")
     f.write("b{} conv{}\n".format(tasks[i]["batch"],tasks[i]["conv"]))
     f.write("GPU{}: {}\n".format(gpu,gpu_info))
     f.close()
-    print time.strftime("%d,%H:%M:%S")
+    print time.strftime("[%d %H:%M:%S]")
     multigpuexec.runTask(tasks[i],gpu,nvsmi=tasks[i]["nvsmi"],delay=0,debug=False)
     print tasks[i]["logfile"]
     print "{}/{} tasks".format(i+1,len(tasks))
-    time.sleep(2)
+    time.sleep(0)
 
 

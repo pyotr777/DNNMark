@@ -13,7 +13,7 @@
     exp_avg_factor=0.5
     epsilon=1e-5
 
-	[Convolution]
+    [Convolution]
     name=conv1
     previous_layer=batchnorm0
     conv_mode=convolution
