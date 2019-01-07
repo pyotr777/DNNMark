@@ -19,6 +19,7 @@ batchsizes = [7,8,9,10,12,15,20,25,50,55,60,90,100,160,170,180,190,200,300,400,5
 # conv_sizes = [256, 512]
 # channels_sizes = [256, 512] # Number of channel in input data
 backfilterconvalgos=[0,1,2,3,5,"cudnn"]
+algod="1" # Data gradient algorithm
 # VGG model convolution configs
 configs = [(2,512,512),(4,512,512),(4,256,512),(8,256,256),(8,128,256),(16,128,128),(16,64,128),(32,64,64),(32,3,64)]
 nvprof = False
@@ -28,7 +29,7 @@ debuginfo_option = ""
 if debuginfo:
     debuginfo_option = " --debug"
 tasks = []
-logdir = "logs/dnnmark_convmodel_microseries/"
+logdir = "logs/dnnmark_convmodel_microseries_20190107/"
 iterations = 1
 command = "nvprof --profile-child-processes --unified-memory-profiling off --csv ./run_dnnmark_template.sh"
 if not os.path.exists(logdir):
@@ -43,19 +44,20 @@ for config in configs:
 #         for conv in conv_sizes:
     for batch in batchsizes:
         for algo in backfilterconvalgos:
-            logname = "{}_imsize{}_channels{}_conv{}_bs{}_algo{}".format(logfile_base,imsize,channels,conv,batch,algo)
+            logname = "{}_imsize{}_channels{}_conv{}_bs{}_algo{}_algod{}".format(logfile_base,imsize,channels,conv,batch,algo,algod)
             for run in range(runs):
                 logfile = os.path.join(logdir,"{}_{:02d}.log".format(logname,run))
                 if os.path.isfile(logfile):
                     print "file",logfile,"exists."
                 else:
-                    command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --iter {}{}".format(
-                        channels,batch,conv,imsize,imsize,algo,iterations,debuginfo_option)
+                    command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --iter {}{}".format(
+                        channels,batch,conv,imsize,imsize,algo,algod,iterations,debuginfo_option)
                     task = {"comm":command_pars,"logfile":logfile,"batch":batch,"conv":conv,"nvsmi":with_memory}
                     tasks.append(task)
             if nvprof:
                 nvlogname = "{}_iter{}".format(logname,iterations)
-                command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --iter {}".format(channels,batch,conv,imsize,imsize,algo,iterations)
+                command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --iter {}".format(
+                    channels,batch,conv,imsize,imsize,algo,algod,iterations)
                 logfile = os.path.join(logdir,"{}_%p.nvprof".format(nvlogname))
                 if os.path.isfile(logfile):
                     print "file",logfile,"exists."
