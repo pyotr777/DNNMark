@@ -139,7 +139,7 @@ def runTask(task,gpu,nvsmi=False,delay=3,debug=True):
         command = re.sub(' \s+',' ',command).strip()
 	# Insert GPU number into command instead of gpu_num pattern
 	command = command.replace("gpu_num",str(gpu))
-        print("Starting")
+        print("Starting on GPU{}".format(gpu))
         message(command)
         pid = subprocess.Popen(command.split(" "),stdout=f,stderr=subprocess.STDOUT,bufsize=1,env=my_env).pid
         print(pid)
