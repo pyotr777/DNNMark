@@ -11,34 +11,35 @@ import os
 import math
 
 gpus = range(0,1)
-runs = 5
+runs = 1
 # batchsizes = range(10,110,10) + range(120,510,20)
-# batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,50)
-batchsizes = [7,8,9,10,12,15,20,25,50,55,60,90,100,160,170,180,190,200,500]
-# datasetsize = 50000
-nvprof_data = 500
-iterations = 1
+batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,50)
+# batchsizes = [7,8,9,10,12,15,20,25,50,55,60,90,100,160,170,180,190,200,500]
+datasetsize = 50000
+# nvprof_data = 500
+# iterations = 1
 # List of convolutional layer configurations
 # conv_sizes = [256, 512]
 # channels_sizes = [256, 512] # Number of channel in input data
 backfilterconvalgos=[0,1,3,"cudnn"]
+algod="1" # Data gradient algorithm
 # VGG model convolution configs
 configs = [(2,512,512),(4,512,512),(4,256,512),(8,256,256),(8,128,256),(16,128,128),(16,64,128),(32,64,64),(32,3,64)]
 nvprof = False
 with_memory = False
-debuginfo = True
+debuginfo = False
 debuginfo_option = ""
 if debuginfo:
     debuginfo_option = " --debug"
 tasks = []
-logdir = "logs/dnnmark_composed_model_microseries_debuginfo/"
+logdir = "logs/dnnmark_composed_model_microseries_20190108/"
 
 command = "./run_dnnmark_template.sh -b test_composed_model"
 if not os.path.exists(logdir):
     os.makedirs(logdir)
 print "Logdir",logdir
 
-logfile_base="dnnmark_mouse_composed_model_debuginfo"
+logfile_base="dnnmark_mouse_composed_model"
 for config in configs:
     imsize,channels,conv = config
 # for imsize in imsizes:
@@ -48,21 +49,22 @@ for config in configs:
         #iterations = int(math.ceil(datasetsize/batch))
         for algo in backfilterconvalgos:
             # print "BS: {}, Iterations: {}".format(batch,iterations)
-            logname = "{}_imsize{}_channels{}_conv{}_bs{}_algo{}".format(logfile_base,imsize,channels,conv,batch,algo)
+            logname = "{}_imsize{}_channels{}_conv{}_bs{}_algo{}_algod1".format(logfile_base,imsize,channels,conv,batch,algo)
             for run in range(runs):
                 logfile = os.path.join(logdir,"{}_{:02d}.log".format(logname,run))
                 if os.path.isfile(logfile):
                     print "file",logfile,"exists."
                 else:
-                    command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --iter {}{}".format(
-                        channels,batch,conv,imsize,imsize,algo,iterations,debuginfo_option)
+                    command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} -d {}{}".format(
+                        channels,batch,conv,imsize,imsize,algo,algod,datasetsize,debuginfo_option)
                     task = {"comm":command_pars,"logfile":logfile,"batch":batch,"conv":conv,"nvsmi":with_memory}
                     tasks.append(task)
             if nvprof:
-                iterations = int(math.ceil(nvprof_data/batch))
+                # iterations = int(math.ceil(nvprof_data/batch))
                 # print "BS: {}, Iterations: {}".format(batch,iterations)
                 nvlogname = "{}_iter{}".format(logname,iterations)
-                command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --iter {}".format(channels,batch,conv,imsize,imsize,algo,iterations)
+                command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} -d {}".format(
+                	channels,batch,conv,imsize,imsize,algo,algod,datasetsize)
                 logfile = os.path.join(logdir,"{}_%p.nvprof".format(nvlogname))
                 if os.path.isfile(logfile):
                     print "file",logfile,"exists."

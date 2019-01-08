@@ -114,8 +114,6 @@ if [ $CBDA ];then
     CUDNN_CBDA="algod=$CBDA"
 fi
 
-echo "datasetsize=$datasetsize"
-
 divide_ceil() {
     echo "($1 + $2 - 1)/$2" | bc
 }
