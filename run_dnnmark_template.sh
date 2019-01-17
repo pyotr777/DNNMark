@@ -19,6 +19,7 @@ $(basename $0)  [-n <number of images, batch size>]
                 [ --algod <cudnnConvolutionBwdDataAlgo_t> - cuDNN algorithm for backward data convolution]
                 [-b <benchmark executable, default=test_bwd_conv>]
                 [ --iter <int> - number of FWD+BWD passes to measure time]
+                [ --template - benchmark configuration template file]
                 [ --debug - debug info ]
                 [ --help  - usage info ]
                 [ -d <dataset size> - number of samples in dataset, derives number of iterations from batch size and datasetsize]
@@ -91,6 +92,9 @@ while test $# -gt 0; do
             ;;
         --debug)
             debug=1
+            ;;
+        --template)
+            template="$2";shift;
             ;;
         --)
             shift
