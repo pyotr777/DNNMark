@@ -233,6 +233,8 @@ class ConvolutionLayer : public Layer<T> {
     // Set convolution backward data algorithm
     // Use default algorithm for now
     conv_algo_.SetBwdDataAlgo(conv_param_.algod_);
+    LOG(INFO) << "BWD conv. data algo set to:"<< static_cast<int>(conv_algo_.getDataAlgo());
+    // std::cout << "cuDNN recommended BWD convolution data algorithm:"<<conv_algo_.GetBwdDataAlgo()<<"\n";
 
     // Allocate workspace
     conv_algo_.GetBwdDataWorkspaceSize(*(p_dnnmark_->GetHandle()),

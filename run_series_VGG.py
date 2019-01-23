@@ -16,11 +16,14 @@ runs = 1
 benchmark = "VGG"
 template = "VGG.dnntemplate"
 # batchsizes = range(10,110,10) + range(120,510,20)
-batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,50)
+batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,20)
 datasetsize = 50000
 date = datetime.datetime.today().strftime('%Y%m%d')
 backfilterconvalgos=[0,1,3,"cudnn"]
-algod="1" # Data gradient algorithm
+algod="" # Data gradient algorithm
+algod_opt=""
+if algod != "":
+    algod_opt=" --algod {}".format(algod)
 
 nvprof = False
 with_memory = False
@@ -47,16 +50,16 @@ for batch in batchsizes:
             if os.path.isfile(logfile):
                 print "file",logfile,"exists."
             else:
-                command_pars = command+" -n {} --algo {} --algod {} -d {}{}".format(
-                    batch,algo,algod,datasetsize,debuginfo_option)
+                command_pars = command+" -n {} --algo {}{} -d {}{}".format(
+                    batch,algo,algod_opt,datasetsize,debuginfo_option)
                 task = {"comm":command_pars,"logfile":logfile,"batch":batch,"nvsmi":with_memory}
                 tasks.append(task)
         if nvprof:
             iterations = 1
             # print "BS: {}, Iterations: {}".format(batch,iterations)
             nvlogname = "{}_iter{}".format(logname,iterations)
-            command_pars = command+" -n {} --algo {} --algod {} -d {}".format(
-            	batch,algo,algod,datasetsize)
+            command_pars = command+" -n {} --algo {}{} -d {}".format(
+            	batch,algo,algod_opt,datasetsize)
             logfile = os.path.join(logdir,"{}_%p.nvprof".format(nvlogname))
             if os.path.isfile(logfile):
                 print "file",logfile,"exists."

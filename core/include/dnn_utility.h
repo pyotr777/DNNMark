@@ -588,12 +588,18 @@ class ConvAlgo {
   cudnnConvolutionBwdDataAlgo_t bwd_data_algo_;
   std::string bwd_filter_algo_par;
 
- public:
+ public:  
   ConvAlgo()
   : fwd_algo_(CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM),
     bwd_filter_algo_(CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0),
     bwd_data_algo_(CUDNN_CONVOLUTION_BWD_DATA_ALGO_0),
     bwd_filter_algo_par("") {}
+    
+
+  cudnnConvolutionBwdDataAlgo_t getDataAlgo(){
+    return (bwd_data_algo_);
+  }
+  
 
   void SetFwdAlgo(std::string algo) {
     if (!algo.compare("fft")) {
