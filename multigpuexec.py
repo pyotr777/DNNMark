@@ -46,8 +46,39 @@ def GPUisFree(i,c=1,d=1,mode="dmon",debug=False):
             u += uplus
     if u < 11:
         gpu_free = True
+    # Check Temp
+    temp_norm = False
+    if gpu_free and mode=="dmon":
+        command = "nvidia-smi dmon -s p -d 1 -c 1 -i {}".format(i)
+        out_pattern = re.compile(r"^\s+(\d+)\s+(\d+)\s+(\d+)\s+.*") # dmon
+        proc = subprocess.Popen(command.split(" "), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, shell=False)
+        temp = 0
+        for line in iter(proc.stdout.readline, b''):
+            line = line.decode('utf-8')
+            if debug:
+                print(line.strip(" "),end="")
+            m = out_pattern.search(line)
+            if m:
+                print(".",end="")
+                t = 0
+                try:
+                    t = int(m.group(3))
+                except ValueError:
+                    pass
+                if debug:
+                    print("{}C".format(t))
+                if t > temp:
+                    temp = t
+
+        if temp < 50:
+           temp_norm = True
+        else:
+            message("Overheat GPU{}: {}C".format(i,temp),196)
+            gpu_free = False
+
+
     # Check PIDs
-    if gpu_free:
+    if gpu_free and temp_norm:
         if debug:
             print("GPU looks free. PIDS:", [pid for _,pid in running_pids.iteritems()])
         if i in running_pids:
@@ -65,7 +96,8 @@ def GPUisFree(i,c=1,d=1,mode="dmon",debug=False):
                 if debug:
                     print("Exception on {} : {}".format(pid,e))
                 del running_pids[i]
-                print("free")
+    if gpu_free:
+        print("free")
     return gpu_free
 
 
@@ -127,18 +159,18 @@ def runTask(task,gpu,nvsmi=False,delay=3,debug=True):
     global running_pids
     with open(task["logfile"],"ab") as f:
         #f.write("gpu"+str(gpu)+"\n")
-	# Set GPU for execution with env var CUDA_VISIBLE_DEVICES
-	my_env = os.environ.copy()
-	my_env[b"CUDA_VISIBLE_DEVICES"] = str(gpu)
-	my_env[b"NVIDIA_VISIBLE_DEVICES"] = str(gpu)
+        # Set GPU for execution with env var CUDA_VISIBLE_DEVICES
+        my_env = os.environ.copy()
+        my_env[b"CUDA_VISIBLE_DEVICES"] = str(gpu)
+        my_env[b"NVIDIA_VISIBLE_DEVICES"] = str(gpu)
         if debug:
-	    for k in my_env.keys():
-	        print("{}={}".format(k,my_env[k]))
+            for k in my_env.keys():
+                print("{}={}".format(k,my_env[k]))
         command = task["comm"]
         # IMPORTANT: remove double spaces or they will become empty arguments!
         command = re.sub(' \s+',' ',command).strip()
-	# Insert GPU number into command instead of gpu_num pattern
-	command = command.replace("gpu_num",str(gpu))
+        # Insert GPU number into command instead of gpu_num pattern
+        command = command.replace("gpu_num",str(gpu))
         print("Starting on GPU{}".format(gpu))
         message(command)
         pid = subprocess.Popen(command.split(" "),stdout=f,stderr=subprocess.STDOUT,bufsize=1,env=my_env).pid
