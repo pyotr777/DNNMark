@@ -166,7 +166,8 @@ class ConvolutionLayer : public Layer<T> {
     weights_->Filler();
 
     // Set convolution forward algorithm
-    // Use default algorithm for now
+    std::cout << "FWD algo is " << conv_param_.algofwd_ ;
+    // if (conv_param_.algofwd_ 
     conv_algo_.SetFwdAlgo(conv_param_.algo_);
 
     // Allocate workspace

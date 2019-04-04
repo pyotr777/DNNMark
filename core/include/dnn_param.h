@@ -77,6 +77,7 @@ struct ConvolutionParam {
   int kernel_size_h_;
   int kernel_size_w_;
   bool algo_set_;
+  std::string algofwd_;
   std::string algo_;
   std::string algod_;
 #ifdef NVIDIA_CUDNN
