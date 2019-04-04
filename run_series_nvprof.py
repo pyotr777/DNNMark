@@ -8,28 +8,32 @@
 import multigpuexec
 import time
 import os
+import datetime
+import math
 
 gpus = range(0,1)
-runs = 10
+host = "mouse"
+datasetsize = 50000
+runs = 0
 # batchsizes = range(10,110,10) + range(120,510,20)
 # batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,50)
 batchsizes = [7,8,9,10,12,15,20,25,50,55,60,90,100,160,170,180,190,200,300,400,500]
-
+date = datetime.datetime.today().strftime('%Y%m%d')
 # List of convolutional layer configurations
 # conv_sizes = [256, 512]
 # channels_sizes = [256, 512] # Number of channel in input data
-backfilterconvalgos=[0,1,2,3,5,"cudnn"]
+backfilterconvalgos=["cudnn"]
 algod="1" # Data gradient algorithm
 # VGG model convolution configs
 configs = [(2,512,512),(4,512,512),(4,256,512),(8,256,256),(8,128,256),(16,128,128),(16,64,128),(32,64,64),(32,3,64)]
-nvprof = False
+nvprof = True
 with_memory = False
 debuginfo = False
 debuginfo_option = ""
 if debuginfo:
     debuginfo_option = " --debug"
 tasks = []
-logdir = "logs/dnnmark_convmodel_microseries_20190107/"
+logdir = "logs/{}/dnnmark_microseries{}/".format(host,date)
 iterations = 1
 command = "nvprof --profile-child-processes --unified-memory-profiling off --csv ./run_dnnmark_template.sh"
 if not os.path.exists(logdir):
@@ -39,10 +43,8 @@ print "Logdir",logdir
 logfile_base="dnnmark_mouse_convmodel"
 for config in configs:
     imsize,channels,conv = config
-# for imsize in imsizes:
-#     for channels in channels_sizes:
-#         for conv in conv_sizes:
     for batch in batchsizes:
+        iterations = int(math.ceil(datasetsize/batch))
         for algo in backfilterconvalgos:
             logname = "{}_imsize{}_channels{}_conv{}_bs{}_algo{}_algod{}".format(logfile_base,imsize,channels,conv,batch,algo,algod)
             for run in range(runs):

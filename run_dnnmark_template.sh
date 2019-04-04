@@ -4,7 +4,7 @@
 # Uses conf_multiconv_mod.dnntemplate configuration file template.
 # 2018 (C) Peter Bryzgalov @ CHITECH Stair Lab
 
-usage=$(cat <<- USAGEBLOCK
+IFS='' read -r -d '' usage <<'USAGEBLOCK'
 Run DNNMark with parameters from CLI.
 Usage:
 $(basename $0)  [-n <number of images, batch size>]
@@ -27,7 +27,7 @@ $(basename $0)  [-n <number of images, batch size>]
 
 Configuration saved in temporary file conf_tmp.dnnmark
 USAGEBLOCK
-)
+
 
 template="conf_bn_conv_mod.dnntemplate"
 config_file="conf_tmp.dnnmark"

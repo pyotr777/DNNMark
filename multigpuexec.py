@@ -102,7 +102,7 @@ def GPUisFree(i,c=1,d=1,mode="dmon",debug=False):
 
 
 # Returns GPU info
-def getGPUinfo(i,query="name,memory.total"):
+def getGPUinfo(i,query="name,memory.total,memory.free,ecc.mode.current,pstate"):
     command = "nvidia-smi -i {} --query-gpu={} --format=csv,noheader".format(i,query)
     proc = subprocess.Popen(command.split(" "), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, shell=False)
     output = ""
