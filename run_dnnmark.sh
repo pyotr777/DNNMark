@@ -142,6 +142,7 @@ SETVAR
 
 echo "$conf" > $config_file
 
+echo "./build/benchmarks/$BENCH/dnnmark_$BENCH -config $config_file -debuginfo $debug -warmup 1"
 ./build/benchmarks/"$BENCH"/dnnmark_"$BENCH" -config $config_file -debuginfo $debug -warmup 1
 
 

@@ -17,6 +17,7 @@ $(basename $0)  [-n <number of images, batch size>]
                 [ --algo <cudnnConvolutionBwdFilterAlgo_t> - cuDNN algorithm for backward filter convolution]
                 [ --bwd_filter_pref <fastest/no_workspace/specify_workspace_limit> - cuDNN backward filter algorithm selection preference]
                 [ --algod <cudnnConvolutionBwdDataAlgo_t> - cuDNN algorithm for backward data convolution]
+                [ --algofwd <cudnnConvolutionFwdAlgo_t> - cuDNN algorithm for forward convolution]
                 [-b <benchmark executable, default=test_bwd_conv>]
                 [ --iter <int> - number of FWD+BWD passes to measure time]
                 [ --template - benchmark configuration template file]
@@ -27,7 +28,7 @@ $(basename $0)  [-n <number of images, batch size>]
 Configuration saved in temporary file conf_tmp.dnnmark
 USAGEBLOCK
 
-template="conf_bn_conv_mod.dnntemplate"
+template="config_example/conf_convolution_block.dnntemplate"
 config_file="conf_tmp.dnnmark"
 conv_bwd_filter_pref="fastest"
 # Defaults
@@ -91,6 +92,9 @@ while test $# -gt 0; do
         --algod)
             CBDA="$2";shift;
             ;;
+        --algofwd)
+            CFWA="$2";shift;
+            ;;
         --iter)
             ITER="$2";shift;
             ;;
@@ -115,11 +119,15 @@ while test $# -gt 0; do
 done
 
 if [ $CBFA ];then
-    CUDNN_CBFA="algo=$CBFA"
+    CUDNN_CBFA="algo=$CBFA"$'\n'  # Insert new line; inside double quotes not expanded.
 fi
 
 if [ $CBDA ];then
-    CUDNN_CBDA="algod=$CBDA"
+    CUDNN_CBDA="algod=$CBDA"$'\n'
+fi
+
+if [ $CFWA ];then
+    CUDNN_CFWA="algofwd=$CFWA"$'\n'
 fi
 
 divide_ceil() {

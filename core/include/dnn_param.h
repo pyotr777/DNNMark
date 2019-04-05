@@ -100,7 +100,7 @@ struct ConvolutionParam {
     stride_u_(1), stride_v_(1),
     upscale_x_(1), upscale_y_(1),
     kernel_size_h_(5), kernel_size_w_(5), propagation_(true),
-    algo_set_(false), algo_(""), algod_(""),
+    algo_set_(false), algo_(""), algod_(""), algofwd_(""),
 #ifdef NVIDIA_CUDNN
     conv_fwd_pref_(CUDNN_CONVOLUTION_FWD_PREFER_FASTEST),
     conv_bwd_filter_pref_(CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FASTEST),
@@ -189,6 +189,8 @@ inline void SetupConvParam(const std::string &var, const std::string &val,
         conv_param->algo_ = val;
     } else if (!var.compare("algod")) {
         conv_param->algod_ = val;
+    } else if (!var.compare("algofwd")) {
+        conv_param->algofwd_ = val;
     } else if (!var.compare("conv_fwd_pref")) {
 #ifdef NVIDIA_CUDNN
       if (!val.compare("no_workspace"))

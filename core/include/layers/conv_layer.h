@@ -165,11 +165,6 @@ class ConvolutionLayer : public Layer<T> {
     // Fill the weight data
     weights_->Filler();
 
-    // Set convolution forward algorithm
-    std::cout << "FWD algo is " << conv_param_.algofwd_ ;
-    // if (conv_param_.algofwd_ 
-    conv_algo_.SetFwdAlgo(conv_param_.algo_);
-
     // Allocate workspace
     conv_algo_.GetFwdWorkspaceSize(*(p_dnnmark_->GetHandle()),
                                    p_dnnmark_->getRunMode(), layer_id_,
@@ -184,6 +179,14 @@ class ConvolutionLayer : public Layer<T> {
     }
 
 #ifdef NVIDIA_CUDNN
+    // Set convolution forward algorithm
+    
+    if (conv_param_.algofwd_  != "" ) {
+      conv_algo_.SetFwdAlgo(conv_param_.algofwd_);
+    }
+    
+    LOG(INFO) << "FWD conv. algo: " << conv_algo_.GetFwdAlgo() <<".\n";
+
     // Set convolution backward filter/weights algorithm
     if (!conv_param_.algo_.compare("cudnn")) {
         // Chainer default behaviour
@@ -194,8 +197,7 @@ class ConvolutionLayer : public Layer<T> {
                                          top_desc_,
                                          desc_,
                                          conv_param_.conv_bwd_filter_pref_);
-        LOG(INFO) << "Set cuDNN recommended conv. bwd filter alg. to " << conv_algo_.GetBwdFilterAlgo();
-        std::cout << "cuDNN recommended bwd convolution filter algorithm:"<<conv_algo_.GetBwdFilterAlgo()<<"\n";
+        LOG(INFO) << "Set cuDNN recommended conv. bwd filter alg. to " << conv_algo_.GetBwdFilterAlgo();        
     } else if (conv_param_.algo_ == "auto" ) {
         // Query cuDNN for the fastest BWD convolution filter gradient algorithm.
         // Use cuDNN function cudnnFindConvolutionBackwardFilterAlgorithm (called inside FindBwdFilterAlgo())
@@ -203,14 +205,14 @@ class ConvolutionLayer : public Layer<T> {
         // NOTE: The below code selects algorithms prior to run, during setup phase.
         // FindBwdFilterAlgoEx must be called during run phase through dnn_wrapper.
         //conv_algo_.SetBwdFilterAlgo("autoex");
+        LOG(INFO) << "Performing fastest BWD Conv. Filter algo search.\n";
         conv_algo_.FindBwdFilterAlgo(*(p_dnnmark_->GetHandle()),
                                          p_dnnmark_->getRunMode(), layer_id_,
                                          bottom_desc_,
                                          desc_,
                                          top_desc_);
-        LOG(INFO) << "cuDNN fastest bwd conv. filter algo.:" << conv_algo_.GetBwdFilterAlgo();
-        std::cout << "cuDNN fastest bwd conv. filter algorithm:"<<conv_algo_.GetBwdFilterAlgo()<<"\n";
-    } else {
+        LOG(INFO) << "cuDNN fastest bwd conv. filter algo.:" << conv_algo_.GetBwdFilterAlgo()<<"\n";        
+    } else if (conv_param_.algo_ != "") {
         // Use default algorithm for now
         LOG(INFO) << "Setting Bwd Filter Algo to " << conv_param_.algo_;
         conv_algo_.SetBwdFilterAlgo(conv_param_.algo_);
@@ -218,10 +220,11 @@ class ConvolutionLayer : public Layer<T> {
 #endif
 #ifdef AMD_MIOPEN
     // Use default algorithm for now
-    LOG(INFO) << "Setting Bwd Filter Algo to " << conv_param_.algo_;
+    LOG(INFO) << "Setting Bwd Filter algo to " << conv_param_.algo_;
     conv_algo_.SetBwdFilterAlgo(conv_param_.algo_);
 #endif
 
+    LOG(INFO) << "BWD Conv. Filter algo: " << conv_algo_.GetBwdFilterAlgo() <<".\n";
 
     // Allocate workspace
     conv_algo_.GetBwdFilterWorkspaceSize(*(p_dnnmark_->GetHandle()),
@@ -242,8 +245,7 @@ class ConvolutionLayer : public Layer<T> {
     conv_algo_.SetBwdDataAlgo(conv_param_.algod_);
 
 #ifdef NVIDIA_CUDNN
-    LOG(INFO) << "BWD conv. data algo set to:"<< static_cast<int>(conv_algo_.getDataAlgo());
-    // std::cout << "cuDNN recommended BWD convolution data algorithm:"<<conv_algo_.GetBwdDataAlgo()<<"\n";
+    LOG(INFO) << "BWD conv. Data algo: "<< static_cast<int>(conv_algo_.getDataAlgo());
 #endif
 
     // Allocate workspace

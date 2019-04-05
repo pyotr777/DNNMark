@@ -16,8 +16,7 @@ stride=1
 conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
-$CUDNN_CBFA
-$CUDNN_CBDA
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
 previous_layer=block1_1_conv
@@ -51,8 +50,7 @@ stride=1
 conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
-$CUDNN_CBFA
-$CUDNN_CBDA
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
 previous_layer=block1_2_conv
@@ -88,8 +86,7 @@ stride=1
 conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
-$CUDNN_CBFA
-$CUDNN_CBDA
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
 previous_layer=block2_1_conv
@@ -123,8 +120,7 @@ stride=1
 conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
-$CUDNN_CBFA
-$CUDNN_CBDA
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
 previous_layer=block2_2_conv
@@ -150,9 +146,6 @@ stride=2
 
 
 
-
-
-
 [Convolution]
 previous_layer=pool2_2
 name=block3_1_conv
@@ -164,8 +157,7 @@ stride=1
 conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
-$CUDNN_CBFA
-$CUDNN_CBDA
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
 previous_layer=block3_1_conv
@@ -201,8 +193,7 @@ stride=1
 conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
-$CUDNN_CBFA
-$CUDNN_CBDA
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
 previous_layer=block3_2_conv
@@ -238,8 +229,7 @@ stride=1
 conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
-$CUDNN_CBFA
-$CUDNN_CBDA
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
 previous_layer=block3_3_conv
@@ -280,8 +270,7 @@ stride=1
 conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
-$CUDNN_CBFA
-$CUDNN_CBDA
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
 previous_layer=block4_1_conv
@@ -317,8 +306,7 @@ stride=1
 conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
-$CUDNN_CBFA
-$CUDNN_CBDA
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
 previous_layer=block4_2_conv
@@ -354,8 +342,7 @@ stride=1
 conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
-$CUDNN_CBFA
-$CUDNN_CBDA
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
 previous_layer=block4_3_conv
@@ -396,8 +383,7 @@ stride=1
 conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
-$CUDNN_CBFA
-$CUDNN_CBDA
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
 previous_layer=block5_1_conv
@@ -433,8 +419,7 @@ stride=1
 conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
-$CUDNN_CBFA
-$CUDNN_CBDA
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
 previous_layer=block5_2_conv
@@ -470,8 +455,7 @@ stride=1
 conv_fwd_pref=fastest
 conv_bwd_filter_pref=fastest
 conv_bwd_data_pref=fastest
-$CUDNN_CBFA
-$CUDNN_CBDA
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
 previous_layer=block5_3_conv
