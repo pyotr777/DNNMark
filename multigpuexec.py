@@ -46,6 +46,10 @@ def GPUisFree(i,c=1,d=1,mode="dmon",debug=False):
             u += uplus
     if u < 11:
         gpu_free = True
+        print(" ",end="")
+    else:
+        print("busy")
+        return gpu_free
     # Check Temp
     temp_norm = False
     if gpu_free and mode=="dmon":
@@ -70,12 +74,12 @@ def GPUisFree(i,c=1,d=1,mode="dmon",debug=False):
                 if t > temp:
                     temp = t
 
-        if temp < 50:
+        if temp < 60:
            temp_norm = True
         else:
             message("Overheat GPU{}: {}C".format(i,temp),196)
             gpu_free = False
-
+            return gpu_free
 
     # Check PIDs
     if gpu_free and temp_norm:
@@ -102,7 +106,7 @@ def GPUisFree(i,c=1,d=1,mode="dmon",debug=False):
 
 
 # Returns GPU info
-def getGPUinfo(i,query="name,memory.total,memory.free,ecc.mode.current,pstate"):
+def getGPUinfo(i,query="name,memory.total,memory.free,pstate")
     command = "nvidia-smi -i {} --query-gpu={} --format=csv,noheader".format(i,query)
     proc = subprocess.Popen(command.split(" "), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, shell=False)
     output = ""
@@ -128,9 +132,8 @@ def getNextFreeGPU(gpus,start=-1,c=4,d=1,nvsmi=False,mode="dmon",debug=False):
                 continue
             print("checking GPU",gpu,end="")
             if GPUisFree(gpu,c=c,d=d,mode=mode,debug=debug):
-                return gpu
-            print("busy")
-            time.sleep(1)
+                return gpu            
+            time.sleep(d)
             start = -1 # Next loop check from 1
 
 
