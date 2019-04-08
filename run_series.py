@@ -18,16 +18,18 @@ gpus = range(0,1)
 host = "mouse"
 
 # Set number of runs
-runs = 1
+runs = 0
 
 # Set mini-batch sizes
 # batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,50)
-batchsizes = [7,10,15,20,30,50,70,100,150,200,300,500]
+# batchsizes = [7,10,15,20,30,50,70,100,150,200,300,500]
+batchsizes = [7,8,9,10,12,15,20,30,50,70,90,100,150,190,200,300,400,500]
 
 # Set algorithms
 backfilterconvalgos=["cudnn"]
 forwardalgos=range(0,8)
 algod="1" # Data gradient algorithm
+algofwds=[0,1,6]
 
 # VGG model convolution shapes
 configs = [(2,512,512),(4,512,512),(4,256,512),(8,256,256),(8,128,256),(16,128,128),(16,64,128),(32,64,64),(32,3,64)]
@@ -37,7 +39,7 @@ default_benchmark = "convolution_block"
 
 datasetsize = 50000
 date = datetime.datetime.today().strftime('%Y%m%d')
-nvprof = False
+nvprof = True
 with_memory = False
 debuginfo = False
 debuginfo_option = ""
@@ -68,7 +70,7 @@ for config in configs:
         for algo in backfilterconvalgos:
             for algofwd in forwardalgos:
                 # print "BS: {}, Iterations: {}".format(batch,iterations)
-                logname = "{}_imsize{}_channels{}_conv{}_bs{}_algos{}-{}-{}".format(
+                logname = "{}_shape{}-{}-{}_bs{}_algos{}-{}-{}".format(
                     logfile_base,imsize,channels,conv,batch,algofwd,algo,algod)
                 for run in range(runs):
                     logfile = os.path.join(logdir,"{}_{:02d}.log".format(logname,run))
@@ -80,7 +82,7 @@ for config in configs:
                         task = {"comm":command_pars,"logfile":logfile,"batch":batch,"conv":conv,"nvsmi":with_memory}
                         tasks.append(task)
                 if nvprof:
-                    iterations = 1
+                    # iterations = 1
                     # print "BS: {}, Iterations: {}".format(batch,iterations)
                     nvlogname = "{}_iter{}".format(logname,iterations)
                     command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} -d {}".format(
