@@ -27,7 +27,6 @@ batchsizes = [7,8,9,10,12,15,20,30,50,70,90,100,150,190,200,300,400,500]
 
 # Set algorithms
 backfilterconvalgos=["cudnn"]
-forwardalgos=range(0,8)
 algod="1" # Data gradient algorithm
 algofwds=[0,1,6]
 
@@ -47,7 +46,8 @@ if debuginfo:
     debuginfo_option = " --debug"
 tasks = []
 
-other_options = " --bwd_filter_pref no_workspace "
+# other_options = " --bwd_filter_pref no_workspace "
+other_options = ""
 
 if benchmark!= default_benchmark:
     command = "./run_dnnmark_template.sh{} -b {}".format(other_options,benchmark)
@@ -68,7 +68,7 @@ for config in configs:
     for batch in batchsizes:
         iterations = int(math.ceil(datasetsize/batch))
         for algo in backfilterconvalgos:
-            for algofwd in forwardalgos:
+            for algofwd in algofwds:
                 # print "BS: {}, Iterations: {}".format(batch,iterations)
                 logname = "{}_shape{}-{}-{}_bs{}_algos{}-{}-{}".format(
                     logfile_base,imsize,channels,conv,batch,algofwd,algo,algod)
@@ -77,16 +77,15 @@ for config in configs:
                     if os.path.isfile(logfile):
                         print "file",logfile,"exists."
                     else:
-                        command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} -d {}{}".format(
+                        command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} -d {}{} --warmup 1".format(
                             channels,batch,conv,imsize,imsize,algo,algod,algofwd,datasetsize,debuginfo_option)
                         task = {"comm":command_pars,"logfile":logfile,"batch":batch,"conv":conv,"nvsmi":with_memory}
                         tasks.append(task)
                 if nvprof:
-                    # iterations = 1
-                    # print "BS: {}, Iterations: {}".format(batch,iterations)
+                    iterations = 10
                     nvlogname = "{}_iter{}".format(logname,iterations)
-                    command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} -d {}".format(
-                        channels,batch,conv,imsize,imsize,algo,algod,algofwd,datasetsize)
+                    command_pars = command+" -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} --iter {} --warmup 0".format(
+                        channels,batch,conv,imsize,imsize,algo,algod,algofwd,iterations)
                     logfile = os.path.join(logdir,"{}_%p.nvprof".format(nvlogname))
                     if os.path.isfile(logfile):
                         print "file",logfile,"exists."
@@ -98,7 +97,7 @@ for config in configs:
 print "Have",len(tasks),"tasks"
 gpu = -1
 for i in range(0,len(tasks)):
-    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu+1,c=1,d=1,nvsmi=tasks[i]["nvsmi"],mode="dmon",debug=False)
+    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu+1,c=3,d=2,nvsmi=tasks[i]["nvsmi"],mode="dmon",debug=False)
     gpu_info = multigpuexec.getGPUinfo(gpu)
     f = open(tasks[i]["logfile"],"w+")
     f.write(tasks[i]["comm"]+"\n")

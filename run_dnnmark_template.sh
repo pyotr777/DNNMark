@@ -42,6 +42,7 @@ U=1
 P=1
 BENCH="test_composed_model"
 ITER=1
+WARMUP=0
 debug=0
 datasetsize=0
 
@@ -98,6 +99,9 @@ while test $# -gt 0; do
         --iter)
             ITER="$2";shift;
             ;;
+		--warmup)
+			WARMUP="$2";shift;
+			;;
         --debug)
             debug=1
             ;;
@@ -152,6 +156,6 @@ echo "-----------"
 echo "Benchmark: $BENCH"
 echo "Iterations:$ITER"
 
-com="./build/benchmarks/${BENCH}/dnnmark_${BENCH} -config $config_file --warmup 1 --iterations $ITER --debuginfo $debug"
+com="./build/benchmarks/${BENCH}/dnnmark_${BENCH} -config $config_file --warmup $WARMUP --iterations $ITER --debuginfo $debug"
 echo $com
 $com
