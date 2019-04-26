@@ -590,7 +590,7 @@ class ConvAlgo {
 
  public:  
   ConvAlgo()
-  : fwd_algo_(CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM),
+  : fwd_algo_(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD),
     bwd_filter_algo_(CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0),
     bwd_data_algo_(CUDNN_CONVOLUTION_BWD_DATA_ALGO_0),
     bwd_filter_algo_par("") {}
@@ -602,10 +602,41 @@ class ConvAlgo {
   
 
   void SetFwdAlgo(std::string algo) {
+    LOG(INFO) << "Setting FWD algo to " << algo << ".\n";
     if (!algo.compare("fft")) {
       fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_FFT;
     } else if (!algo.compare("winograd")) {
       fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD;
+    } else if (algo != "") {
+      if (stoi(algo) == 0) {
+        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+      } else if (stoi(algo) == 1) {
+        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+      } else if (stoi(algo) == 2) {
+        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_GEMM;
+      } else if (stoi(algo) == 3) {
+        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_DIRECT;
+      } else if (stoi(algo) == 4) {
+        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_FFT;
+      } else if (stoi(algo) == 5) {
+        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING;
+      } else if (stoi(algo) == 6) {
+        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD;
+      } else if (stoi(algo) == 7) {
+        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED;
+      } else { 
+        std::cerr << "Fwd Convolution Algorithm not recognized:" << algo << "\n";  
+      
+        std::cout << "FWD algo list:\n";
+        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM=" << CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM << "\n";
+        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM=" << CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM << "\n";
+        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_GEMM=" << CUDNN_CONVOLUTION_FWD_ALGO_GEMM << "\n";
+        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_DIRECT=" << CUDNN_CONVOLUTION_FWD_ALGO_DIRECT << "\n";
+        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_FFT=" << CUDNN_CONVOLUTION_FWD_ALGO_FFT << ",fft\n";
+        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING=" << CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING << "\n";
+        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD=" << CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD << ",winograd\n";
+        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED=" << CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED << "\n";
+      }
     }
   }
   void SetFwdAlgo(cudnnConvolutionFwdAlgo_t fwd_algo) {
@@ -673,18 +704,17 @@ class ConvAlgo {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED;
     } else if (stoi(algo) == 6) {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING;
-    } else if (algo.compare("")) {
-      std::cout << "Using algo "<< algo << "\n";
-      bwd_filter_algo_par = algo;
-    }
-    LOG(INFO) << "cuDNN algos: " << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 << " "
-             << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 << " "
-             << "FFT:" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT << " "
-             << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 << " "
-             << "WIN:" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD << " "
-             << "WIN_NONFUSED:" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED << " "
-             << "FFT_TILING:" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING << "\n";
-    LOG(INFO) << "Set Bwd Filter Algo to " << bwd_filter_algo_ << " with " << algo;
+    } else if (algo!="") {
+      std::cerr << "BWD Convolution Filter Algorithm not recognized: "<< algo << "\n";
+      std::cout << "BWD Filter algo list:\n";
+        std::cout << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 << "\n"
+             << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 << "\n"
+             << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT="<< CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT << ",fft\n"
+             << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 << "\n"
+             << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD << ",winograd\n"
+             << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED << "\n"
+             << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING << "\n";
+    }      
   }
   void SetBwdFilterAlgo(const Handle &handle, RunMode mode, int idx,
                         const DataTensor<T> &bottom_desc,

@@ -3,7 +3,7 @@
 # Wrapper API for DNNMark
 # 2018 (C) Peter Bryzgalov @ CHITECH Stair Lab
 
-usage=$(cat <<- USAGEBLOCK
+IFS='' read -r -d '' usage <<'USAGEBLOCK'
 Run DNNMark with parameters from CLI.
 Usage:
 $(basename $0)  [-n <number of images, batch size>]
@@ -17,6 +17,7 @@ $(basename $0)  [-n <number of images, batch size>]
                 [ --algo <cudnnConvolutionBwdFilterAlgo_t> - cuDNN algorithm for backward filter convolution]
                 [ --bwd_filter_pref <fastest/no_workspace/specify_workspace_limit> - cuDNN backward filter algorithm selection preference]
                 [ --algod <cudnnConvolutionBwdDataAlgo_t> - cuDNN algorithm for backward data convolution]
+                [ --algofwd <cudnnConvolutionFwdAlgo_t> - cuDNN algorithm for forward convolution]
                 [-b <benchmark executable, default=test_bwd_conv>]
                 [ --iter <int> - number of FWD+BWD passes to measure time]
                 [ --template - benchmark configuration template file]
@@ -26,9 +27,8 @@ $(basename $0)  [-n <number of images, batch size>]
 
 Configuration saved in temporary file conf_tmp.dnnmark
 USAGEBLOCK
-)
 
-template="conf_convolution_block.dnntemplate"
+template="config_example/conf_convolution_block.dnntemplate"
 config_file="conf_tmp.dnnmark"
 conv_bwd_filter_pref="fastest"
 # Defaults
@@ -42,6 +42,7 @@ U=1
 P=1
 BENCH="test_composed_model"
 ITER=1
+WARMUP=0
 debug=0
 datasetsize=0
 
@@ -91,9 +92,15 @@ while test $# -gt 0; do
         --algod)
             CBDA="$2";shift;
             ;;
+        --algofwd)
+            CFWA="$2";shift;
+            ;;
         --iter)
             ITER="$2";shift;
             ;;
+		--warmup)
+			WARMUP="$2";shift;
+			;;
         --debug)
             debug=1
             ;;
@@ -115,11 +122,15 @@ while test $# -gt 0; do
 done
 
 if [ $CBFA ];then
-    CUDNN_CBFA="algo=$CBFA"
+    CUDNN_CBFA="algo=$CBFA"$'\n'  # Insert new line; inside double quotes not expanded.
 fi
 
 if [ $CBDA ];then
-    CUDNN_CBDA="algod=$CBDA"
+    CUDNN_CBDA="algod=$CBDA"$'\n'
+fi
+
+if [ $CFWA ];then
+    CUDNN_CFWA="algofwd=$CFWA"$'\n'
 fi
 
 divide_ceil() {
@@ -144,9 +155,6 @@ echo "-----------"
 echo "Benchmark: $BENCH"
 echo "Iterations:$ITER"
 
-com="./build/benchmarks/${BENCH}/dnnmark_${BENCH} -config $config_file --warmup 0 --iterations $ITER --debuginfo $debug"
+com="./build/benchmarks/${BENCH}/dnnmark_${BENCH} -config $config_file --warmup $WARMUP --iterations $ITER --debuginfo $debug"
 echo $com
 $com
-
-
-
