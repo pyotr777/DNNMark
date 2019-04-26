@@ -21,9 +21,7 @@ host = "mouse"
 runs = 0
 
 # Set mini-batch sizes
-# batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,50)
-# batchsizes = [7,10,15,20,30,50,70,100,150,200,300,500]
-batchsizes = [7,8,9,10,12,15,20,30,50,70,90,100,150,190,200,300,400,500]
+batchsizes = [7,8,9]+range(10,200,10)+range(200,501,50)
 
 # Set algorithms
 backfilterconvalgos=["cudnn"]

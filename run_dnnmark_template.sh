@@ -89,7 +89,6 @@ while test $# -gt 0; do
         --bwd_filter_pref)
             conv_bwd_filter_pref="$2";shift;
             ;;
-
         --algod)
             CBDA="$2";shift;
             ;;
