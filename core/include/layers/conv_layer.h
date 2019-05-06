@@ -181,7 +181,15 @@ class ConvolutionLayer : public Layer<T> {
 #ifdef NVIDIA_CUDNN
     // Set convolution forward algorithm
     
-    if (conv_param_.algofwd_  != "" ) {
+    if (conv_param_.algofwd_  == "cudnn" ) {
+      conv_algo_.SetFwdAlgo(*(p_dnnmark_->GetHandle()), 
+                  p_dnnmark_->getRunMode(), layer_id_,
+                  bottom_desc_,
+                  desc_,
+                  top_desc_,
+                  conv_param_.conv_fwd_pref_);
+      LOG(INFO) << "Set cuDNN recommended FWD conv. algo to " << conv_algo_.GetFwdAlgo(); 
+    } else if (conv_param_.algofwd_  != "" ) {
       conv_algo_.SetFwdAlgo(conv_param_.algofwd_);
     }
     
