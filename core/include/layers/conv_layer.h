@@ -205,7 +205,7 @@ class ConvolutionLayer : public Layer<T> {
                                          top_desc_,
                                          desc_,
                                          conv_param_.conv_bwd_filter_pref_);
-        LOG(INFO) << "Set cuDNN recommended conv. bwd filter alg. to " << conv_algo_.GetBwdFilterAlgo();
+        LOG(INFO) << "Set cuDNN recommended BWD conv. Filter algo to " << conv_algo_.GetBwdFilterAlgo();
     } else if (conv_param_.algo_ == "auto" ) {
         // Query cuDNN for the fastest BWD convolution filter gradient algorithm.
         // Use cuDNN function cudnnFindConvolutionBackwardFilterAlgorithm (called inside FindBwdFilterAlgo())
@@ -213,16 +213,16 @@ class ConvolutionLayer : public Layer<T> {
         // NOTE: The below code selects algorithms prior to run, during setup phase.
         // FindBwdFilterAlgoEx must be called during run phase through dnn_wrapper.
         //conv_algo_.SetBwdFilterAlgo("autoex");
-        LOG(INFO) << "Performing fastest BWD Conv. Filter algo search.\n";
+        LOG(INFO) << "Performing fastest BWD conv. Filter algo search.\n";
         conv_algo_.FindBwdFilterAlgo(*(p_dnnmark_->GetHandle()),
                                          p_dnnmark_->getRunMode(), layer_id_,
                                          bottom_desc_,
                                          desc_,
                                          top_desc_);
-        LOG(INFO) << "cuDNN fastest bwd conv. filter algo:" << conv_algo_.GetBwdFilterAlgo();
+        LOG(INFO) << "cuDNN fastest BWD conv. Filter algo:" << conv_algo_.GetBwdFilterAlgo();
     } else if (conv_param_.algo_ != "") {
         // Use default algorithm for now
-        LOG(INFO) << "Setting Bwd Filter Algo to " << conv_param_.algo_;
+        LOG(INFO) << "Setting Bwd Filter algo to " << conv_param_.algo_;
         conv_algo_.SetBwdFilterAlgo(conv_param_.algo_);
     }
 #endif
@@ -258,7 +258,7 @@ class ConvolutionLayer : public Layer<T> {
                                          top_desc_,
                                          desc_,
                                          conv_param_.conv_bwd_data_pref_);
-      LOG(INFO) << "Set cuDNN recommended conv. BWD Data algo to " << conv_algo_.GetBwdDataAlgo();
+      LOG(INFO) << "Set cuDNN recommended BWD conv. Data algo to " << conv_algo_.GetBwdDataAlgo();
     } else if (conv_param_.algod_ != "") {
       conv_algo_.SetBwdDataAlgo(conv_param_.algod_);
     }
