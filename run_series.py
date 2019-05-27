@@ -39,7 +39,7 @@ default_benchmark = "convolution_block"
 
 datasetsize = 50000
 date = datetime.datetime.today().strftime('%Y%m%d')
-nvprof = True
+nvprof = False
 with_memory = False
 debuginfo = False
 debuginfo_option = ""
@@ -72,7 +72,7 @@ for config in configs:
         for algod in algods:
             for algo in backfilterconvalgos:
                 for algofwd in algofwds:
-                    #print "FWD {}, BWD data {}, BWD filter {}".format(algofwd, algod, algo)
+                    # print "FWD {}, BWD data {}, BWD filter {}".format(algofwd, algod, algo)
                     logname = "{}_shape{}-{}-{}_bs{}_algos{}-{}-{}".format(
                         logfile_base, imsize, channels, conv, batch, algofwd, algo, algod)
                     for run in range(runs):
