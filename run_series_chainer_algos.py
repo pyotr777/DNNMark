@@ -91,9 +91,11 @@ for config in configs:
         iterations = int(math.ceil(datasetsize / batch))
         # print "BS: {}, Iterations: {}".format(batch, iterations)
         algofwd, algo, algod = getAlgos(df, batch, config)
-        # Use cudnn for algod 32_3_64 that is not logged
-        if algod < 0:
-            algod = "cudnn"
+        # Use default algod if not logged
+        if algod >= 0:
+            algod = "--algod " + str(algod)
+        else:
+            algod = ""
         # print "FWD {}, BWD data {}, BWD filter {}".format(algofwd, algod, algo)
         logname = "{}_shape{}-{}-{}_bs{}_algos{}-{}-{}".format(
             logfile_base, imsize, channels, conv, batch, algofwd, algo, algod)
@@ -102,7 +104,7 @@ for config in configs:
             if os.path.isfile(logfile):
                 print "file", logfile, "exists."
             else:
-                command_pars = command + " -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} -d {}{} --warmup 1".format(
+                command_pars = command + " -c {} -n {} -k {} -w {} -h {} --algo {} {} --algofwd {} -d {}{} --warmup 1".format(
                     channels, batch, conv, imsize, imsize, algo, algod, algofwd, datasetsize, debuginfo_option)
                 task = {"comm": command_pars, "logfile": logfile,
                         "batch": batch, "conv": conv, "nvsmi": with_memory}
