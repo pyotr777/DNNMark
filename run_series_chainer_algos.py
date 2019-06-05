@@ -26,6 +26,8 @@ def getAlgos(df, batch, shape):
         print "Duplicate entries in DF for bs/shape {} / {}".format(batch, shape_)
         print selected
         return None
+    if selected.shape[0] == 0:
+        return None, None, None
     fwd = selected["convolutionfwdalgo"].values[0]
     bwd_f = selected["convolutionbwdfilteralgo"].values[0]
     bwd_d = selected["convolutionbwddataalgo"].values[0]
@@ -33,7 +35,7 @@ def getAlgos(df, batch, shape):
 
 
 # Read algorithms
-df = pd.read_csv("chainer_algos_mouse.cont_20190529.csv")
+df = pd.read_csv("/HDD2/ML/mlbenchmarks/DNNMark/logs/mouse/dnnmark_convolution_block_microseries_20190605/chainer_algos_mouse_20190605errors.csv")
 print df.head(2)
 batchsizes = df["batch"].astype(int).unique()
 print batchsizes
@@ -44,7 +46,7 @@ gpus = range(0, 1)
 host = "mouse"
 
 # Set number of runs
-runs = 1
+runs = 2
 
 # Set mini-batch sizes
 # batchsizes = [7, 8, 9] + range(10, 200, 10) + range(200, 501, 50)
@@ -91,6 +93,8 @@ for config in configs:
         iterations = int(math.ceil(datasetsize / batch))
         # print "BS: {}, Iterations: {}".format(batch, iterations)
         algofwd, algo, algod = getAlgos(df, batch, config)
+        if algofwd is None:
+            continue
         # Use default algod if not logged
         algod_option = ""
         if algod >= 0:
