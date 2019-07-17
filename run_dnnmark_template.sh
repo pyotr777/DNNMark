@@ -14,9 +14,11 @@ $(basename $0)  [-n <number of images, batch size>]
                 [-s <size of filter kernel>]
                 [-u <stride>]
                 [-p <padding>]
-                [ --algo <cudnnConvolutionBwdFilterAlgo_t> - cuDNN algorithm for backward filter convolution. 
+                [ --algo <cudnnConvolutionBwdFilterAlgo_t> - cuDNN algorithm for backward filter convolution.
                     Can be set to "fft", "winograd", number from 0 to 6 or "cudnn".]
                 [ --bwd_filter_pref <fastest/no_workspace/specify_workspace_limit> - cuDNN backward filter algorithm selection preference]
+                [ --bwd_data_pref <fastest/no_workspace/specify_workspace_limit> - cuDNN backward data algorithm selection preference]
+                [ --fwd_pref <fastest/no_workspace/specify_workspace_limit> - cuDNN forward algorithm selection preference]
                 [ --algod <cudnnConvolutionBwdDataAlgo_t> - cuDNN algorithm for backward data convolution.
                     Can be set to one of the following: "fft","winograd","winograd_nonfused","fft_tiling",0, 1, "cudnn". ]
                 [ --algofwd <cudnnConvolutionFwdAlgo_t> - cuDNN algorithm for forward convolution.
@@ -28,12 +30,15 @@ $(basename $0)  [-n <number of images, batch size>]
                 [ --help  - usage info ]
                 [ -d <dataset size> - number of samples in dataset, derives number of iterations from batch size and datasetsize]
 
-Configuration saved in temporary file conf_tmp.dnnmark
+Configuration is saved to temporary file conf_tmp.dnnmark.
 USAGEBLOCK
 
 template="config_example/conf_convolution_block.dnntemplate"
 config_file="conf_tmp.dnnmark"
 conv_bwd_filter_pref="fastest"
+conv_fwd_pref="no_workspace"
+conv_bwd_data_pref="no_workspace"
+
 # Defaults
 N=64
 C=3
@@ -91,6 +96,12 @@ while test $# -gt 0; do
             ;;
         --bwd_filter_pref)
             conv_bwd_filter_pref="$2";shift;
+            ;;
+        --bwd_data_pref)
+            conv_bwd_data_pref="$2";shift;
+            ;;
+        --fwd_pref)
+            conv_fwd_pref="$2";shift;
             ;;
         --algod)
             CBDA="$2";shift;
