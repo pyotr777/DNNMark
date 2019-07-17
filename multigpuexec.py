@@ -12,12 +12,12 @@ def message(s, col=112):
     print("\033[38;5;{}m{}\033[0m".format(col, s))
 
 
+maxtemp = 60
 running_pids = {}
+
 
 # Returns True if GPU #i is not used.
 # Uses nvidia-smi command to monitor GPU SM usage.
-
-
 def GPUisFree(i, c=1, d=1, mode="dmon", debug=False):
     global running_pids
     gpu_free = False
@@ -50,10 +50,10 @@ def GPUisFree(i, c=1, d=1, mode="dmon", debug=False):
             u += uplus
     if u < 11:
         gpu_free = True
-        print(" ", end="")
     else:
-        print("busy")
-        return gpu_free
+        if mode == "dmon":
+            print("busy {:.0f}%".format(float(u) / float(c)))
+
     # Check Temp
     temp_norm = False
     if gpu_free and mode == "dmon":
@@ -79,7 +79,7 @@ def GPUisFree(i, c=1, d=1, mode="dmon", debug=False):
                 if t > temp:
                     temp = t
 
-        if temp < 60:
+        if temp < maxtemp:
             temp_norm = True
         else:
             message("Overheat GPU{}: {}C".format(i, temp), 196)
@@ -127,7 +127,26 @@ def getGPUinfo(i, query="name,memory.total,memory.free,pstate"):
     for line in iter(proc.stdout.readline, b''):
         line = line.decode('utf-8')
         output += line
+    return output
 
+
+# Returns CPU models and frequencies
+def getCPUinfo():
+    command = "lscpu"
+    patterns = [r"^CPU\(s\):", r"^Model name:", r"^CPU MHz:", r"^CPU max MHz:"]
+    proc = subprocess.Popen(command.split(" "),
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            bufsize=1,
+                            shell=False)
+    output = ""
+    for line in iter(proc.stdout.readline, b''):
+        line = line.decode('utf-8')
+        for pattern in patterns:
+            if re.search(pattern, line):
+                # output += line.split(":")[1].strip(" \n") + " "
+                output += line
+                continue
     return output
 
 
@@ -172,9 +191,8 @@ def runTaskContainer(task, gpu, verbose=False):
             f.write(line)
     f.close()
 
+
 # Runs a task on specified GPU
-
-
 def runTask(task, gpu, nvsmi=False, delay=3, interval=2, debug=True):
     global running_pids
     with open(task["logfile"], "ab") as f:

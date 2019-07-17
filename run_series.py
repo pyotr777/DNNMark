@@ -22,13 +22,13 @@ runs = 1
 
 # Set mini-batch sizes
 batchsizes = [7, 8, 9] + range(10, 200, 10) + range(200, 501, 50)
-# Log algos
-# batchsizes = [10, 20, 50, 100, 150, 200, 400, 500]
+batchsizes = [7, 10, 100, 200, 300, 500]
 
 # Set algorithms
-backfilterconvalgos = ["cudnn"]
-algods = ["cudnn"]  # Data gradient algorithm
-algofwds = ["cudnn"]
+algo_configs
+# algofwds = [0, 1, 6]
+# backfilterconvalgos = [0, 1, 3, 5]
+# algods = [0, 1, 2, 3, 4, 5]  # Data gradient algorithm
 
 # VGG model convolution shapes
 configs = [(2, 512, 512), (4, 512, 512), (4, 256, 512), (8, 256, 256),
@@ -46,9 +46,8 @@ debuginfo_option = ""
 if debuginfo:
     debuginfo_option = " --debug"
 tasks = []
-
-# other_options = " --bwd_filter_pref no_workspace "
-other_options = ""
+other_options = " --bwd_filter_pref specify_workspace_limit  --bwd_data_pref specify_workspace_limit  --fwd_pref specify_workspace_limit "
+# other_options = ""
 
 if benchmark != default_benchmark:
     command = "./run_dnnmark_template.sh{} -b {}".format(other_options, benchmark)
@@ -64,14 +63,17 @@ if not os.path.exists(logdir):
 print "Logdir", logdir
 
 logfile_base = "dnnmark_{}_{}".format(host, benchmark)
-for config in configs:
-    imsize, channels, conv = config
-    for batch in batchsizes:
-        iterations = int(math.ceil(datasetsize / batch))
-        # print "BS: {}, Iterations: {}".format(batch, iterations)
-        for algod in algods:
-            for algo in backfilterconvalgos:
-                for algofwd in algofwds:
+for algod in algods:
+    for algo in backfilterconvalgos:
+        for algofwd in algofwds:
+            for batch in batchsizes:
+                if datasetsize > 0:
+                    iterations = int(math.ceil(datasetsize / batch))
+                else:
+                    iterations = 1
+                    # print "BS: {}, Iterations: {}".format(batch, iterations)
+                for config in configs:
+                    imsize, channels, conv = config
                     # print "FWD {}, BWD data {}, BWD filter {}".format(algofwd, algod, algo)
                     logname = "{}_shape{}-{}-{}_bs{}_algos{}-{}-{}".format(
                         logfile_base, imsize, channels, conv, batch, algofwd, algo, algod)
@@ -80,7 +82,7 @@ for config in configs:
                         if os.path.isfile(logfile):
                             print "file", logfile, "exists."
                         else:
-                            command_pars = command + " -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} -d {}{} --warmup 1".format(
+                            command_pars = command + " -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} -d {}{}".format(
                                 channels, batch, conv, imsize, imsize, algo, algod, algofwd, datasetsize, debuginfo_option)
                             task = {"comm": command_pars, "logfile": logfile,
                                     "batch": batch, "conv": conv, "nvsmi": with_memory}
@@ -103,15 +105,19 @@ for config in configs:
 print "Have", len(tasks), "tasks"
 gpu = -1
 for i in range(0, len(tasks)):
-    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu + 1, c=3, d=2, nvsmi=tasks[i]["nvsmi"], mode="dmon", debug=False)
+    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu + 1, c=2, d=1, nvsmi=tasks[i]["nvsmi"], mode="dmon", debug=False)
     gpu_info = multigpuexec.getGPUinfo(gpu)
+    cpu_info = multigpuexec.getCPUinfo()
     f = open(tasks[i]["logfile"], "w+")
-    f.write(tasks[i]["comm"] + "\n")
+    f.write("command:{}\n".format(tasks[i]["comm"]))
     f.write("b{} conv{}\n".format(tasks[i]["batch"], tasks[i]["conv"]))
     f.write("GPU{}: {}\n".format(gpu, gpu_info))
+    f.write("{}".format(cpu_info))
     f.close()
     print time.strftime("[%d,%H:%M:%S]")
     multigpuexec.runTask(tasks[i], gpu, nvsmi=tasks[i]["nvsmi"], delay=0, debug=False)
-    print tasks[i]["logfile"]
+    print "log:", tasks[i]["logfile"]
     print "{}/{} tasks".format(i + 1, len(tasks))
     time.sleep(0)
+
+print "No more tasks to run. Logs are in", logdir
