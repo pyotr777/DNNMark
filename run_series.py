@@ -22,13 +22,22 @@ runs = 1
 
 # Set mini-batch sizes
 batchsizes = [7, 8, 9] + range(10, 200, 10) + range(200, 501, 50)
-batchsizes = [7, 10, 100, 200, 300, 500]
+# batchsizes = [7, 10, 100, 200, 300, 500]
 
-# Set algorithms
-algo_configs
-# algofwds = [0, 1, 6]
-# backfilterconvalgos = [0, 1, 3, 5]
-# algods = [0, 1, 2, 3, 4, 5]  # Data gradient algorithm
+# Set algorithm combinations
+algo_configs = [
+    (6, 5, 1),
+    (6, 3, 1),  #
+    (1, 5, 2),  #
+    (1, 5, 1),
+    (1, 3, 5),  #
+    (1, 3, 1),  #
+    (1, 3, 0),  #
+    (1, 1, 1),  #
+    (1, 1, 0),  #
+    (1, 0, 0),  #
+    (0, 1, 1),  #
+]
 
 # VGG model convolution shapes
 configs = [(2, 512, 512), (4, 512, 512), (4, 256, 512), (8, 256, 256),
@@ -37,8 +46,9 @@ configs = [(2, 512, 512), (4, 512, 512), (4, 256, 512), (8, 256, 256),
 benchmark = "convolution_block"
 default_benchmark = "convolution_block"
 
-datasetsize = 50000
-date = datetime.datetime.today().strftime('%Y%m%d')
+# Use today's date or change to existing logs directory name
+# date = datetime.datetime.today().strftime('%Y%m%d')
+date = "20190710"
 nvprof = False
 with_memory = False
 debuginfo = False
@@ -46,8 +56,11 @@ debuginfo_option = ""
 if debuginfo:
     debuginfo_option = " --debug"
 tasks = []
-other_options = " --bwd_filter_pref specify_workspace_limit  --bwd_data_pref specify_workspace_limit  --fwd_pref specify_workspace_limit "
-# other_options = ""
+#other_options = " --bwd_filter_pref specify_workspace_limit  --bwd_data_pref specify_workspace_limit  --fwd_pref specify_workspace_limit "
+other_options = ""
+
+# Remove for only 1 iteration
+datasetsize = 50000
 
 if benchmark != default_benchmark:
     command = "./run_dnnmark_template.sh{} -b {}".format(other_options, benchmark)
@@ -63,44 +76,44 @@ if not os.path.exists(logdir):
 print "Logdir", logdir
 
 logfile_base = "dnnmark_{}_{}".format(host, benchmark)
-for algod in algods:
-    for algo in backfilterconvalgos:
-        for algofwd in algofwds:
-            for batch in batchsizes:
-                if datasetsize > 0:
-                    iterations = int(math.ceil(datasetsize / batch))
+
+for algos in algo_configs:
+    algofwd, algo, algod = algos
+    for batch in batchsizes:
+        if datasetsize > 0:
+            iterations = int(math.ceil(datasetsize / batch))
+        else:
+            iterations = 1
+            # print "BS: {}, Iterations: {}".format(batch, iterations)
+        for config in configs:
+            imsize, channels, conv = config
+            # print "FWD {}, BWD data {}, BWD filter {}".format(algofwd, algod, algo)
+            logname = "{}_shape{}-{}-{}_bs{}_algos{}-{}-{}".format(
+                logfile_base, imsize, channels, conv, batch, algofwd, algo, algod)
+            for run in range(runs):
+                logfile = os.path.join(logdir, "{}_{:02d}.log".format(logname, run))
+                if os.path.isfile(logfile):
+                    print "file", logfile, "exists."
                 else:
-                    iterations = 1
-                    # print "BS: {}, Iterations: {}".format(batch, iterations)
-                for config in configs:
-                    imsize, channels, conv = config
-                    # print "FWD {}, BWD data {}, BWD filter {}".format(algofwd, algod, algo)
-                    logname = "{}_shape{}-{}-{}_bs{}_algos{}-{}-{}".format(
-                        logfile_base, imsize, channels, conv, batch, algofwd, algo, algod)
-                    for run in range(runs):
-                        logfile = os.path.join(logdir, "{}_{:02d}.log".format(logname, run))
-                        if os.path.isfile(logfile):
-                            print "file", logfile, "exists."
-                        else:
-                            command_pars = command + " -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} -d {}{}".format(
-                                channels, batch, conv, imsize, imsize, algo, algod, algofwd, datasetsize, debuginfo_option)
-                            task = {"comm": command_pars, "logfile": logfile,
-                                    "batch": batch, "conv": conv, "nvsmi": with_memory}
-                            tasks.append(task)
-                    if nvprof:
-                        iterations = 10
-                        nvlogname = "{}_iter{}".format(logname, iterations)
-                        command_pars = command + " -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} --iter {} --warmup 0".format(
-                            channels, batch, conv, imsize, imsize, algo, algod, algofwd, iterations)
-                        logfile = os.path.join(logdir, "{}_%p.nvprof".format(nvlogname))
-                        if os.path.isfile(logfile):
-                            print "file", logfile, "exists."
-                        else:
-                            profcommand = "nvprof -u s --profile-api-trace none --unified-memory-profiling off --profile-child-processes --csv --log-file {} {}".format(
-                                logfile, command_pars)
-                            task = {"comm": profcommand, "logfile": logfile,
-                                    "batch": batch, "conv": conv, "nvsmi": False}
-                            tasks.append(task)
+                    command_pars = command + " -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} -d {}{}".format(
+                        channels, batch, conv, imsize, imsize, algo, algod, algofwd, datasetsize, debuginfo_option)
+                    task = {"comm": command_pars, "logfile": logfile,
+                            "batch": batch, "conv": conv, "nvsmi": with_memory}
+                    tasks.append(task)
+            if nvprof:
+                iterations = 10
+                nvlogname = "{}_iter{}".format(logname, iterations)
+                command_pars = command + " -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} --iter {} --warmup 0".format(
+                    channels, batch, conv, imsize, imsize, algo, algod, algofwd, iterations)
+                logfile = os.path.join(logdir, "{}_%p.nvprof".format(nvlogname))
+                if os.path.isfile(logfile):
+                    print "file", logfile, "exists."
+                else:
+                    profcommand = "nvprof -u s --profile-api-trace none --unified-memory-profiling off --profile-child-processes --csv --log-file {} {}".format(
+                        logfile, command_pars)
+                    task = {"comm": profcommand, "logfile": logfile,
+                            "batch": batch, "conv": conv, "nvsmi": False}
+                    tasks.append(task)
 
 print "Have", len(tasks), "tasks"
 gpu = -1
