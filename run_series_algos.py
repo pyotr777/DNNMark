@@ -18,17 +18,26 @@ gpus = range(0, 1)
 host = "mouse"
 
 # Set number of runs
-runs = 1
+runs = 10
 
 # Set mini-batch sizes
-batchsizes = [7, 8, 9] + range(10,50,2) + range(50, 200, 10) + range(200, 501, 50)
 # batchsizes = [7, 8, 9] + range(10, 200, 10) + range(200, 501, 50)
-# batchsizes = [7, 10, 100, 200, 300, 500]
+batchsizes = [7, 10, 50, 100, 150, 200, 250, 300, 500]
 
 # Set algorithm combinations
 algo_configs = [
-    ["cudnn", "cudnn", "cudnn"],
-    [None, None, None]  #
+    [0, 0, 0],
+    [1, 1, 1],  #
+    [2, 0, 0],  #
+    [6, 0, 0],
+    [7, 0, 0],
+    [0, 2, 2],
+    [0, 3, 3],
+    [0, 5, 5],
+    [1, 6, 1],
+    [1, 1, 6],
+    [1, 4, 1],
+    [1, 1, 4]
 ]
 
 # VGG model convolution shapes
@@ -39,12 +48,12 @@ benchmark = "convolution_block"
 default_benchmark = "convolution_block"
 
 # Use today's date or change to existing logs directory name
-date = datetime.datetime.today().strftime('%Y%m%d')
-# date = "20190710"
+# date = datetime.datetime.today().strftime('%Y%m%d')
+date = "20190907"
 
 nvprof = False
 with_memory = False
-debuginfo = False
+debuginfo = True
 debuginfo_option = ""
 if debuginfo:
     debuginfo_option = " --debug"
@@ -53,7 +62,8 @@ tasks = []
 other_options = ""
 
 # Remove for only 1 iteration
-datasetsize = 50000
+# datasetsize = 50000
+datasetsize = 0
 
 if benchmark != default_benchmark:
     command = "./run_dnnmark_template.sh{} -b {}".format(other_options, benchmark)
@@ -88,11 +98,8 @@ for algos in algo_configs:
                 if os.path.isfile(logfile):
                     print "file", logfile, "exists."
                 else:
-                    if algo is None:
-                        command_pars = command + " -c {} -n {} -k {} -w {} -h {} -d {}{}".format(channels, batch, conv, imsize, imsize, datasetsize, debuginfo_option)
-                    else:
-                        command_pars = command + " -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} -d {}{}".format(
-                            channels, batch, conv, imsize, imsize, algo, algod, algofwd, datasetsize, debuginfo_option)
+                    command_pars = command + " -c {} -n {} -k {} -w {} -h {} --algo {} --algod {} --algofwd {} -d {}{}".format(
+                        channels, batch, conv, imsize, imsize, algo, algod, algofwd, datasetsize, debuginfo_option)
                     task = {"comm": command_pars, "logfile": logfile,
                             "batch": batch, "conv": conv, "nvsmi": with_memory}
                     tasks.append(task)

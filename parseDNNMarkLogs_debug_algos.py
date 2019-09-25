@@ -16,7 +16,7 @@ from matplotlib.ticker import MultipleLocator
 from matplotlib.ticker import AutoMinorLocator
 from matplotlib.ticker import LinearLocator
 import pandas as pd
-sys.path.insert(0, '../../../')
+# sys.path.insert(0, '../../../')
 import lib
 
 import argparse
@@ -111,7 +111,13 @@ output_patterns = [
     re.compile(r"CPU\(s\):\s+(\d+)"),
     re.compile(r"Model name:\s+(.+)"),
     re.compile(r"CPU MHz:\s+([0-9\.]+)"),
-    re.compile(r"CPU max MHz:\s+([0-9\.]+)")
+    re.compile(r"CPU max MHz:\s+([0-9\.]+)"),
+    re.compile(r"FWD conv. algo: (\d)"),
+    re.compile(r"BWD conv. Filter algo: (\d)"),
+    re.compile(r"BWD conv. Data algo: (\d)"),
+    re.compile(r"ConvFwd_1: ([0-9\.\e\+]+)ms"),
+    re.compile(r"ConvBwdFilter_1: ([0-9\.\e\+]+)ms"),
+    re.compile(r"ConvBwdData_1: ([0-9\.\e\+]+)ms")
 ]
 filename_pattern = re.compile(
     r"^dnnmark_([a-zA-Z0-9@\.]+)_convolution_block_shape([0-9\-]+)_bs([0-9]+)_algos([a-z0-9]+)-([a-z0-9]+)-([0-9a-z]*)_([0-9]+)\.log$")
@@ -121,7 +127,8 @@ pars = {
     output_patterns,
     "parameters": [
         "time", ["NVdrv", "CUDA", "cuDNN"], ["GPU model", "GPU memory.total", "GPU memory.free"], "CPUs", "CPU model",
-        "CPU MHz", "CPU MHz max"
+        "CPU MHz", "CPU MHz max", "fwdalgo", "bwdalgo", "bwdalgodata", "ConvFwd_time", "ConvBwdFilter_time",
+        "ConvBwdData_time"
     ],
     "filename_pattern":
     filename_pattern,
