@@ -89,6 +89,7 @@ def shape_sum_column(series):
             print series[:2]
             print "shape:", shape
             print e
+            sys.exit(1)
             continue
         multipl = float(value)
         sum_ += time * multipl
@@ -114,8 +115,8 @@ output_patterns = [
     re.compile(r"CPU max MHz:\s+([0-9\.]+)")
 ]
 filename_pattern = re.compile(
-    r"^dnnmark_([a-zA-Z0-9@\.]+)_test_composed_model_shape([0-9\-]+)_bs([0-9]+)_algos([a-zA-Z0-9]+)-([a-zA-Z0-9]+)-([0-9A-Za-z]*)_([0-9]+)\.log$")
-columns = ["machine", "shape", "batch", "algofwd", "algo", "algod", "run"]
+    r"^dnnmark_([a-zA-Z0-9@\.]+)_test_composed_model_([a-z\-]+)_shape([0-9\-]+)_bs([0-9]+)_algos([a-zA-Z0-9]+)-([a-zA-Z0-9]+)-([0-9A-Za-z]*)_([0-9]+)\.log$")
+columns = ["machine", "algo_pref","shape", "batch", "algofwd", "algo", "algod", "run"]
 pars = {
     "output_patterns":
     output_patterns,
@@ -142,6 +143,8 @@ for machine, mgroup in df_logs.groupby(["machine"]):
 # Check errors
 error_logs = df_logs[df_logs.isna().any(axis=1)]
 if error_logs.shape[0] > 0:
+    error_logs["algos"] = error_logs["algofwd"].map(
+        str) + "_" + error_logs["algo"].map(str) + "_" + error_logs["algod"].map(str)
     print error_logs.shape[0], "errors"
     print error_logs.loc[:, error_logs.isna().any(axis=0)]
     print "---"
@@ -164,6 +167,9 @@ if runs > 1:
     clean_logs.rename({"mean": "time"}, axis="columns", inplace=True)
 
     print clean_logs.head(2)
+clean_logs["shape"] = clean_logs["shape"].str.replace("-", "_")
+clean_logs["algos"] = clean_logs["algofwd"].map(
+    str) + "_" + clean_logs["algo"].map(str) + "_" + clean_logs["algod"].map(str)
 
 
 fix_missing_cuda = False
@@ -177,32 +183,32 @@ clean_logs["env"] = clean_logs["machine"].map(str) + "\n" + \
     clean_logs["NVdrv"].map(str) + ", CUDA" + clean_logs["CUDA"].map(str) + \
     ", cuDNN" + clean_logs["cuDNN"].map(str) + "\n" + clean_logs["CPUs"].map(str) + "x " + \
     clean_logs["CPU model"].map(str) + "(" + clean_logs["CPU MHz max"].map(str) + ")"
-clean_logs["shape"] = clean_logs["shape"].str.replace("-", "_")
+
 
 # Remove algo groups with errors
-clean_logs = clean_logs[["env", "machine", "shape", "algofwd", "algo", "algod", "batch", "time"]]
+clean_logs = clean_logs[["env", "machine", "shape", "algo_pref", "algos", "batch", "time"]]
 # Check number of samples in machine-shape-algos groups
 print "Check number of samples in machine-shape-algos groups"
-groupdf = clean_logs.groupby(["env", "machine", "shape", "algofwd", "algo", "algod"], as_index=False).count()
+groupdf = clean_logs.groupby(["env", "machine", "shape", "algo_pref", "algos"], as_index=False).count()
 # Get all groups with not enough data
 missing_data = groupdf.query("batch < 6")
 if missing_data.shape[0] > 0:
     print "Missing data:"
     print missing_data
     print "---"
-    merged = clean_logs.merge(missing_data, on=["env", "machine", "shape",
-                                                "algofwd", "algo", "algod"], how="left", indicator=True)
+    merged = clean_logs.merge(missing_data, on=["env", "machine", "shape", "algo_pref",
+                                                "algos"], how="left", indicator=True)
     print "Merged:"
     print merged.head()
     print "---"
     clean_logs = clean_logs[merged["_merge"] == "left_only"]
     print "removed missing from clean_logs"
     print "dnnmark algos:"
-    algogroups = clean_logs.groupby(["algofwd", "algo", "algod"])
+    algogroups = clean_logs.groupby(["algos","algo_pref"])
     algogroups.groups.keys()
     print clean_logs.head()
     # Check that no missing data left
-    groupdf = clean_logs.groupby(["env", "machine", "shape", "algofwd", "algo", "algod"], as_index=False).count()
+    groupdf = clean_logs.groupby(["env", "machine", "shape", "algos","algo_pref"], as_index=False).count()
     # Get all groups with not enough data
     missing_data = groupdf.query("batch<6")
     print "Missing data (should be empty):"
@@ -217,8 +223,7 @@ csv_file = os.path.join(logdir, "dnnmark_logs_{}.csv".format(machines))
 clean_logs.to_csv(csv_file, index=False)
 print ("CSV saved to {}".format(csv_file))
 
-clean_logs["back_algos"] = clean_logs["algo"].map(
-    str) + "_" + clean_logs["algod"].map(str)
+
 # Plot time per shape
 for machine in clean_logs["machine"].unique():
     print "Machine: {}".format(machine)
@@ -226,12 +231,12 @@ for machine in clean_logs["machine"].unique():
     print "Environment:"
     environment = mlogs.iloc[0]["env"]
     print environment
-    fg = sns.FacetGrid(mlogs.sort_values(by=["batch"]), row="back_algos", col="shape", hue="algofwd",
+    fg = sns.FacetGrid(mlogs.sort_values(by=["shape","batch"]), row="algos", col="shape", hue="algo_pref",
                        height=1.9, aspect=2.3, margin_titles=True, sharey=False)
     if runs > 1:
         # Fill between min and max
         g = fg.map(plt.fill_between, "batch", "max", "min", color="red", alpha=0.5)
-    g = fg.map(plt.plot, "batch", "time", lw=1, alpha=1, ms=4, marker="o",
+    g = fg.map(plt.plot, "batch", "time", lw=1, alpha=0.9, ms=4, marker="o",
                fillstyle="full", markerfacecolor="#ffffff").add_legend()
 
     plt.subplots_adjust(top=0.8)
@@ -281,7 +286,7 @@ for machine in clean_logs["machine"].unique():
     # Print errors on the plot
     mfont = {'family': 'monospace'}
     if error_logs.shape[0] > 0:
-        error_logs_ = error_logs[["machine", "shape", "batch"]].drop_duplicates()
+        error_logs_ = error_logs[["machine", "shape", "batch","algos", "algo_pref"]].drop_duplicates()
         text_ = "Errors\n" + error_logs_.to_string()
         g.fig.text(x, 0, text_, ha="left", va="top", fontsize=8, **mfont)
 
@@ -292,11 +297,9 @@ for machine in clean_logs["machine"].unique():
 
 # Calculate VGG time
 print "Calculate VGG time"
-clean_logs["shape"] = clean_logs["shape"].str.replace("-", "_")
-clean_logs["algos"] = clean_logs["algofwd"].map(
-    str) + "_" + clean_logs["algo"].map(str) + "_" + clean_logs["algod"].map(str)
+
 print clean_logs["algos"].unique()
-aggregate_columns = ["env", "machine", "batch", "algos"]
+aggregate_columns = ["env", "machine", "batch", "algos","algo_pref"]
 df_ = clean_logs[aggregate_columns + ["time", "shape"]]
 print df_.head()
 dnnmark_aggr = df_.groupby(by=aggregate_columns).apply(group_func)
@@ -305,11 +308,11 @@ dnnmark_aggr.drop(["tmp"], axis=1, inplace=True)
 print "Aggrgated df algos"
 print dnnmark_aggr.head()
 
-fg = sns.FacetGrid(dnnmark_aggr, col="env", hue="algos",
+fg = sns.FacetGrid(dnnmark_aggr, col="env", hue="algo_pref", row="algos",
                    height=5, aspect=1.7, margin_titles=True, sharey=False)
 g = fg.map(plt.plot, "batch", "VGG time", lw=1, alpha=1, ms=4, marker="o",
            fillstyle="full", markerfacecolor="#ffffff").add_legend()
-plt.subplots_adjust(top=0.75)
+plt.subplots_adjust(top=0.85)
 g.fig.suptitle("VGG-aggregated DNNMark time (s)", fontsize=16)
 
 for ax_arr in np.nditer(fg.axes, flags=["refs_ok"]):
