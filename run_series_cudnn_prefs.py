@@ -21,14 +21,14 @@ host = "mouse"
 runs = 1
 
 # Set mini-batch sizes
-batchsizes = [7, 8, 9] + range(10,50,2) + range(50, 200, 10) + range(200, 501, 50) + [21]
+batchsizes = [7, 8, 9] + range(10, 50, 2) + range(50, 200, 10) + range(200, 501, 50)
 # batchsizes = [7, 8, 9] + range(10, 200, 10) + range(200, 501, 50)
 # batchsizes = [7, 10, 20, 30, 100, 190, 200, 300, 500]
 
 # Set algorithm combinations
 algo_configs = [
-    ["cudnn", "cudnn", "cudnn"] #,
-    # [None, None, None]  
+    ["cudnn", "cudnn", "cudnn"]  # ,
+    # [None, None, None]
 ]
 
 # VGG model convolution shapes
@@ -50,10 +50,9 @@ if debuginfo:
     debuginfo_option = " --debug"
 tasks = []
 other_options_list = ["--bwd_filter_pref fastest --bwd_data_pref fastest  --fwd_pref fastest ",
-                      "--bwd_filter_pref no_workspace  --bwd_data_pref fastest  --fwd_pref fastest ",
-                      "--bwd_filter_pref no_workspace  --bwd_data_pref no_workspace  --fwd_pref fastest ",
+                      "--bwd_filter_pref fastest  --bwd_data_pref fastest  --fwd_pref no_workspace ",
                       "--bwd_filter_pref no_workspace  --bwd_data_pref no_workspace  --fwd_pref no_workspace "]
-other_options_names = ["all_fastest", "filter_no_workspace", "bwd_no_workspace", "all_no_workspace"]
+other_options_names = ["all-fastest", "fwd-no-workspace", "all-no-workspace"]
 # other_options = ""
 
 # Remove for only 1 iteration
@@ -74,7 +73,7 @@ print "Logdir", logdir
 
 for other_options, options_name in zip(other_options_list, other_options_names):
     command_options = command + " {}".format(other_options)
-    logfile_base = "dnnmark_{}_{}_{}_".format(host, benchmark, options_name)
+    logfile_base = "dnnmark_{}_{}_{}".format(host, benchmark, options_name)
     for algos in algo_configs:
         algofwd, algo, algod = algos
         for batch in batchsizes:

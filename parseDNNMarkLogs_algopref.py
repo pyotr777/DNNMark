@@ -82,7 +82,7 @@ def shape_sum_column(series):
         try:
             time = float(series[shape])
         except KeyError:
-            print "No data for {}".format(shape)
+            print "no data for {},".format(shape),
             return 0
         except TypeError as e:
             print "Error converting", series[shape], "to float"
@@ -93,7 +93,6 @@ def shape_sum_column(series):
             continue
         multipl = float(value)
         sum_ += time * multipl
-
     return sum_
 
 
@@ -116,7 +115,7 @@ output_patterns = [
 ]
 filename_pattern = re.compile(
     r"^dnnmark_([a-zA-Z0-9@\.]+)_test_composed_model_([a-z\-]+)_shape([0-9\-]+)_bs([0-9]+)_algos([a-zA-Z0-9]+)-([a-zA-Z0-9]+)-([0-9A-Za-z]*)_([0-9]+)\.log$")
-columns = ["machine", "algo_pref","shape", "batch", "algofwd", "algo", "algod", "run"]
+columns = ["machine", "algo_pref", "shape", "batch", "algofwd", "algo", "algod", "run"]
 pars = {
     "output_patterns":
     output_patterns,
@@ -204,18 +203,35 @@ if missing_data.shape[0] > 0:
     clean_logs = clean_logs[merged["_merge"] == "left_only"]
     print "removed missing from clean_logs"
     print "dnnmark algos:"
-    algogroups = clean_logs.groupby(["algos","algo_pref"])
+    algogroups = clean_logs.groupby(["algos", "algo_pref"])
     algogroups.groups.keys()
     print clean_logs.head()
     # Check that no missing data left
-    groupdf = clean_logs.groupby(["env", "machine", "shape", "algos","algo_pref"], as_index=False).count()
+    groupdf = clean_logs.groupby(["env", "machine", "shape", "algos", "algo_pref"], as_index=False).count()
     # Get all groups with not enough data
     missing_data = groupdf.query("batch<6")
     print "Missing data (should be empty):"
     print missing_data
     print "---"
-print "clean_logs"
+print "clean_logs raw"
 print clean_logs.sample(n=4)
+
+# Leave only overlapping batch sizes
+batchsizes = []
+for name, group in clean_logs.groupby(by=["machine", "shape", "algos"]):
+    bs_ = group["batch"].unique()
+    if len(batchsizes) == 0:
+        batchsizes = bs_
+    else:
+        batchsizes = [b for b in batchsizes if b in bs_]
+print "batchsizes", " ".join(str(bs) for bs in batchsizes)
+clean_logs = clean_logs[clean_logs["batch"].isin(batchsizes)]
+
+# Constract fastest series
+clean_logs = lib.lib.getLowestFromSeries(clean_logs, group_columns=["env", "machine", "shape", "algos", "batch"],
+                                         series="algo_pref", y="time")
+print "clean logs with fastest series"
+print clean_logs.head(n=9)
 
 # Save clean logs
 machines = "_".join(clean_logs["machine"].unique())
@@ -231,15 +247,15 @@ for machine in clean_logs["machine"].unique():
     print "Environment:"
     environment = mlogs.iloc[0]["env"]
     print environment
-    fg = sns.FacetGrid(mlogs.sort_values(by=["shape","batch"]), row="algos", col="shape", hue="algo_pref",
-                       height=1.9, aspect=2.3, margin_titles=True, sharey=False)
+    fg = sns.FacetGrid(mlogs.sort_values(by=["shape", "batch"]), row="algos", col="shape", hue="algo_pref",
+                       height=3, aspect=1.8, margin_titles=True, sharey=False)
     if runs > 1:
         # Fill between min and max
         g = fg.map(plt.fill_between, "batch", "max", "min", color="red", alpha=0.5)
-    g = fg.map(plt.plot, "batch", "time", lw=1, alpha=0.9, ms=4, marker="o",
+    g = fg.map(plt.plot, "batch", "time", lw=0.5, alpha=0.7, ms=2, marker="o",
                fillstyle="full", markerfacecolor="#ffffff").add_legend()
 
-    plt.subplots_adjust(top=0.8)
+    plt.subplots_adjust(top=0.6)
     g.fig.suptitle("DNNMark time (s) on {}".format(machine), fontsize=24)
 
     for ax_arr in np.nditer(fg.axes, flags=["refs_ok"]):
@@ -286,9 +302,10 @@ for machine in clean_logs["machine"].unique():
     # Print errors on the plot
     mfont = {'family': 'monospace'}
     if error_logs.shape[0] > 0:
-        error_logs_ = error_logs[["machine", "shape", "batch","algos", "algo_pref"]].drop_duplicates()
+        error_logs_ = error_logs[["machine", "shape", "batch", "algos", "algo_pref"]
+                                 ].sort_values(by=["algo_pref", "shape", "batch"]).drop_duplicates()
         text_ = "Errors\n" + error_logs_.to_string()
-        g.fig.text(x, 0, text_, ha="left", va="top", fontsize=8, **mfont)
+        g.fig.text(x, 0, text_, ha="left", va="top", fontsize=4, **mfont)
 
     fig_file = os.path.join(logdir, "DNNMark_shape_times_{}.pdf".format(machine))
     plt.savefig(fig_file, bbox_inches="tight")
@@ -299,7 +316,7 @@ for machine in clean_logs["machine"].unique():
 print "Calculate VGG time"
 
 print clean_logs["algos"].unique()
-aggregate_columns = ["env", "machine", "batch", "algos","algo_pref"]
+aggregate_columns = ["env", "machine", "batch", "algos", "algo_pref"]
 df_ = clean_logs[aggregate_columns + ["time", "shape"]]
 print df_.head()
 dnnmark_aggr = df_.groupby(by=aggregate_columns).apply(group_func)
@@ -309,10 +326,10 @@ print "Aggrgated df algos"
 print dnnmark_aggr.head()
 
 fg = sns.FacetGrid(dnnmark_aggr, col="env", hue="algo_pref", row="algos",
-                   height=5, aspect=1.7, margin_titles=True, sharey=False)
-g = fg.map(plt.plot, "batch", "VGG time", lw=1, alpha=1, ms=4, marker="o",
+                   height=5, aspect=2, margin_titles=True, sharey=False)
+g = fg.map(plt.plot, "batch", "VGG time", lw=.6, alpha=.6, ms=3, marker="o",
            fillstyle="full", markerfacecolor="#ffffff").add_legend()
-plt.subplots_adjust(top=0.85)
+plt.subplots_adjust(top=0.78)
 g.fig.suptitle("VGG-aggregated DNNMark time (s)", fontsize=16)
 
 for ax_arr in np.nditer(fg.axes, flags=["refs_ok"]):

@@ -546,3 +546,20 @@ def plotPredictions1(model, df, df_test, title, features):
         ax[i].text(1.01, 0.9, MPE, transform=ax[i].transAxes, size=12)
     ax[-1].set_xlabel("batch size")
     fig.show()
+
+
+# Select lower values from Y per X from multiple series
+# group_columns - column(s) to split df into groups (not includes series column)
+# series_column  - one column that identify series,
+# y - one column with numeric values to choose the lowest.
+def getLowestFromSeries(df, group_columns, series, y):
+    df_new = pd.DataFrame(columns=group_columns+[series, y])
+    for _, group in df.groupby(by=group_columns):
+        min_time = np.min(group[y].values)
+        fastest_series = [group.iloc[0][v] for v in group_columns] + ["fastest", min_time]
+    #     print fastest_series,df_new.shape[0]
+        df_new.loc[df_new.shape[0]] = fastest_series 
+    
+    df_m = pd.concat([df_new, df],axis=0,sort=True)
+    df_m.sort_values(by=group_columns, inplace=True)
+    return df_m
