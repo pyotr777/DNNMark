@@ -1,17 +1,17 @@
 // The MIT License (MIT)
-// 
+//
 // Copyright (c) 2016 Northeastern University
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
-// The above copyright notice and this permission notice shall be included in 
+//
+// The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -80,6 +80,8 @@ struct ConvolutionParam {
   std::string algofwd_;
   std::string algo_;
   std::string algod_;
+  // Workspace size parameter
+  int workspace_size;
 #ifdef NVIDIA_CUDNN
   cudnnConvolutionFwdPreference_t conv_fwd_pref_;
   cudnnConvolutionBwdFilterPreference_t conv_bwd_filter_pref_;
@@ -101,6 +103,7 @@ struct ConvolutionParam {
     upscale_x_(1), upscale_y_(1),
     kernel_size_h_(5), kernel_size_w_(5), propagation_(true),
     algo_set_(false), algo_(""), algod_(""), algofwd_(""),
+    workspace_size(1),
 #ifdef NVIDIA_CUDNN
     conv_fwd_pref_(CUDNN_CONVOLUTION_FWD_PREFER_FASTEST),
     conv_bwd_filter_pref_(CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FASTEST),
@@ -109,7 +112,7 @@ struct ConvolutionParam {
 #ifdef AMD_MIOPEN
     pref_(nullptr) {}
 #endif
-  
+
 };
 
 inline std::ostream &operator<<(std::ostream &os,
@@ -128,7 +131,7 @@ inline std::ostream &operator<<(std::ostream &os,
   os << "[Convolution Param] Kernel Size H: "
      << conv_param.kernel_size_h_ << std::endl;
   os << "[Convolution Param] Kernel Size W: "
-     << conv_param.kernel_size_w_ << std::endl; 
+     << conv_param.kernel_size_w_ << std::endl;
 
   return os;
 }
@@ -191,6 +194,8 @@ inline void SetupConvParam(const std::string &var, const std::string &val,
         conv_param->algod_ = val;
     } else if (!var.compare("algofwd")) {
         conv_param->algofwd_ = val;
+    } else if (!var.compare("workspace_size")) {
+        conv_param->workspace_size = atoi(val.c_str());
     } else if (!var.compare("conv_fwd_pref")) {
 #ifdef NVIDIA_CUDNN
       if (!val.compare("no_workspace"))
@@ -270,7 +275,7 @@ inline std::ostream &operator<<(std::ostream &os,
   os << "[Pooling Param] Kernel Size H: "
      << pool_param.kernel_size_h_ << std::endl;
   os << "[Pooling Param] Kernel Size W: "
-     << pool_param.kernel_size_w_ << std::endl; 
+     << pool_param.kernel_size_w_ << std::endl;
 
   return os;
 }

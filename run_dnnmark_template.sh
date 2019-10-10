@@ -23,6 +23,7 @@ $(basename $0)  [-n <number of images, batch size>]
                     Can be set to one of the following: "fft","winograd","winograd_nonfused","fft_tiling",0, 1, "cudnn". ]
                 [ --algofwd <cudnnConvolutionFwdAlgo_t> - cuDNN algorithm for forward convolution.
                     Can be set to "fft", "winograd", number from 0 to 7 or "cudnn".]
+                [ --workspace <workspace size in bites for convolution functions>]
                 [-b <benchmark executable, default=test_composed_model>]
                 [ --iter <int> - number of FWD+BWD passes to measure time]
                 [ --template - benchmark configuration template file]
@@ -53,7 +54,7 @@ ITER=1
 WARMUP=0
 debug=0
 datasetsize=0
-
+workspace=""
 
 while test $# -gt 0; do
     case "$1" in
@@ -108,6 +109,9 @@ while test $# -gt 0; do
             ;;
         --algofwd)
             CFWA="$2";shift;
+            ;;
+        --workspace)
+            workspace="workspace_size=$2"$'\n';shift;
             ;;
         --iter)
             ITER="$2";shift;
