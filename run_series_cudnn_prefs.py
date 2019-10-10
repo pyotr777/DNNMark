@@ -1,9 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Prepares and runs multiple tasks on multiple GPUs: one task per GPU.
 # Waits if no GPUs available. For GPU availability check uses "nvidia-smi dmon" command.
 
-# 2018 (C) Peter Bryzgalov @ CHITECH Stair Lab
+# 2018-2019 (C) Peter Bryzgalov @ CHITECH Stair Lab
 
 import multigpuexec
 import time
@@ -12,7 +12,7 @@ import datetime
 import math
 
 # Set GPU range
-gpus = range(0, 1)
+gpus = list(range(0, 1))
 
 # Change hostname
 host = "mouse"
@@ -21,8 +21,7 @@ host = "mouse"
 runs = 1
 
 # Set mini-batch sizes
-batchsizes = [7, 8, 9] + range(10, 50, 2) + range(50, 200, 10) + range(200, 501, 50)
-# batchsizes = [7, 8, 9] + range(10, 200, 10) + range(200, 501, 50)
+batchsizes = [7, 8, 9] + list(range(10, 200, 10)) + list(range(200, 501, 50))
 # batchsizes = [7, 10, 20, 30, 100, 190, 200, 300, 500]
 
 # Set algorithm combinations
@@ -39,8 +38,8 @@ benchmark = "test_composed_model"
 default_benchmark = "test_composed_model"
 
 # Use today's date or change to existing logs directory name
-# date = datetime.datetime.today().strftime('%Y%m%d')
-date = "20190926"
+date = datetime.datetime.today().strftime('%Y%m%d')
+# date = "20190926"
 
 nvprof = False
 with_memory = False
@@ -69,11 +68,11 @@ logdir = "logs/{}/dnnmark_{}_microseries_{}/".format(host, benchmark, date)
 
 if not os.path.exists(logdir):
     os.makedirs(logdir)
-print "Logdir", logdir
+print("Logdir", logdir)
 
 for other_options, options_name in zip(other_options_list, other_options_names):
     command_options = command + " {}".format(other_options)
-    logfile_base = "dnnmark_{}_{}_{}".format(host, benchmark, options_name)
+    logfile_base = "dnnmark_{}_{}_{}_".format(host, benchmark, options_name)
     for algos in algo_configs:
         algofwd, algo, algod = algos
         for batch in batchsizes:
@@ -81,16 +80,16 @@ for other_options, options_name in zip(other_options_list, other_options_names):
                 iterations = int(math.ceil(datasetsize / batch))
             else:
                 iterations = 1
-                # print "BS: {}, Iterations: {}".format(batch, iterations)
+                # print("BS: {}, Iterations: {}".format(batch, iterations))
             for config in configs:
                 imsize, channels, conv = config
-                # print "FWD {}, BWD data {}, BWD filter {}".format(algofwd, algod, algo)
+                # print("FWD {}, BWD data {}, BWD filter {}".format(algofwd, algod, algo))
                 logname = "{}_shape{}-{}-{}_bs{}_algos{}-{}-{}".format(
                     logfile_base, imsize, channels, conv, batch, algofwd, algo, algod)
                 for run in range(runs):
                     logfile = os.path.join(logdir, "{}_{:02d}.log".format(logname, run))
                     if os.path.isfile(logfile):
-                        print "file", logfile, "exists."
+                        print("file", logfile, "exists.")
                     else:
                         if algo is None:
                             command_pars = command_options + \
@@ -109,7 +108,7 @@ for other_options, options_name in zip(other_options_list, other_options_names):
                         channels, batch, conv, imsize, imsize, algo, algod, algofwd, iterations)
                     logfile = os.path.join(logdir, "{}_%p.nvprof".format(nvlogname))
                     if os.path.isfile(logfile):
-                        print "file", logfile, "exists."
+                        print("file", logfile, "exists.")
                     else:
                         profcommand = "nvprof -u s --profile-api-trace none --unified-memory-profiling off --profile-child-processes --csv --log-file {} {}".format(
                             logfile, command_pars)
@@ -117,7 +116,7 @@ for other_options, options_name in zip(other_options_list, other_options_names):
                                 "batch": batch, "conv": conv, "nvsmi": False}
                         tasks.append(task)
 
-print "Have", len(tasks), "tasks"
+print("Have", len(tasks), "tasks")
 gpu = -1
 for i in range(0, len(tasks)):
     gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu + 1, c=2, d=1, nvsmi=tasks[i]["nvsmi"], mode="dmon", debug=False)
@@ -129,10 +128,10 @@ for i in range(0, len(tasks)):
     f.write("GPU{}: {}\n".format(gpu, gpu_info))
     f.write("{}".format(cpu_info))
     f.close()
-    print time.strftime("[%d,%H:%M:%S]")
+    print(time.strftime("[%d,%H:%M:%S]"))
     multigpuexec.runTask(tasks[i], gpu, nvsmi=tasks[i]["nvsmi"], delay=0, debug=False)
-    print "log:", tasks[i]["logfile"]
-    print "{}/{} tasks".format(i + 1, len(tasks))
+    print("log:", tasks[i]["logfile"])
+    print("{}/{} tasks".format(i + 1, len(tasks)))
     time.sleep(0)
 
-print "No more tasks to run. Logs are in", logdir
+print("No more tasks to run. Logs are in", logdir)
