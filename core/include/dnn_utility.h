@@ -823,9 +823,6 @@ class ConvAlgo {
     }
   }
 
-
-
-
   void SetBwdDataAlgo(cudnnConvolutionBwdDataAlgo_t bwd_data_algo) {
     bwd_data_algo_ = bwd_data_algo;
   }
@@ -837,10 +834,18 @@ class ConvAlgo {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT;
     } else if (!algo.compare("winograd")) {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD;
-    } else if (!algo.compare("0")) {
+    } else if (stoi(algo) == 0) {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
-    } else if (!algo.compare("1")) {
+    } else if (stoi(algo) == 1) {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
+    } else if (stoi(algo) == 2) {
+      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT;
+    } else if (stoi(algo) == 3) {
+      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING;
+    } else if (stoi(algo) == 4) {
+      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD;
+    } else if (stoi(algo) == 5) {
+      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED;
     } else if (!algo.compare("winograd_nonfused")) {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED;
     } else if (!algo.compare("fft_tiling")) {
