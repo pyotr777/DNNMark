@@ -27,18 +27,21 @@ $(basename $0)  [-n <number of images, batch size>]
                 [-b <benchmark executable, default=test_composed_model>]
                 [ --iter <int> - number of FWD+BWD passes to measure time]
                 [ --template - benchmark configuration template file]
+                [ -d <dataset size> - number of samples in dataset, derives number of iterations from batch size and datasetsize]
+                [ --warmup <int> - number of warmup iterations]
                 [ --debug - debug info ]
                 [ --help  - usage info ]
-                [ -d <dataset size> - number of samples in dataset, derives number of iterations from batch size and datasetsize]
+
 
 Configuration is saved to temporary file conf_tmp.dnnmark.
 USAGEBLOCK
 
 template="config_example/conf_convolution_block.dnntemplate"
 config_file="conf_tmp.dnnmark"
-conv_bwd_filter_pref="fastest"
-conv_fwd_pref="no_workspace"
-conv_bwd_data_pref="no_workspace"
+default_conv_bwd_filter_pref="fastest"
+default_conv_fwd_pref="fastest"
+default_conv_bwd_data_pref="fastest"
+default_workspace=250000000  # 250MB
 
 # Defaults
 N=64
@@ -123,7 +126,7 @@ while test $# -gt 0; do
             debug=1
             ;;
         --template)
-            template="$2";shift;
+            template="config_example/$2.dnntemplate";shift;
             ;;
         --)
             shift
@@ -141,6 +144,14 @@ done
 
 if [ $CBFA ];then
     CUDNN_CBFA="algo=$CBFA"$'\n'  # Insert new line; inside double quotes not expanded.
+    echo "$CBFA"
+    if [ "$CBFA" = "cudnn" ];then
+        echo "algo is cudnn"
+        if [ ! $conv_bwd_filter_pref ];then
+            conv_bwd_filter_pref=$default_conv_bwd_filter_pref
+            echo "FWD pref set to $bwd_filter_pref"
+        fi
+    fi
 fi
 
 if [ $CBDA ];then

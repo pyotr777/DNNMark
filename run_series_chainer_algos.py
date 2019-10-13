@@ -13,14 +13,41 @@ import os
 import datetime
 import math
 import pandas as pd
-
+import sys
 
 # Return tuple of algorithms:
 # FWD, BWD fileter, BWD data
 # for the given batch and shape
+
+
+def parseConsecutiveAlgoRows(grp):
+    series = pd.Series()
+    series['batch'] = grp['batch'].iloc[0]
+    series['shape'] = grp['shape'].iloc[0]
+    series['function'] = grp['function'].iloc[0]
+    series['algo'] = grp['algo'].iloc[0]
+    series['mean'] = grp['algo'].mean()
+    series['count'] = grp['algo'].count()
+    series['group'] = grp['group'].iloc[0]
+    return series
+
+
 def getAlgos(df, batch, shape):
     shape_ = "_".join([str(s) for s in shape])
-    selected = df.query("batch==@batch & shape==@shape_")
+    # Select relevant rows from DF
+    selected = df.query("batch==@batch & shape==@shape_").copy()
+    # Squash consequative rows with same values
+    selected["group"] = (selected["function"] != selected["function"].shift(1)).cumsum()
+    selected = selected.groupby("group", as_index=False).apply(parseConsecutiveAlgoRows)
+
+    # Remove groups made from more than 3 consequative rows - VGG16 has up to 3 same layers
+    selected = selected[selected['count'] <= 3]
+    selected.drop(['mean', 'count'], axis=1, inplace=True)
+    # print 'grouped'
+    # print selected.head(12)
+    # print type(selected), selected.shape
+    # Pivot function column into columns: fwdalgo, algo and algod
+    selected = selected.pivot_table(index=['batch', 'shape'], columns=["function"], values="algo")
     # print selected.shape[0]
     if selected.shape[0] > 1:
         print "Duplicate entries in DF for bs/shape {} / {}".format(batch, shape_)
@@ -28,17 +55,30 @@ def getAlgos(df, batch, shape):
         return None
     if selected.shape[0] == 0:
         return None, None, None
-    fwd = selected["convolutionfwdalgo"].values[0]
-    bwd_f = selected["convolutionbwdfilteralgo"].values[0]
-    bwd_d = selected["convolutionbwddataalgo"].values[0]
+
+    fwd = selected["fwdalgo"].values[0]
+    bwd_f = selected["algo"].values[0]
+    bwd_d = None
+    try:
+        bwd_d = selected["algod"].values[0]
+    except Exception as e:
+        print "selected"
+        print selected
+        print e
+
     return fwd, bwd_f, bwd_d
 
 
 # Read algorithms
-df = pd.read_csv("/HDD2/ML/mlbenchmarks/DNNMark/logs/mouse/dnnmark_convolution_block_microseries_20190605/chainer_algos_mouse_20190605errors.csv")
-print df.head(2)
-batchsizes = df["batch"].astype(int).unique()
+df = pd.read_csv("chainer_cudnn_logs.csv", header=None, names=["batch", "shape", "function", "algo"])
+print df.tail()
+df["batch"] = df["batch"].astype(int)
+df = df[df['batch'] >= 7]
+print df.shape
+batchsizes = df["batch"].unique()
 print batchsizes
+print df["function"].unique()
+
 # Set GPU range
 gpus = range(0, 1)
 
@@ -46,7 +86,7 @@ gpus = range(0, 1)
 host = "mouse"
 
 # Set number of runs
-runs = 2
+runs = 1
 
 # Set mini-batch sizes
 # batchsizes = [7, 8, 9] + range(10, 200, 10) + range(200, 501, 50)
@@ -57,8 +97,8 @@ runs = 2
 configs = [(2, 512, 512), (4, 512, 512), (4, 256, 512), (8, 256, 256),
            (8, 128, 256), (16, 128, 128), (16, 64, 128), (32, 64, 64), (32, 3, 64)]
 
-benchmark = "convolution_block"
-default_benchmark = "convolution_block"
+benchmark = "test_composed_model"
+default_benchmark = "test_composed_model"
 
 datasetsize = 50000
 date = datetime.datetime.today().strftime('%Y%m%d')
@@ -94,15 +134,17 @@ for config in configs:
         # print "BS: {}, Iterations: {}".format(batch, iterations)
         algofwd, algo, algod = getAlgos(df, batch, config)
         if algofwd is None:
+            print "No FWD algo for {} {}".format(batch, config)
             continue
+
         # Use default algod if not logged
         algod_option = ""
-        if algod >= 0:
+        if algod is not None:
             algod_option = "--algod " + str(algod)
         else:
             algod = ""
         algofwd_option = ""
-        if algofwd >= 0:
+        if algofwd is not None:
             algofwd_option = "--algofwd " + str(algofwd)
         else:
             algofwd = ""
