@@ -81,10 +81,9 @@ def shape_sum_column(series):
     for shape, value in VGG_shapes.iteritems():
         try:
             time = float(series[shape])
-        except KeyError as e:
-            print series
-            print e
-            time = 0
+        except KeyError:
+            print "No data for {}".format(shape)
+            return 0
         except TypeError as e:
             print "Error converting", series[shape], "to float"
             print series[:2]
@@ -115,7 +114,7 @@ output_patterns = [
     re.compile(r"CPU max MHz:\s+([0-9\.]+)")
 ]
 filename_pattern = re.compile(
-    r"^dnnmark_([a-zA-Z0-9@\.]+)_test_composed_model_shape([0-9\-]+)_bs([0-9]+)_algos([a-zA-Z0-9]+)-([a-zA-Z0-9]+)-([0-9A-Za-z]*)_([0-9]+)\.log$")
+    r"^dnnmark_([a-zA-Z0-9@\.]+)_convolution_block_shape([0-9\-]+)_bs([0-9]+)_algos([a-zA-Z0-9]+)-([a-zA-Z0-9]+)-([0-9A-Za-z]*)_([0-9]+)\.log$")
 columns = ["machine", "shape", "batch", "algofwd", "algo", "algod", "run"]
 pars = {
     "output_patterns":
@@ -158,7 +157,7 @@ print "Clean shape ", clean_logs.shape
 
 # Average time beteween runs
 runs = max(clean_logs["run"].unique())
-if runs > 1:
+if runs > 0:
     print "Get average time between runs"
     groupcolumns = list(set(clean_logs.columns) - set(["run", "time"]))
     clean_logs = clean_logs.groupby(groupcolumns, as_index=False).agg(["mean", "max", "min"])
@@ -197,7 +196,7 @@ clean_logs["shape"] = clean_logs["shape"].str.replace("-", "_")
 clean_logs = clean_logs[["env", "machine", "shape", "algofwd", "algo", "algod", "batch", "time"]]
 # Check number of samples in machine-shape-algos groups
 print "Check number of samples in machine-shape-algos groups"
-groupdf = clean_logs.groupby(["env", "machine", "shape"], as_index=False).count()
+groupdf = clean_logs.groupby(["env", "machine", "shape", "algofwd", "algo", "algod"], as_index=False).count()
 print groupdf.query("batch < 29")
 # Get all groups with not enough data
 missing_data = groupdf.query("batch < 29")
@@ -253,7 +252,7 @@ for machine in clean_logs["machine"].unique():
     else:
         fg = sns.FacetGrid(mlogs.sort_values(by=["batch"]), col="shape",
                            height=1.9, aspect=2.3, margin_titles=True, sharey=False)
-    if runs > 1:
+    if runs > 0:
         # Fill between min and max
         g = fg.map(plt.fill_between, "batch", "max", "min", color="red", alpha=0.5)
     g = fg.map(plt.plot, "batch", "time", lw=1, alpha=1, ms=4, marker="o",

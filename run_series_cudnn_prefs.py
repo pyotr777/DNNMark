@@ -49,9 +49,9 @@ if debuginfo:
     debuginfo_option = " --debug"
 tasks = []
 other_options_list = ["--bwd_filter_pref fastest --bwd_data_pref fastest  --fwd_pref fastest ",
-                      "--bwd_filter_pref fastest  --bwd_data_pref fastest  --fwd_pref no_workspace ",
-                      "--bwd_filter_pref no_workspace  --bwd_data_pref no_workspace  --fwd_pref no_workspace "]
-other_options_names = ["all-fastest", "fwd-no-workspace", "all-no-workspace"]
+                      "--bwd_filter_pref fastest  --bwd_data_pref fastest  --fwd_pref specify_workspace_limit --workspace 200000000 ",
+                      "--bwd_filter_pref specify_workspace_limit  --bwd_data_pref fastest  --fwd_pref fastest --workspace 200000000 "]
+other_options_names = ["all-fastest", "fwd-workspace200MB", "filter-workspace200MB"]
 # other_options = ""
 
 # Remove for only 1 iteration
@@ -72,7 +72,7 @@ print("Logdir", logdir)
 
 for other_options, options_name in zip(other_options_list, other_options_names):
     command_options = command + " {}".format(other_options)
-    logfile_base = "dnnmark_{}_{}_{}_".format(host, benchmark, options_name)
+    logfile_base = "dnnmark_{}_{}_{}".format(host, benchmark, options_name)
     for algos in algo_configs:
         algofwd, algo, algod = algos
         for batch in batchsizes:

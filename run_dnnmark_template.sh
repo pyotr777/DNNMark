@@ -31,7 +31,7 @@ $(basename $0)  [-n <number of images, batch size>]
                 [ --warmup <int> - number of warmup iterations]
                 [ --debug - debug info ]
                 [ --help  - usage info ]
-
+                [ -d <dataset size> - number of samples in dataset, derives number of iterations from batch size and datasetsize]
 
 Configuration is saved to temporary file conf_tmp.dnnmark.
 USAGEBLOCK

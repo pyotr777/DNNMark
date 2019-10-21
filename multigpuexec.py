@@ -12,7 +12,8 @@ def message(s, col=112):
     print("\033[38;5;{}m{}\033[0m".format(col, s))
 
 
-maxtemp = 60
+maxtemp = 60.
+maxusage = 20.
 running_pids = {}
 
 
@@ -33,7 +34,7 @@ def GPUisFree(i, c=1, d=1, mode="dmon", debug=False):
         command = "nvidia-smi pmon -c {} -d {} -i {} -s u".format(c, d, i)
         out_pattern = re.compile(r"^\s+(\d+)\s+([0-9\-]+)\s+([CG\-])\s+([0-9\-]+)\s")  # pmon
     proc = subprocess.Popen(command.split(" "), stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, bufsize=1, shell=False)
+                            stderr=subprocess.STDOUT, bufsize=0, shell=False)
     u = 0
     for line in iter(proc.stdout.readline, b''):
         line = line.decode('utf-8')
@@ -48,11 +49,16 @@ def GPUisFree(i, c=1, d=1, mode="dmon", debug=False):
             except ValueError:
                 pass
             u += uplus
-    if u < 11:
+    usage = float(u) / float(c)
+    if debug:
+        print("usage {.2f}%".format(usage))
+    if usage < maxusage:
         gpu_free = True
     else:
         if mode == "dmon":
             print("busy {:.0f}%".format(float(u) / float(c)))
+        else:
+            print("busy")
 
     # Check Temp
     temp_norm = False
@@ -60,7 +66,7 @@ def GPUisFree(i, c=1, d=1, mode="dmon", debug=False):
         command = "nvidia-smi dmon -s p -d 1 -c 1 -i {}".format(i)
         out_pattern = re.compile(r"^\s+(\d+)\s+(\d+)\s+(\d+)\s+.*")  # dmon
         proc = subprocess.Popen(command.split(" "), stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, bufsize=1, shell=False)
+                                stderr=subprocess.STDOUT, bufsize=0, shell=False)
         temp = 0
         for line in iter(proc.stdout.readline, b''):
             line = line.decode('utf-8')
@@ -144,7 +150,6 @@ def getCPUinfo():
         line = line.decode('utf-8')
         for pattern in patterns:
             if re.search(pattern, line):
-                # output += line.split(":")[1].strip(" \n") + " "
                 output += line
                 continue
     return output
@@ -173,7 +178,7 @@ def getNextFreeGPU(gpus, start=-1, c=4, d=1, nvsmi=False, mode="dmon", debug=Fal
 
 # Runs a task on specified GPU
 def runTaskContainer(task, gpu, verbose=False):
-    f = open(task["logfile"], "ab")
+    f = open(task["logfile"], "a")
     # f.write("gpu"+str(gpu)+"\n")
     command = task["comm"]
     #command = "python --version"
@@ -193,9 +198,9 @@ def runTaskContainer(task, gpu, verbose=False):
 
 
 # Runs a task on specified GPU
-def runTask(task, gpu, nvsmi=False, delay=3, interval=2, debug=True):
+def runTask(task, gpu, nvsmi=False, delay=3, interval=2, debug=False):
     global running_pids
-    with open(task["logfile"], "ab") as f:
+    with open(task["logfile"], "a") as f:
         # f.write("gpu"+str(gpu)+"\n")
         # Set GPU for execution with env var CUDA_VISIBLE_DEVICES
         my_env = os.environ.copy()
@@ -211,7 +216,7 @@ def runTask(task, gpu, nvsmi=False, delay=3, interval=2, debug=True):
         command = command.replace("gpu_num", str(gpu))
         print("Starting on GPU{}".format(gpu))
         message(command)
-        pid = subprocess.Popen(command.split(" "), stdout=f, stderr=subprocess.STDOUT, bufsize=1, env=my_env).pid
+        pid = subprocess.Popen(command.split(" "), stdout=f, stderr=subprocess.STDOUT, bufsize=0, env=my_env).pid
         print(pid)
         # Save pid to runnning processes dictionary
         running_pids[gpu] = pid
@@ -227,7 +232,7 @@ def runTask(task, gpu, nvsmi=False, delay=3, interval=2, debug=True):
         fl = open(logfile, "w")
         command = "nvidia-smi -i {} -lms {} --query-gpu=timestamp,name,memory.total,memory.used,memory.free --format=csv,noheader,nounits".format(
             gpu, sampling_rate)
-        p = subprocess.Popen(command.split(" "), stdout=fl, stderr=subprocess.STDOUT, bufsize=1, shell=False)
+        p = subprocess.Popen(command.split(" "), stdout=fl, stderr=subprocess.STDOUT, bufsize=0, shell=False)
         time.sleep(sampling_period)
         p.kill()
         fl.close()

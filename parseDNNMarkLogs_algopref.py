@@ -140,7 +140,7 @@ for machine, mgroup in df_logs.groupby(["machine"]):
     print "{}\t:\t{}".format(machine, mgroup.shape[0])
 
 # Check errors
-error_logs = df_logs[df_logs.isna().any(axis=1)]
+error_logs = df_logs[df_logs.isna().any(axis=1)].copy()
 if error_logs.shape[0] > 0:
     error_logs["algos"] = error_logs["algofwd"].map(
         str) + "_" + error_logs["algo"].map(str) + "_" + error_logs["algod"].map(str)
@@ -177,6 +177,7 @@ if fix_missing_cuda:
     print "Reuse these info for missing data: nvdrv:{} cuda:{} cudnn:{}".format(nvdrv, cuda, cudnn)
     clean_logs.loc[(clean_logs.index.isin(error_logs.index)), ["NVdrv", "CUDA", "cuDNN"]] = [nvdrv, cuda, cudnn]
 
+clean_logs["GPU"] = clean_logs["GPU model"]
 clean_logs["env"] = clean_logs["machine"].map(str) + "\n" + \
     clean_logs["GPU model"].map(str) + "  " + clean_logs["GPU memory.total"].map(str) + " MiB\nNVDRV:" + \
     clean_logs["NVdrv"].map(str) + ", CUDA" + clean_logs["CUDA"].map(str) + \
@@ -184,23 +185,27 @@ clean_logs["env"] = clean_logs["machine"].map(str) + "\n" + \
     clean_logs["CPU model"].map(str) + "(" + clean_logs["CPU MHz max"].map(str) + ")"
 
 
-clean_logs = clean_logs[["env", "machine", "shape", "algo_pref", "algos", "batch", "time"]]
-# Remove groups with errors
-remove_incomplete_series = True
+clean_logs = clean_logs[["env", "machine", "GPU", "shape", "algo_pref", "algos", "batch", "time"]]
+# Remove groups with small number of batches (with many errors)
+remove_incomplete_series = False
 if remove_incomplete_series:
-    # Check number of samples in machine-shape-algos groups
-    print "Check number of samples in machine-shape-algos groups"
-    groupdf = clean_logs.groupby(["env", "machine", "shape", "algo_pref", "algos"], as_index=False).count()
+    # Check number of samples in machine-shape-algos-algopref groups
+    print "Check number of samples in machine-shape-algos-algopref groups"
+    groupdf = clean_logs.groupby(["env", "GPU", "machine", "shape", "algo_pref", "algos"], as_index=False).count()
     # Get all groups with not enough data
     missing_data = groupdf.query("batch < 6")
     if missing_data.shape[0] > 0:
         print "Missing data:"
-        print missing_data.drop(["env", "algos"], axis=1)  # [["algo_pref", "batch", "shape", "time"]]
+        missing_data = missing_data[["env", "GPU", "batch", "machine", "shape", "algo_pref",
+                                     "algos"]]
+        print missing_data.shape
+        print missing_data.drop(["env"], axis=1)  # [["algo_pref", "batch", "shape", "time"]]
         print "---"
-        merged = clean_logs.merge(missing_data, on=["machine", "shape", "algo_pref",
+        merged = clean_logs.merge(missing_data, on=["env", "GPU", "batch", "machine", "shape", "algo_pref",
                                                     "algos"], how="left", indicator=True)
         print "Merged:"
         print merged.head()
+        print merged.shape
         print "---"
         clean_logs = clean_logs[merged["_merge"] == "left_only"]
         print "removed missing from clean_logs"
@@ -230,7 +235,7 @@ print "batchsizes", " ".join(str(bs) for bs in batchsizes)
 clean_logs = clean_logs[clean_logs["batch"].isin(batchsizes)]
 
 # Constract fastest series
-clean_logs = lib.lib.getLowestFromSeries(clean_logs, group_columns=["env", "machine", "shape", "algos", "batch"],
+clean_logs = lib.lib.getLowestFromSeries(clean_logs, group_columns=["env", "GPU", "machine", "shape", "algos", "batch"],
                                          series="algo_pref", y="time")
 print "clean logs with fastest series"
 print clean_logs.head(n=4)
@@ -318,7 +323,7 @@ for machine in clean_logs["machine"].unique():
 print "Calculate VGG time"
 
 print clean_logs["algos"].unique()
-aggregate_columns = ["env", "machine", "batch", "algos", "algo_pref"]
+aggregate_columns = ["env", "machine", "GPU", "batch", "algos", "algo_pref"]
 df_ = clean_logs[aggregate_columns + ["time", "shape"]]
 print df_.head()
 dnnmark_aggr = df_.groupby(by=aggregate_columns).apply(group_func)

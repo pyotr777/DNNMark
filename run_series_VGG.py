@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+# Run VGG benchmark series.
 # Prepares and runs multiple tasks on multiple GPUs: one task per GPU.
 # Waits if no GPUs available. For GPU availability check uses "nvidia-smi dmon" command.
 
@@ -10,28 +11,42 @@ import time
 import os
 import datetime
 
-gpus = range(0, 8)
-host = "DL"
-runs = 10
+# Set GPU range
+gpus = range(0, 1)
+
+# Change hostname
+host = "p3.2xlarge"
+
+# Set number of runs
+runs = 1
+
+# Set mini-batch sizes
+batchsizes = [7, 8, 9] + range(10, 200, 10) + range(200, 501, 50)
+# Log algos
+# batchsizes = [10, 20, 50, 100, 150, 200, 400, 500]
+
+# Set algorithms
+backfilterconvalgos = ["cudnn"]
+algods = ["cudnn"]  # Data gradient algorithm
+algofwds = ["cudnn"]
+
+
 benchmark = "VGG"
-template = "VGG"
-batchsizes = range(50, 150, 10)
-# batchsizes = [7,8,9] + range(10,50,2) + range(50,160,10) +  range(160,200,20) + range(200,500,20)
+template = "VGG.dnntemplate"
+
 datasetsize = 50000
 date = datetime.datetime.today().strftime('%Y%m%d')
-backfilterconvalgos = [0, 3]
-algods = [1]  # Data gradient algorithm
-
 nvprof = False
 with_memory = False
-debuginfo = True
+debuginfo = False
 debuginfo_option = ""
 if debuginfo:
     debuginfo_option = " --debug"
 tasks = []
-logdir = "logs/dnnmark_{}_GPU_test_microseries_{}/".format(benchmark, date)
 
 command = "./run_dnnmark_template.sh -b test_{} --template {}".format(benchmark, template)
+
+logdir = "logs/{}/dnnmark_{}_microseries_{}/".format(host, benchmark, date)
 if not os.path.exists(logdir):
     os.makedirs(logdir)
 print "Logdir", logdir
@@ -39,26 +54,25 @@ print "Logdir", logdir
 logfile_base = "dnnmark_{}_{}".format(host, benchmark)
 for batch in batchsizes:
     for algod in algods:
-        algod_opt = ""
-        if algod != "":
-            algod_opt = " --algod {}".format(algod)
-            for algo in backfilterconvalgos:
-                logname = "{}_bs{}_algo{}_algod{}".format(logfile_base, batch, algo, algod)
+        for algo in backfilterconvalgos:
+            for algofwd in algofwds:
+                algod_opt = " --algod {}".format(algod)
+                logname = "{}_bs{}_algos{}-{}-{}".format(logfile_base, batch, algofwd, algo, algod)
                 for run in range(runs):
                     logfile = os.path.join(logdir, "{}_{:02d}.log".format(logname, run))
                     if os.path.isfile(logfile):
                         print "file", logfile, "exists."
                     else:
-                        command_pars = command + " -n {} --algo {}{} -d {}{}".format(
-                            batch, algo, algod_opt, datasetsize, debuginfo_option)
+                        command_pars = command + " -n {} --algo {} --algod {} --algofwd {} -d {}{}".format(
+                            batch, algo, algod, algofwd, datasetsize, debuginfo_option)
                         task = {"comm": command_pars, "logfile": logfile, "batch": batch, "nvsmi": with_memory}
                         tasks.append(task)
                 if nvprof:
-                    iterations = 1
+                    iterations = 10
                     # print "BS: {}, Iterations: {}".format(batch,iterations)
                     nvlogname = "{}_iter{}".format(logname, iterations)
-                    command_pars = command + " -n {} --algo {}{} -d {}".format(
-                        batch, algo, algod_opt, datasetsize)
+                    command_pars = command + " -n {} -d {} --algo {} --algod {} --algofwd {} --iter {} --warmup 0".format(
+                        batch, datasetsize, algo, algod, algofwd, iterations)
                     logfile = os.path.join(logdir, "{}_%p.nvprof".format(nvlogname))
                     if os.path.isfile(logfile):
                         print "file", logfile, "exists."
@@ -82,4 +96,4 @@ for i in range(0, len(tasks)):
     multigpuexec.runTask(tasks[i], gpu, nvsmi=tasks[i]["nvsmi"], delay=0, debug=False)
     print tasks[i]["logfile"]
     print "{}/{} tasks".format(i + 1, len(tasks))
-    time.sleep(2)
+    time.sleep(1)
