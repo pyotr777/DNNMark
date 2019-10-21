@@ -1,0 +1,11 @@
+[DNNMark]
+run_mode=standalone
+
+[FullyConnected]
+name=relu1
+n=$N
+c=$C
+h=$H
+w=$W
+num_output=$K
+
