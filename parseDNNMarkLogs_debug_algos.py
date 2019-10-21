@@ -143,6 +143,9 @@ df_logs = readLogFiles(logdir, pars)
 for machine, mgroup in df_logs.groupby(["machine"]):
     print "{}\t:\t{}".format(machine, mgroup.shape[0])
 
+# Drop empty columns
+df_logs = df_logs.dropna(axis=1, how='all')
+
 # Check errors
 error_logs = df_logs[df_logs.isna().any(axis=1)]
 if error_logs.shape[0] > 0:
@@ -173,12 +176,20 @@ if fix_missing_cuda:
     print "Reuse these info for missing data: nvdrv:{} cuda:{} cudnn:{}".format(nvdrv, cuda, cudnn)
     clean_logs.loc[(clean_logs.index.isin(error_logs.index)), ["NVdrv", "CUDA", "cuDNN"]] = [nvdrv, cuda, cudnn]
 
-clean_logs["env"] = clean_logs["machine"].map(str) + "\n" + \
-    clean_logs["GPU model"].map(str) + "  " + clean_logs["GPU memory.total"].map(str) + " MiB\nNVDRV:" + \
-    clean_logs["NVdrv"].map(str) + ", CUDA" + clean_logs["CUDA"].map(str) + \
-    ", cuDNN" + clean_logs["cuDNN"].map(str) + "\n" + clean_logs["CPUs"].map(str) + "x " + \
-    clean_logs["CPU model"].map(str) + "(" + clean_logs["CPU MHz max"].map(str) + ")"
-clean_logs["shape"] = clean_logs["shape"].str.replace("-", "_")
+clean_logs["env"] = clean_logs["machine"].map(str) + "\n"
+if "GPU model" in clean_logs.columns:
+    clean_logs["env"] = clean_logs["env"] + clean_logs["GPU model"].map(str) + "  "
+if "GPU memory.total" in clean_logs.columns:
+    clean_logs["env"] = clean_logs["env"] + clean_logs["GPU memory.total"].map(str) + "  MiB\n"
+if "NVdrv" in clean_logs.columns:
+    clean_logs["env"] = clean_logs["env"] + "NVDRV:" + clean_logs["NVdrv"].map(str) + ","
+if "CUDA" in clean_logs.columns:
+    clean_logs["env"] = clean_logs["env"] + "CUDA:" + clean_logs["CUDA"].map(str) + ","
+if "cuDNN" in clean_logs.columns:
+    clean_logs["env"] = clean_logs["env"] + "cuDNN:" + clean_logs["cuDNN"].map(str) + "\n"
+if "CPUs" in clean_logs.columns:
+    clean_logs["env"] = clean_logs["env"] + clean_logs["CPUs"].map(str) + "x " + \
+        clean_logs["CPU model"].map(str) + "(" + clean_logs["CPU MHz max"].map(str) + ")"
 
 # Remove algo groups with errors
 clean_logs = clean_logs[["env", "machine", "shape", "algofwd", "algo", "algod", "batch", "time"]]

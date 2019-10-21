@@ -81,9 +81,10 @@ def shape_sum_column(series):
     for shape, value in VGG_shapes.iteritems():
         try:
             time = float(series[shape])
-        except KeyError:
-            print "No data for {}".format(shape)
-            return 0
+        except KeyError as e:
+            print series
+            print e
+            time = 0
         except TypeError as e:
             print "Error converting", series[shape], "to float"
             print series[:2]
@@ -139,6 +140,9 @@ df_logs = readLogFiles(logdir, pars)
 for machine, mgroup in df_logs.groupby(["machine"]):
     print "{}\t:\t{}".format(machine, mgroup.shape[0])
 
+# Drop empty columns
+df_logs = df_logs.dropna(axis=1, how='all')
+
 # Check errors
 error_logs = df_logs[df_logs.isna().any(axis=1)]
 if error_logs.shape[0] > 0:
@@ -172,20 +176,31 @@ if fix_missing_cuda:
     print "Reuse these info for missing data: nvdrv:{} cuda:{} cudnn:{}".format(nvdrv, cuda, cudnn)
     clean_logs.loc[(clean_logs.index.isin(error_logs.index)), ["NVdrv", "CUDA", "cuDNN"]] = [nvdrv, cuda, cudnn]
 
-clean_logs["env"] = clean_logs["machine"].map(str) + "\n" + \
-    clean_logs["GPU model"].map(str) + "  " + clean_logs["GPU memory.total"].map(str) + " MiB\nNVDRV:" + \
-    clean_logs["NVdrv"].map(str) + ", CUDA" + clean_logs["CUDA"].map(str) + \
-    ", cuDNN" + clean_logs["cuDNN"].map(str) + "\n" + clean_logs["CPUs"].map(str) + "x " + \
-    clean_logs["CPU model"].map(str) + "(" + clean_logs["CPU MHz max"].map(str) + ")"
+clean_logs["env"] = clean_logs["machine"].map(str) + "\n"
+if "GPU model" in clean_logs.columns:
+    clean_logs["env"] = clean_logs["env"] + clean_logs["GPU model"].map(str) + "  "
+if "GPU memory.total" in clean_logs.columns:
+    clean_logs["env"] = clean_logs["env"] + clean_logs["GPU memory.total"].map(str) + "  MiB\n"
+if "NVdrv" in clean_logs.columns:
+    clean_logs["env"] = clean_logs["env"] + "NVDRV:" + clean_logs["NVdrv"].map(str) + ","
+if "CUDA" in clean_logs.columns:
+    clean_logs["env"] = clean_logs["env"] + "CUDA:" + clean_logs["CUDA"].map(str) + ","
+if "cuDNN" in clean_logs.columns:
+    clean_logs["env"] = clean_logs["env"] + "cuDNN:" + clean_logs["cuDNN"].map(str) + "\n"
+if "CPUs" in clean_logs.columns:
+    clean_logs["env"] = clean_logs["env"] + clean_logs["CPUs"].map(str) + "x " + \
+        clean_logs["CPU model"].map(str) + "(" + clean_logs["CPU MHz max"].map(str) + ")"
+
 clean_logs["shape"] = clean_logs["shape"].str.replace("-", "_")
 
 # Remove algo groups with errors
 clean_logs = clean_logs[["env", "machine", "shape", "algofwd", "algo", "algod", "batch", "time"]]
 # Check number of samples in machine-shape-algos groups
 print "Check number of samples in machine-shape-algos groups"
-groupdf = clean_logs.groupby(["env", "machine", "shape", "algofwd", "algo", "algod"], as_index=False).count()
+groupdf = clean_logs.groupby(["env", "machine", "shape"], as_index=False).count()
+print groupdf.query("batch < 29")
 # Get all groups with not enough data
-missing_data = groupdf.query("batch < 6")
+missing_data = groupdf.query("batch < 29")
 if missing_data.shape[0] > 0:
     print "Missing data:"
     print missing_data
@@ -217,8 +232,14 @@ csv_file = os.path.join(logdir, "dnnmark_logs_{}.csv".format(machines))
 clean_logs.to_csv(csv_file, index=False)
 print ("CSV saved to {}".format(csv_file))
 
-clean_logs["back_algos"] = clean_logs["algo"].map(
-    str) + "_" + clean_logs["algod"].map(str)
+# Remove algo info
+remove_algos = True
+if not remove_algos:
+    clean_logs["algos"] = clean_logs["algofwd"].map(
+        str) + "_" + clean_logs["algo"].map(str) + "_" + clean_logs["algod"].map(str)
+
+clean_logs.drop(["algo", "algod", "algofwd"], axis=1, inplace=True)
+
 # Plot time per shape
 for machine in clean_logs["machine"].unique():
     print "Machine: {}".format(machine)
@@ -226,15 +247,19 @@ for machine in clean_logs["machine"].unique():
     print "Environment:"
     environment = mlogs.iloc[0]["env"]
     print environment
-    fg = sns.FacetGrid(mlogs.sort_values(by=["batch"]), row="back_algos", col="shape", hue="algofwd",
-                       height=1.9, aspect=2.3, margin_titles=True, sharey=False)
+    if "algos" in clean_logs.columns:
+        fg = sns.FacetGrid(mlogs.sort_values(by=["batch"]), col="shape", hue="algos",
+                           height=1.9, aspect=2.3, margin_titles=True, sharey=False)
+    else:
+        fg = sns.FacetGrid(mlogs.sort_values(by=["batch"]), col="shape",
+                           height=1.9, aspect=2.3, margin_titles=True, sharey=False)
     if runs > 1:
         # Fill between min and max
         g = fg.map(plt.fill_between, "batch", "max", "min", color="red", alpha=0.5)
     g = fg.map(plt.plot, "batch", "time", lw=1, alpha=1, ms=4, marker="o",
                fillstyle="full", markerfacecolor="#ffffff").add_legend()
 
-    plt.subplots_adjust(top=0.8)
+    plt.subplots_adjust(top=0.7)
     g.fig.suptitle("DNNMark time (s) on {}".format(machine), fontsize=24)
 
     for ax_arr in np.nditer(fg.axes, flags=["refs_ok"]):
@@ -293,20 +318,26 @@ for machine in clean_logs["machine"].unique():
 # Calculate VGG time
 print "Calculate VGG time"
 clean_logs["shape"] = clean_logs["shape"].str.replace("-", "_")
-clean_logs["algos"] = clean_logs["algofwd"].map(
-    str) + "_" + clean_logs["algo"].map(str) + "_" + clean_logs["algod"].map(str)
-print clean_logs["algos"].unique()
-aggregate_columns = ["env", "machine", "batch", "algos"]
+
+if 'algos' in clean_logs.columns:
+    print clean_logs["algos"].unique()
+    aggregate_columns = ["env", "machine", "batch", "algos"]
+else:
+    aggregate_columns = ["env", "machine", "batch"]
 df_ = clean_logs[aggregate_columns + ["time", "shape"]]
 print df_.head()
 dnnmark_aggr = df_.groupby(by=aggregate_columns).apply(group_func)
 dnnmark_aggr.reset_index(inplace=True)
 dnnmark_aggr.drop(["tmp"], axis=1, inplace=True)
-print "Aggrgated df algos"
+print "Aggrgated df"
 print dnnmark_aggr.head()
 
-fg = sns.FacetGrid(dnnmark_aggr, col="env", hue="algos",
-                   height=5, aspect=1.7, margin_titles=True, sharey=False)
+if 'algos' in clean_logs.columns:
+    fg = sns.FacetGrid(dnnmark_aggr, col="env", hue="algos",
+                       height=5, aspect=1.7, margin_titles=True, sharey=False)
+else:
+    fg = sns.FacetGrid(dnnmark_aggr, col="env",
+                       height=5, aspect=1.7, margin_titles=True, sharey=False)
 g = fg.map(plt.plot, "batch", "VGG time", lw=1, alpha=1, ms=4, marker="o",
            fillstyle="full", markerfacecolor="#ffffff").add_legend()
 plt.subplots_adjust(top=0.75)
