@@ -16,6 +16,7 @@ int main(int argc, char **argv) {
   dnnmark.Forward();
   dnnmark.GetTimer()->SumRecords();
   dnnmark.TearDown();
+  printf("Total running time(ms): %f\n", dnnmark.GetTimer()->GetTotalTime());
   LOG(INFO) << "Total running time(ms): " << dnnmark.GetTimer()->GetTotalTime();
   LOG(INFO) << "DNNMark suites: Tear down...";
   return 0;
