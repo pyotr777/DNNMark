@@ -679,8 +679,9 @@ class ConvAlgo {
                    const DataTensor<T> &bottom_desc,
                    const ConvolutionDesc<T> &conv_desc,
                    const DataTensor<T> &top_desc) {
-    cudnnConvolutionFwdAlgoPerf_t *perf_results;
-    int *returned_algo_count;
+    const int max_algos = 3;
+    cudnnConvolutionFwdAlgoPerf_t perf_results[max_algos];
+    int returned_algo_count;
     CUDNN_CALL(cudnnFindConvolutionForwardAlgorithm(
                mode == COMPOSED ?
                handle.GetCudnn(idx) : handle.GetCudnn(),
@@ -688,9 +689,9 @@ class ConvAlgo {
                conv_desc.GetFilter(),
                conv_desc.GetConv(),
                top_desc.Get(),
-               1, returned_algo_count,
+               max_algos, &returned_algo_count,
                perf_results));
-    if (*returned_algo_count > 0) {
+    if (returned_algo_count > 0) {
       fwd_algo_ = perf_results->algo;
     } else {
       fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
@@ -772,8 +773,9 @@ class ConvAlgo {
                          const DataTensor<T> &bottom_desc,
                          const ConvolutionDesc<T> &conv_desc,
                          const DataTensor<T> &top_desc) {
-    cudnnConvolutionBwdFilterAlgoPerf_t *perf_results;
-    int *returned_algo_count;
+    int max_algos = 3;
+    cudnnConvolutionBwdFilterAlgoPerf_t perf_results[max_algos];
+    int returned_algo_count;
     CUDNN_CALL(cudnnFindConvolutionBackwardFilterAlgorithm(
                mode == COMPOSED ?
                handle.GetCudnn(idx) : handle.GetCudnn(),
@@ -781,13 +783,10 @@ class ConvAlgo {
                top_desc.Get(),
                conv_desc.GetConv(),
                conv_desc.GetFilter(),
-               3, returned_algo_count,
+               max_algos, &returned_algo_count,
                perf_results));
-    std::cout << "cuDNN call returned_algo_count :" << *returned_algo_count <<"\n";
     cudnnConvolutionBwdFilterAlgo_t algo = static_cast<cudnnConvolutionBwdFilterAlgo_t>(perf_results->algo);
-    std::cout << "cuDNN call result :" << perf_results->algo <<"\n";
-    std::cout << "cuDNN casted result :" << algo <<"\n";
-    if (*returned_algo_count > 0) {
+    if (returned_algo_count > 0) {
       bwd_filter_algo_ = perf_results->algo;
     } else {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
@@ -804,7 +803,8 @@ class ConvAlgo {
                          void       *workSpace,
                          size_t     workspace_size)
   {
-    cudnnConvolutionBwdFilterAlgoPerf_t *perf_results;
+    int max_algos = 3;
+    cudnnConvolutionBwdFilterAlgoPerf_t perf_results[max_algos];
     int *returned_algo_count;
     CUDNN_CALL(cudnnFindConvolutionBackwardFilterAlgorithmEx(
                mode == COMPOSED ?
@@ -891,7 +891,8 @@ class ConvAlgo {
                        const DataTensor<T> &bottom_desc,
                        const ConvolutionDesc<T> &conv_desc,
                        const DataTensor<T> &top_desc) {
-    cudnnConvolutionBwdDataAlgoPerf_t *perf_results;
+    int max_algos = 3;
+    cudnnConvolutionBwdDataAlgoPerf_t perf_results[max_algos];
     int *returned_algo_count;
     CUDNN_CALL(cudnnFindConvolutionBackwardDataAlgorithm(
                mode == COMPOSED ?
