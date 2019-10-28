@@ -165,19 +165,6 @@ class ConvolutionLayer : public Layer<T> {
     // Fill the weight data
     weights_->Filler();
 
-    // Allocate workspace
-    conv_algo_.GetFwdWorkspaceSize(*(p_dnnmark_->GetHandle()),
-                                   p_dnnmark_->getRunMode(), layer_id_,
-                                   bottom_desc_,
-                                   top_desc_,
-                                   desc_,
-                                   &fwd_workspace_size_);
-    if (fwd_workspace_size_ > 0) {
-      fwd_workspace_id_ = data_manager_->CreateData(fwd_workspace_size_);
-      fwd_workspace_ = data_manager_->GetData(fwd_workspace_id_);
-      has_fwd_workspace_ = true;
-    }
-
 #ifdef NVIDIA_CUDNN
     // Set convolution forward algorithm
     if (conv_param_.algofwd_  == "cudnn" ) {
@@ -215,6 +202,22 @@ class ConvolutionLayer : public Layer<T> {
     }
 
     LOG(INFO) << "FWD conv. algo: " << conv_algo_.GetFwdAlgo();
+
+    // Allocate workspace
+    conv_algo_.GetFwdWorkspaceSize(*(p_dnnmark_->GetHandle()),
+                                   p_dnnmark_->getRunMode(), layer_id_,
+                                   bottom_desc_,
+                                   top_desc_,
+                                   desc_,
+                                   &fwd_workspace_size_);
+    if (fwd_workspace_size_ > 0) {
+      fwd_workspace_id_ = data_manager_->CreateData(fwd_workspace_size_);
+      fwd_workspace_ = data_manager_->GetData(fwd_workspace_id_);
+      has_fwd_workspace_ = true;
+    }
+
+
+
 
     // Set convolution backward filter/weights algorithm
     if (conv_param_.algo_ == "cudnn") {
@@ -362,6 +365,8 @@ class ConvolutionLayer : public Layer<T> {
     }
     // Convolution forward computation
     for (int i = 0; i < num_bottoms_; i++) {
+      LOG(INFO) << "Calling dnnmarkConvolutionForward";
+      LOG(INFO) << "workspace size" << fwd_workspace_size_;
       dnnmarkConvolutionForward(
                 *(p_dnnmark_->GetHandle()),
                 p_dnnmark_->getRunMode(), layer_id_,
