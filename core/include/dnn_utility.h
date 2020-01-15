@@ -893,7 +893,7 @@ class ConvAlgo {
                        const DataTensor<T> &top_desc) {
     int max_algos = 3;
     cudnnConvolutionBwdDataAlgoPerf_t perf_results[max_algos];
-    int *returned_algo_count;
+    int returned_algo_count;
     CUDNN_CALL(cudnnFindConvolutionBackwardDataAlgorithm(
                mode == COMPOSED ?
                handle.GetCudnn(idx) : handle.GetCudnn(),
@@ -901,9 +901,9 @@ class ConvAlgo {
                top_desc.Get(),
                conv_desc.GetConv(),
                bottom_desc.Get(),
-               1, returned_algo_count,
+               1, &returned_algo_count,
                perf_results));
-    if (*returned_algo_count > 0) {
+    if (returned_algo_count > 0) {
       bwd_data_algo_ = perf_results->algo;
     } else {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
