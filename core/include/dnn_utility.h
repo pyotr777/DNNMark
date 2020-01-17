@@ -682,6 +682,7 @@ class ConvAlgo {
     const int max_algos = 3;
     cudnnConvolutionFwdAlgoPerf_t perf_results[max_algos];
     int returned_algo_count;
+    LOG(INFO) << "Calling cudnnFindConvolutionForwardAlgorithm().\n";
     CUDNN_CALL(cudnnFindConvolutionForwardAlgorithm(
                mode == COMPOSED ?
                handle.GetCudnn(idx) : handle.GetCudnn(),
