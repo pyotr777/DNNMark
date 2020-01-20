@@ -112,8 +112,7 @@ def GPUisFree(i, c=1, d=1, mode="dmon", debug=False):
                 if debug:
                     print("Exception on {} : {}".format(pid, e))
                 del running_pids[i]
-    if gpu_free:
-        print("free")
+                print("free")
     return gpu_free
 
 
@@ -155,6 +154,23 @@ def getCPUinfo():
     return output
 
 
+# Return hostname
+# Returns CPU models and frequencies
+def getHostname():
+    command = "hostname"
+    proc = subprocess.Popen(command,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            bufsize=1,
+                            shell=False)
+    output = ""
+    for line in iter(proc.stdout.readline, b''):
+        line = line.decode('utf-8').strip("\n")
+        output += line
+        continue
+    return output
+
+
 # Returns number of a free GPU.
 # gpus  -- GPU number or list of numbers.
 # start -- number of GPU to start with.
@@ -181,7 +197,7 @@ def runTaskContainer(task, gpu, verbose=False):
     f = open(task["logfile"], "a")
     # f.write("gpu"+str(gpu)+"\n")
     command = task["comm"]
-    #command = "python --version"
+    # command = "python --version"
     # IMPORTANT: remote double spaces or they will become empty arguments!
     command = re.sub(' \s+', ' ', command).strip()
     command = "NV_GPU=" + str(gpu) + " ./run_container.sh " + command

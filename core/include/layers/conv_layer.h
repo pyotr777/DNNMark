@@ -240,12 +240,10 @@ class ConvolutionLayer : public Layer<T> {
       }
       LOG(INFO) << "Set cuDNN recommended BWD conv. Filter algo to " << conv_algo_.GetBwdFilterAlgo();
     } else if (conv_param_.algo_ == "auto" ) {
-        // Query cuDNN for the fastest BWD convolution filter gradient algorithm.
-        // Use cuDNN function cudnnFindConvolutionBackwardFilterAlgorithm (called inside FindBwdFilterAlgo())
+      // Query cuDNN for the fastest BWD convolution filter gradient algorithm.
+      // Use cuDNN function cudnnFindConvolutionBackwardFilterAlgorithm (called inside FindBwdFilterAlgo())
 
-        // NOTE: The below code selects algorithms prior to run, during setup phase.
-        // FindBwdFilterAlgoEx must be called during run phase through dnn_wrapper.
-        // conv_algo_.SetBwdFilterAlgo("autoex");
+      // NOTE: The below code selects algorithms prior to run, during setup phase.
       LOG(INFO) << "Performing fastest BWD conv. filter algo search.\n";
       if (conv_param_.workspace_size <=1 ) {
         // No workspace size limit provided
