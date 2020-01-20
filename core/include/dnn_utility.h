@@ -608,21 +608,21 @@ class ConvAlgo {
     } else if (!algo.compare("winograd")) {
       fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD;
     } else if (algo != "") {
-      if (stoi(algo) == 0) {
+      if (algo =="0") {
         fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
-      } else if (stoi(algo) == 1) {
+      } else if (algo =="1") {
         fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
-      } else if (stoi(algo) == 2) {
+      } else if (algo =="2") {
         fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_GEMM;
-      } else if (stoi(algo) == 3) {
+      } else if (algo =="3") {
         fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_DIRECT;
-      } else if (stoi(algo) == 4) {
+      } else if (algo =="4") {
         fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_FFT;
-      } else if (stoi(algo) == 5) {
+      } else if (algo =="5") {
         fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING;
-      } else if (stoi(algo) == 6) {
+      } else if (algo =="6") {
         fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD;
-      } else if (stoi(algo) == 7) {
+      } else if (algo =="7") {
         fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED;
       } else {
         std::cerr << "Fwd Convolution Algorithm not recognized:" << algo << "\n";
@@ -709,19 +709,19 @@ class ConvAlgo {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT;
     } else if (!algo.compare("winograd")) {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD;
-    } else if (stoi(algo) == 0) {
+    } else if (algo =="0") {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
-    } else if (stoi(algo) == 1) {
+    } else if (algo =="1") {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
-    } else if (stoi(algo) == 2) {
+    } else if (algo =="2") {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT;
-    } else if (stoi(algo) == 3) {
+    } else if (algo =="3") {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3;
-    } else if (stoi(algo) == 4) {
+    } else if (algo =="4") {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD;
-    } else if (stoi(algo) == 5) {
+    } else if (algo =="5") {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED;
-    } else if (stoi(algo) == 6) {
+    } else if (algo =="6") {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING;
     } else if (algo!="") {
       std::cerr << "BWD Convolution Filter Algorithm not recognized: "<< algo << "\n";
@@ -798,26 +798,28 @@ class ConvAlgo {
                          const DataTensor<T> &bottom_desc,
                          const ConvolutionDesc<T> &conv_desc,
                          const DataTensor<T> &top_desc,
-                         const void *w,
+                         const void *x,
                          const void *dy,
-                         void       *dx,
+                         void       *dw,
                          void       *workSpace,
                          size_t     workspace_size)
   {
+    LOG(INFO) << "In FindBwdFilterAlgoEx.";
     int max_algos = 3;
     cudnnConvolutionBwdFilterAlgoPerf_t perf_results[max_algos];
-    int *returned_algo_count;
+    int returned_algo_count;
     CUDNN_CALL(cudnnFindConvolutionBackwardFilterAlgorithmEx(
                mode == COMPOSED ?
                handle.GetCudnn(idx) : handle.GetCudnn(),
-               bottom_desc.Get(), w,
+               bottom_desc.Get(), x,
                top_desc.Get(), dy,
                conv_desc.GetConv(),
-               conv_desc.GetFilter(), dx,
-               1, returned_algo_count,
+               conv_desc.GetFilter(), dw,
+               1, &returned_algo_count,
                perf_results,
                workSpace, workspace_size));
-    if (*returned_algo_count > 0) {
+    LOG(INFO) << "Algo count " << returned_algo_count << " algo:" << perf_results->algo;
+    if (returned_algo_count > 0) {
       bwd_filter_algo_ = perf_results->algo;
     } else {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
@@ -835,17 +837,17 @@ class ConvAlgo {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT;
     } else if (!algo.compare("winograd")) {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD;
-    } else if (stoi(algo) == 0) {
+    } else if (algo =="0") {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
-    } else if (stoi(algo) == 1) {
+    } else if (algo =="1") {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
-    } else if (stoi(algo) == 2) {
+    } else if (algo =="2") {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT;
-    } else if (stoi(algo) == 3) {
+    } else if (algo =="3") {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING;
-    } else if (stoi(algo) == 4) {
+    } else if (algo =="4") {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD;
-    } else if (stoi(algo) == 5) {
+    } else if (algo =="5") {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED;
     } else if (!algo.compare("winograd_nonfused")) {
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED;
