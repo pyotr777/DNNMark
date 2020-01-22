@@ -13,7 +13,7 @@ import math
 import argparse
 
 # Set GPU range
-gpus = [6]
+gpus = [5]
 
 # Change hostname
 host = multigpuexec.getHostname()  # "mouse.cont"
@@ -38,6 +38,7 @@ parser.add_argument(
     "--template", default=default_template, help="Configuration file template with .dnntemplate extension."
 )
 parser.add_argument("--benchmark", default=default_benchmark, help="Benchmark to use the configuration file with.")
+parser.add_argument("--warmup", action="store_true", help="Run warmup before measuring time.")
 args = parser.parse_args()
 
 if args.host:
@@ -67,7 +68,10 @@ configs = [
 algo_configs = {
     # "all-workspace10MB":
     #     "--algofwd cudnn --algo cudnn --algod cudnn --fwd_pref specify_workspace_limit --bwd_filter_pref specify_workspace_limit --bwd_data_pref specify_workspace_limit --workspace 10000000"
-    "all-auto": "--algofwd auto --algo auto --algod auto"
+    # "all-auto": "--algofwd auto --algo auto --algod auto",
+    "workspace1MB": "--algofwd auto --algo auto --algod auto --workspace 1000000",
+    # "workspace10MB": "--algofwd auto --algo auto --algod auto --workspace 10000000",
+    # "workspace100MB": "--algofwd auto --algo auto --algod auto --workspace 100000000",
 }
 
 # Use today's date or change to existing logs directory name
@@ -97,6 +101,9 @@ if "/" in benchmark:
 
 if template != default_template:
     command += " --template {}".format(template)
+
+if args.warmup:
+    command += " --warmup 1"
 
 logroot = "/host/DNNMark/logs/"
 if args.dir:
@@ -170,7 +177,7 @@ for run in range(profile_runs):
 print("Have", len(tasks), "tasks")
 gpu = -1
 for i in range(0, len(tasks)):
-    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu + 1, c=4, d=1, nvsmi=tasks[i]["nvsmi"], mode="dmon", debug=False)
+    gpu = multigpuexec.getNextFreeGPU(gpus, start=gpu + 1, c=2, d=1, nvsmi=tasks[i]["nvsmi"], mode="dmon", debug=False)
     gpu_info = multigpuexec.getGPUinfo(gpu, query="name,memory.total,memory.free,pstate,clocks.mem,clocks.sm")
     cpu_info = multigpuexec.getCPUinfo()
     f = open(tasks[i]["logfile"], "w+")
