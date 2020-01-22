@@ -174,6 +174,7 @@ inline void dnnmarkConvolutionBackwardFilter(const Handle &handle,
   //   LOG(INFO) << "cuDNN AUTO selected conv. bwd filter alg. to " << conv_algo->GetBwdFilterAlgo();
   //   std::cout << "cuDNN AUTO selected bwd convolution filter algorithm:"<<conv_algo->GetBwdFilterAlgo()<<"\n";
   // }
+  LOG(INFO) << "Calling cudnnConvolutionBackwardFilter with workspace " << workspace_in_bytes << " and algo " << conv_algo->GetBwdFilterAlgo();
   CUDNN_CALL(cudnnConvolutionBackwardFilter(
              mode == COMPOSED ?
              handle.GetCudnn(idx) : handle.GetCudnn(),

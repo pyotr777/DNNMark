@@ -818,11 +818,13 @@ class ConvAlgo {
                1, &returned_algo_count,
                perf_results,
                workSpace, workspace_size));
-    LOG(INFO) << "Algo count " << returned_algo_count << " algo:" << perf_results->algo;
+
     if (returned_algo_count > 0) {
       bwd_filter_algo_ = perf_results->algo;
+      LOG(INFO) << "Algo count " << returned_algo_count << " algo:" << perf_results->algo;
     } else {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
+      LOG(INFO) << "No algo returned. Using Algo 0.";
     }
   }
 

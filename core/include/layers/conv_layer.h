@@ -217,6 +217,17 @@ class ConvolutionLayer : public Layer<T> {
     }
 
 
+
+    // Allocate workspace in case workspace_size provided
+    if (conv_param_.workspace_size > 0 ) {
+      LOG(INFO) << "Allocating BWD Filter workspace of size " << conv_param_.workspace_size;
+      bwd_filter_workspace_id_ = data_manager_->
+                                 CreateData(conv_param_.workspace_size);
+      bwd_filter_workspace_ = data_manager_->GetData(bwd_filter_workspace_id_);
+      has_bwd_filter_workspace_ = true;
+      bwd_filter_workspace_size_ = conv_param_.workspace_size;
+    }
+
     // Set convolution backward filter/weights algorithm
     if (conv_param_.algo_ == "cudnn") {
       // Chainer default behaviour
@@ -254,7 +265,7 @@ class ConvolutionLayer : public Layer<T> {
                                          top_desc_);
       } else {
         // Search for fastest algorithms using Find...AlgoEX() function
-        LOG(INFO) << "Provided workspace size " << conv_param_.workspace_size;
+        LOG(INFO) << (has_bwd_filter_workspace_? "Has BWD filter workspace. " : "No BWD filter workspace.") << "Provided workspace size " << conv_param_.workspace_size;
 
         conv_algo_.FindBwdFilterAlgoEx(*(p_dnnmark_->GetHandle()),
                                          p_dnnmark_->getRunMode(), layer_id_,
@@ -282,18 +293,23 @@ class ConvolutionLayer : public Layer<T> {
 
     LOG(INFO) << "BWD conv. Filter algo: " << conv_algo_.GetBwdFilterAlgo();
 
-    // Allocate workspace
-    conv_algo_.GetBwdFilterWorkspaceSize(*(p_dnnmark_->GetHandle()),
-                                         p_dnnmark_->getRunMode(), layer_id_,
-                                         bottom_desc_,
-                                         top_desc_,
-                                         desc_,
-                                         &bwd_filter_workspace_size_);
-    if (bwd_filter_workspace_size_ > 0) {
-      bwd_filter_workspace_id_ = data_manager_->
-                                 CreateData(bwd_filter_workspace_size_);
-      bwd_filter_workspace_ = data_manager_->GetData(bwd_filter_workspace_id_);
-      has_bwd_filter_workspace_ = true;
+    // Allocate workspace if it has not been allocated yet
+    if (conv_param_.workspace_size <= 1 ) {
+      conv_algo_.GetBwdFilterWorkspaceSize(*(p_dnnmark_->GetHandle()),
+                                           p_dnnmark_->getRunMode(), layer_id_,
+                                           bottom_desc_,
+                                           top_desc_,
+                                           desc_,
+                                           &bwd_filter_workspace_size_);
+      LOG(INFO) << "BWD Filter workspace size: " << bwd_filter_workspace_size_;
+      if (bwd_filter_workspace_size_ > 0) {
+        bwd_filter_workspace_id_ = data_manager_->
+                                   CreateData(bwd_filter_workspace_size_);
+        bwd_filter_workspace_ = data_manager_->GetData(bwd_filter_workspace_id_);
+        has_bwd_filter_workspace_ = true;
+      }
+    } else {
+      LOG(INFO) << "BWD Filter workspace size: " << bwd_filter_workspace_size_;
     }
 
 #ifdef NVIDIA_CUDNN
@@ -408,6 +424,9 @@ class ConvolutionLayer : public Layer<T> {
         bottoms_[i]->Filler();
       }
     }
+
+    LOG(INFO) << "Performnig BWD convolution. " << (has_bwd_filter_workspace_? "Has BWD filter workspace. " : "No BWD filter workspace.") << " Provided workspace size " << bwd_filter_workspace_size_;
+
 
     // Convolution backward computation
     for (int i = 0; i < num_tops_; i++) {
