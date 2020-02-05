@@ -815,13 +815,16 @@ class ConvAlgo {
                top_desc.Get(), dy,
                conv_desc.GetConv(),
                conv_desc.GetFilter(), dw,
-               1, &returned_algo_count,
+               max_algos, &returned_algo_count,
                perf_results,
                workSpace, workspace_size));
 
     if (returned_algo_count > 0) {
-      bwd_filter_algo_ = perf_results->algo;
-      LOG(INFO) << "Algo count " << returned_algo_count << " algo:" << perf_results->algo;
+      bwd_filter_algo_ = perf_results[0].algo;
+      LOG(INFO) << "Algo count " << returned_algo_count << ". Fastest algos:"; // << perf_results->algo;
+      for (int ii=0; ii < returned_algo_count; ii++) {
+        LOG(INFO) << "Algo " << perf_results[ii].algo << " : " << perf_results[ii].time << "ms : " << perf_results[ii].memory << "B";
+      }
     } else {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
       LOG(INFO) << "No algo returned. Using Algo 0.";

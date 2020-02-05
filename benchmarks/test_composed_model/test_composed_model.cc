@@ -4,6 +4,7 @@
 #include "dnnmark.h"
 #include "usage.h"
 #include <gflags/gflags.h>
+#include "simpleCUBLAS.h"
 
 using namespace dnnmark;
 
@@ -13,6 +14,16 @@ int main(int argc, char **argv) {
   LOG(INFO) << "DNNMark suites: Start...";
   DNNMark<TestType> dnnmark(3);
   dnnmark.ParseAllConfig(FLAGS_config);
+
+  if (FLAGS_warmup) {
+    LOG(INFO) << "Warming up before initialisation...";
+    for (int i = 0; i < 5; i++) {
+      int status = call_sgemm(0, 512);
+      if (status != 0) {
+        fprintf(stderr, "Error status: %d\n",status);
+      }
+    }
+  }
   dnnmark.Initialize();
   if (FLAGS_warmup) {
     for (int i = 0; i < 5; i++) {

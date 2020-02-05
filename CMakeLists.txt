@@ -10,19 +10,19 @@ project(dnnmark)
 # Set path of sub-directory with other cmake file
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
-# Set 
+# Set
 option (CUDA_ENABLE "Only run benchmark on Nvidia device" OFF)
 option (HCC_ENABLE "Only run benchmark on AMD device" OFF)
 
-# Locate CUDA package 
+# Locate CUDA package
 find_package(CUDA)
 
 # Detect GPU device
 if(CUDA_FOUND AND ${CUDA_ENABLE})
   try_run(RUN_RESULT_VAR COMPILE_RESULT_VAR
-    ${CMAKE_BINARY_DIR} 
+    ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/tools/has_cuda_gpu.c
-    CMAKE_FLAGS 
+    CMAKE_FLAGS
       -DINCLUDE_DIRECTORIES:STRING=${CUDA_TOOLKIT_INCLUDE}
       -DLINK_LIBRARIES:STRING=${CUDA_CUDART_LIBRARY}
     COMPILE_OUTPUT_VARIABLE COMPILE_OUTPUT_VAR
@@ -59,7 +59,7 @@ if (CUDA_FOUND AND ${CUDA_ENABLE})
 
   #include the built-in findCUDA cmake scripts
   include(FindCUDA)
-  
+
   # Stop if CUDNN_ROOT is not defined
   if (NOT DEFINED CUDNN_ROOT)
     message(FATAL_ERROR "Path to CuDNN is not defined")
@@ -84,20 +84,24 @@ if (CUDA_FOUND AND ${CUDA_ENABLE})
   if (enable-cudnnv6)
     add_definitions(-DCUDNNV6)
   endif()
-  
+
   # Set path of DNNMark include files
   set(DNNMARK_INCLUDES ${CMAKE_SOURCE_DIR}/core/include)
-  include_directories(${DNNMARK_INCLUDES}) 
-  
+  include_directories(${DNNMARK_INCLUDES})
+
   # Set path of DNNMark layer files
   set(DNNMARK_LAYERS ${DNNMARK_INCLUDES}/layers)
-  include_directories(${DNNMARK_LAYERS}) 
-  
+  include_directories(${DNNMARK_LAYERS})
+
+  # Set path of DNNMark layer files
+  set(DNNMARK_COMMON ${DNNMARK_INCLUDES}/Common)
+  include_directories(${DNNMARK_COMMON})
+
   # Set source files
   file(GLOB_RECURSE DNNMARK_SOURCES RELATIVE ${CMAKE_SOURCE_DIR} core/src/*.cc)
   message(STATUS "DNNMark Source files: " ${DNNMARK_SOURCES})
 
-  # Set NVCC flags  
+  # Set NVCC flags
   set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -O3 -gencode arch=compute_50,code=sm_50)
 
   # Find cuda libraries
@@ -116,10 +120,10 @@ if (CUDA_FOUND AND ${CUDA_ENABLE})
   add_dependencies(${PROJECT_NAME} ${CUDA_RAND_LIBRARY})
   add_dependencies(${PROJECT_NAME} ${CUDA_LIBRARIES})
   add_dependencies(${PROJECT_NAME} ${GLOG_LIBRARY})
-  target_link_libraries(${PROJECT_NAME} 
+  target_link_libraries(${PROJECT_NAME}
                         ${CUDNN_LIBRARY}
                         ${CUDA_BLAS_LIBRARY}
-                        ${CUDA_RAND_LIBRARY} 
+                        ${CUDA_RAND_LIBRARY}
                         ${CUDA_LIBRARIES}
                         ${GLOG_LIBRARY}
                         m)
@@ -127,11 +131,11 @@ if (CUDA_FOUND AND ${CUDA_ENABLE})
 elseif(HCC_FOUND AND ${HCC_ENABLE})
 
   # Cover the include and linkage requirement here
-  execute_process(COMMAND hcc-config  --cxxflags 
+  execute_process(COMMAND hcc-config  --cxxflags
                   OUTPUT_VARIABLE HCC_COMPILE_FLAGS)
   set(COMPILER_FLAGS "${COMPILER_FLAGS} ${HCC_COMPILE_FLAGS}")
 
-  execute_process(COMMAND hcc-config  --ldflags 
+  execute_process(COMMAND hcc-config  --ldflags
                   OUTPUT_VARIABLE HCC_LINKER_FLAGS)
   set(LINKER_FLAGS "${LINKER_FLAGS} ${HCC_LINKER_FLAGS}")
 
@@ -170,12 +174,12 @@ elseif(HCC_FOUND AND ${HCC_ENABLE})
 
   # Set path of DNNMark include files
   set(DNNMARK_INCLUDES ${CMAKE_SOURCE_DIR}/core/include)
-  include_directories(${DNNMARK_INCLUDES}) 
-  
+  include_directories(${DNNMARK_INCLUDES})
+
   # Set path of DNNMark layer files
   set(DNNMARK_LAYERS ${DNNMARK_INCLUDES}/layers)
-  include_directories(${DNNMARK_LAYERS}) 
-  
+  include_directories(${DNNMARK_LAYERS})
+
   # Set source files
   file(GLOB_RECURSE DNNMARK_SOURCES RELATIVE ${CMAKE_SOURCE_DIR} core/src/*.cc)
   message(STATUS "DNNMark Source files: " ${DNNMARK_SOURCES})
@@ -197,7 +201,7 @@ elseif(HCC_FOUND AND ${HCC_ENABLE})
   # Add DNNMark library
   add_library(${PROJECT_NAME} SHARED ${DNNMARK_SOURCES})
   add_dependencies(${PROJECT_NAME} ${MIOPEN_LIBRARY})
-  target_link_libraries(${PROJECT_NAME} 
+  target_link_libraries(${PROJECT_NAME}
                         ${ROCBLAS_LIBRARY}
                         ${MIOPEN_LIBRARY}
                         ${HIP_HCC}
