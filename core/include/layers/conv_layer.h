@@ -185,7 +185,7 @@ class ConvolutionLayer : public Layer<T> {
                     conv_param_.workspace_size);
         LOG(INFO) << "Provided workspace size " << conv_param_.workspace_size;
       }
-      LOG(INFO) << "Set cuDNN recommended FWD conv. algo to " << conv_algo_.GetFwdAlgo();
+      LOG(INFO) << "Set cuDNN recommended FWD conv. algo: " << conv_algo_.GetFwdAlgo();
     } else if (conv_param_.algofwd_ == "auto" ) {
       // Query cuDNN for the fastest FWD convolution algorithm.
       // Use cuDNN function cudnnFindConvolutionBackwardFilterAlgorithm (called inside FindBwdFilterAlgo())
@@ -197,6 +197,16 @@ class ConvolutionLayer : public Layer<T> {
                                        desc_,
                                        top_desc_);
       LOG(INFO) << "cuDNN fastest FWD conv. algo:" << conv_algo_.GetFwdAlgo();
+    } else if (conv_param_.algofwd_ == "cudnnv7" ) {
+      // Query cuDNN for FWD convolution algorithms.
+      // Uses cuDNN function cudnnGetConvolutionForwardAlgorithm_v7 (called inside GetFwdAlgo_v7())
+      LOG(INFO) << "Get fastest FWD conv. algorithms.\n";
+      conv_algo_.GetFwdAlgo_v7(*(p_dnnmark_->GetHandle()),
+                                       p_dnnmark_->getRunMode(), layer_id_,
+                                       bottom_desc_,
+                                       desc_,
+                                       top_desc_);
+      LOG(INFO) << "cuDNN recommended FWD conv. algo: " << conv_algo_.GetFwdAlgo();
     } else if (conv_param_.algofwd_  != "" ) {
       conv_algo_.SetFwdAlgo(conv_param_.algofwd_);
     }

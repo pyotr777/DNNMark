@@ -675,6 +675,33 @@ class ConvAlgo {
                workspace_size,
                &fwd_algo_));
   }
+
+
+  void GetFwdAlgo_v7(const Handle &handle, RunMode mode, int idx,
+                   const DataTensor<T> &bottom_desc,
+                   const ConvolutionDesc<T> &conv_desc,
+                   const DataTensor<T> &top_desc) {
+    const int max_algos = 3;
+    cudnnConvolutionFwdAlgoPerf_t perf_results[max_algos];
+    int returned_algo_count;
+    LOG(INFO) << "Calling cudnnGetConvolutionForwardAlgorithm_v7().\n";
+    CUDNN_CALL(cudnnGetConvolutionForwardAlgorithm_v7(
+               mode == COMPOSED ?
+               handle.GetCudnn(idx) : handle.GetCudnn(),
+               bottom_desc.Get(),
+               conv_desc.GetFilter(),
+               conv_desc.GetConv(),
+               top_desc.Get(),
+               max_algos, &returned_algo_count,
+               perf_results));
+    if (returned_algo_count > 0) {
+      fwd_algo_ = perf_results->algo;
+    } else {
+      fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+    }
+  }
+
+
   void FindFwdAlgo(const Handle &handle, RunMode mode, int idx,
                    const DataTensor<T> &bottom_desc,
                    const ConvolutionDesc<T> &conv_desc,

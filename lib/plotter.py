@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Library of plotting functions
 
@@ -8,8 +8,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import numpy as np
+from matplotlib.ticker import MultipleLocator
 
-def plotHeatMap(df,title=None,cmap=None,ax=None,zrange=None, format=".3f"):
+
+def plotHeatMap(df, title=None, cmap=None, ax=None, zrange=None, format=".3f"):
     if ax is None:
         fig,ax = plt.subplots()
     if cmap is None:
