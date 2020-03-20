@@ -13,7 +13,7 @@ import math
 import argparse
 
 # Set GPU range
-gpus = [6]
+gpus = [0]
 
 # Change hostname
 host = multigpuexec.getHostname()  # "mouse.cont"
@@ -38,6 +38,7 @@ parser.add_argument(
     "--template", default=default_template, help="Configuration file template with .dnntemplate extension."
 )
 parser.add_argument("--benchmark", default=default_benchmark, help="Benchmark to use the configuration file with.")
+parser.add_argument("--debug", action="store_true", default=False, help="Run DNNMark with --debuginfo option.")
 parser.add_argument("--warmup", action="store_true", help="Run warmup before measuring time.")
 args = parser.parse_args()
 
@@ -56,7 +57,7 @@ profile_runs = args.profileruns
 
 # Set mini-batch sizes
 # batchsizes = [5, 6, 7, 8, 9, 10, 12, 15] + list(range(20, 501, 10))
-batchsizes = [5, 10, 15, 80, 200, 300, 500]
+batchsizes = [5, 6, 7, 8, 9, 10, 12, 15] + list(range(20, 501, 10))
 
 # VGG model convolution shapes
 configs = [
@@ -78,15 +79,13 @@ if args.date:
     print("Using date {}".format(date))
 
 with_memory = False
-debuginfo = False
 debuginfo_option = ""
-if debuginfo:
+if args.debug:
     debuginfo_option = " --debug"
 tasks = []
 
 # Remove for only 1 iteration
-# datasetsize = 50000
-datasetsize = 0
+datasetsize = 50000
 
 if benchmark != default_benchmark:
     command = "./run_dnnmark_template.sh -b {}".format(benchmark)
@@ -100,7 +99,7 @@ if template != default_template:
     command += " --template {}".format(template)
 
 if args.warmup:
-    command += " --warmup 1"
+    command += " --warmup 10"
 
 logroot = "/host/DNNMark/logs/"
 if args.dir:

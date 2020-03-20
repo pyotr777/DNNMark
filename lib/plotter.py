@@ -72,3 +72,21 @@ def testColorMap(cmap):
     ax.set_title("N bins: %s" % 256)
     fig.colorbar(im, ax=ax)
     plt.show()
+
+# Plot grid on the axis ax
+def drawGrid(ax, xstep=50, ystep=None):
+    ax.grid(ls=":", alpha=.6)
+#     ax.set_ylabel("time (s)")
+    ax.set_xlim(0, None)
+    ax.set_ylim(0, None)
+    minorLocatorX = MultipleLocator(xstep / 5)
+    majorLocatorX = MultipleLocator(xstep)
+    ax.xaxis.set_major_locator(majorLocatorX)
+    ax.xaxis.set_minor_locator(minorLocatorX)
+    if ystep is not None:
+        minorLocatorY = MultipleLocator(ystep / 5.)
+        majorLocatorY = MultipleLocator(ystep)
+        ax.yaxis.set_minor_locator(minorLocatorY)
+        ax.yaxis.set_major_locator(majorLocatorY)
+    ax.grid(which='minor', linestyle=':', linewidth=.5, alpha=.5)
+    ax.grid(which="major", ls=":", alpha=0.25, color="black")
