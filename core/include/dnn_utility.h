@@ -725,6 +725,8 @@ class ConvAlgo {
       fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
     }
   }
+
+
   void SetBwdFilterAlgo(cudnnConvolutionBwdFilterAlgo_t bwd_filter_algo) {
     bwd_filter_algo_ = bwd_filter_algo;
   }
@@ -796,6 +798,33 @@ class ConvAlgo {
                 workspace_size,
                 &bwd_filter_algo_));
   }
+
+
+void GetdBwdFilterAlgo_v7(const Handle &handle, RunMode mode, int idx,
+                         const DataTensor<T> &bottom_desc,
+                         const ConvolutionDesc<T> &conv_desc,
+                         const DataTensor<T> &top_desc) {
+    int max_algos = 3;
+    cudnnConvolutionBwdFilterAlgoPerf_t perf_results[max_algos];
+    int returned_algo_count;
+    LOG(INFO) << "Calling cudnnGetConvolutionBackwardFilterAlgorithm_v7().\n";
+    CUDNN_CALL(cudnnGetConvolutionBackwardFilterAlgorithm_v7(
+               mode == COMPOSED ?
+               handle.GetCudnn(idx) : handle.GetCudnn(),
+               bottom_desc.Get(),
+               top_desc.Get(),
+               conv_desc.GetConv(),
+               conv_desc.GetFilter(),
+               max_algos, &returned_algo_count,
+               perf_results));
+    cudnnConvolutionBwdFilterAlgo_t algo = static_cast<cudnnConvolutionBwdFilterAlgo_t>(perf_results->algo);
+    if (returned_algo_count > 0) {
+      bwd_filter_algo_ = perf_results->algo;
+    } else {
+      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
+    }
+  }
+
 
   void FindBwdFilterAlgo(const Handle &handle, RunMode mode, int idx,
                          const DataTensor<T> &bottom_desc,
@@ -921,6 +950,32 @@ class ConvAlgo {
                 workspace_size,
                 &bwd_data_algo_));
   }
+
+
+void GetBwdDataAlgo_v7(const Handle &handle, RunMode mode, int idx,
+                       const DataTensor<T> &bottom_desc,
+                       const ConvolutionDesc<T> &conv_desc,
+                       const DataTensor<T> &top_desc) {
+    int max_algos = 3;
+    cudnnConvolutionBwdDataAlgoPerf_t perf_results[max_algos];
+    int returned_algo_count;
+    LOG(INFO) << "Calling cudnnGetConvolutionBackwardDataAlgorithm_v7().\n";
+    CUDNN_CALL(cudnnGetConvolutionBackwardDataAlgorithm_v7(
+               mode == COMPOSED ?
+               handle.GetCudnn(idx) : handle.GetCudnn(),
+               conv_desc.GetFilter(),
+               top_desc.Get(),
+               conv_desc.GetConv(),
+               bottom_desc.Get(),
+               1, &returned_algo_count,
+               perf_results));
+    if (returned_algo_count > 0) {
+      bwd_data_algo_ = perf_results->algo;
+    } else {
+      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+    }
+  }
+
 
   void FindBwdDataAlgo(const Handle &handle, RunMode mode, int idx,
                        const DataTensor<T> &bottom_desc,

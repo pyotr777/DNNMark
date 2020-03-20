@@ -260,6 +260,17 @@ class ConvolutionLayer : public Layer<T> {
         LOG(INFO) << "Provided workspace size " << conv_param_.workspace_size;
       }
       LOG(INFO) << "Set cuDNN recommended BWD conv. Filter algo to " << conv_algo_.GetBwdFilterAlgo();
+    } else if (conv_param_.algo_ == "cudnnv7" ) {
+      // Query cuDNN for BWD convolution filter gradient algorithm.
+      // Use cuDNN function cudnnGetConvolutionBackwardFilterAlgorithm_v7
+
+      LOG(INFO) << "Get fastest BWD conv. filter algorithms.\n";
+      conv_algo_.GetdBwdFilterAlgo_v7(*(p_dnnmark_->GetHandle()),
+                                         p_dnnmark_->getRunMode(), layer_id_,
+                                         bottom_desc_,
+                                         desc_,
+                                         top_desc_);
+      LOG(INFO) << "cuDNN recommended BWD conv. filter algo:" << conv_algo_.GetBwdFilterAlgo();
     } else if (conv_param_.algo_ == "auto" ) {
       // Query cuDNN for the fastest BWD convolution filter gradient algorithm.
       // Use cuDNN function cudnnFindConvolutionBackwardFilterAlgorithm (called inside FindBwdFilterAlgo())
@@ -344,6 +355,17 @@ class ConvolutionLayer : public Layer<T> {
         LOG(INFO) << "Provided workspace size " << conv_param_.workspace_size;
       }
       LOG(INFO) << "Set cuDNN recommended BWD conv. data algo to " << conv_algo_.GetBwdDataAlgo();
+    } else if (conv_param_.algod_ == "cudnnv7" ) {
+        // Query cuDNN for BWD convolution data gradient algorithm.
+        // Use cuDNN function cudnnGetConvolutionBackwardDataAlgorithm_v7 (called inside FindBwdDataAlgo())
+
+        LOG(INFO) << "Get fastest BWD conv. data algorithms.\n";
+        conv_algo_.GetBwdDataAlgo_v7(*(p_dnnmark_->GetHandle()),
+                                         p_dnnmark_->getRunMode(), layer_id_,
+                                         bottom_desc_,
+                                         desc_,
+                                         top_desc_);
+        LOG(INFO) << "cuDNN recommended BWD conv. data algo:" << conv_algo_.GetBwdDataAlgo();
     } else if (conv_param_.algod_ == "auto" ) {
         // Query cuDNN for the fastest BWD convolution data gradient algorithm.
         // Use cuDNN function cudnnFindConvolutionBackwardDataAlgorithm (called inside FindBwdDataAlgo())
