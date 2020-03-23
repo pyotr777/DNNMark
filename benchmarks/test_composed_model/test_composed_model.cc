@@ -24,9 +24,11 @@ int main(int argc, char **argv) {
       }
     }
   }
+
   // Forward
-  dnnmark.Initialize(0);
   LOG(INFO) << "Initialisation FWD";
+  dnnmark.Initialize(0);
+
   if (FLAGS_warmup) {
     for (int i = 0; i < 5; i++) {
       LOG(INFO) << "Warming up...";
@@ -47,15 +49,12 @@ int main(int argc, char **argv) {
   LOG(INFO) << "DNNMark suites: Tear down...";
   dnnmark.TearDown();
 
-  printf("Backward start");
   // Backward
   dnnmark.ParseAllConfig(FLAGS_config);
   LOG(INFO) << "Initialisation BWD";
   dnnmark.Initialize(1);
 
-
   dnnmark.GetTimer()->Clear();
-
   // Real benchmark
   for (int i = 0; i < FLAGS_iterations; i++) {
     LOG(INFO) << "Iteration " << i;

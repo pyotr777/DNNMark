@@ -163,7 +163,8 @@ enum RunMode {
   COMPOSED
 };
 
-
+// Behcmark direction
+// If running only one way, no need to create tensors for the other way.
 enum Direction {
   FORWARD = 0,
   BACKWARD,

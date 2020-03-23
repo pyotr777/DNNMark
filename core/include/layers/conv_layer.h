@@ -114,9 +114,9 @@ class ConvolutionLayer : public Layer<T> {
     Setup(2);
   }
 
-  void Setup(int Direction) {
+  void Setup(int direction) {
     // Direction: 0 - forward, 1 - backward, 2 - forward and backward
-    LOG(INFO) << "Setup parameters of Convolutional layer with direction " << Direction;
+    LOG(INFO) << "Setup parameters of Convolutional layer with direction " << direction;
     // Set up indispensable stuff here
     Layer<T>::Setup();
 
@@ -175,7 +175,7 @@ class ConvolutionLayer : public Layer<T> {
 
     #ifdef NVIDIA_CUDNN
       // Forward pass
-      if (Direction != 1) {
+      if (direction != 1) {
         // Set convolution forward algorithm
         if (conv_param_.algofwd_  == "cudnn" ) {
           if (conv_param_.workspace_size <=1 ) {
@@ -240,7 +240,7 @@ class ConvolutionLayer : public Layer<T> {
     #endif // NVIDIA_CUDNN
 
     // Backward pass
-    if (Direction != 0) {
+    if (direction != 0) {
       #ifdef NVIDIA_CUDNN
         // Allocate workspace in case workspace_size provided
         if (conv_param_.workspace_size > 0 ) {
