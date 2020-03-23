@@ -128,13 +128,6 @@ class ActivationLayer : public Layer<T> {
     }
 
     LOG(INFO) << "Running activation forward";
-    // LOG(INFO) << desc_;
-    LOG(INFO) << DataType<T>::one;
-    // LOG(INFO) << bottom_desc_;
-    LOG(INFO) << bottoms_[0]->Get();
-    LOG(INFO) << DataType<T>::zero;
-    // LOG(INFO) << top_desc_;
-    LOG(INFO) << tops_[0]->Get();
     // activationing forward computation
     ProfilerStart(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "ActFwd");
@@ -153,8 +146,9 @@ class ActivationLayer : public Layer<T> {
 
   }
   void BackwardPropagation() {
-    if (p_dnnmark_->getRunMode() == STANDALONE ||
+    if (p_dnnmark_->getRunMode() == STANDALONE || p_dnnmark_->getDirection() == BACKWARD ||
         !previous_layer_name_.compare("null")) {
+      LOG(INFO) << "Initializing top tensor for Activation layer with " << num_tops_ << " tops, " << num_bottoms_ << " bottoms.";
       // Fill the top and top diff data
       for (int i = 0; i < num_tops_; i++) {
         tops_[i]->Filler();
@@ -165,6 +159,8 @@ class ActivationLayer : public Layer<T> {
         bottoms_[i]->Filler();
       }
     }
+    LOG(INFO) << "Running activation backward with direction " << p_dnnmark_->getDirection();
+    LOG(INFO) << "Is direction BACKWARD? " << (p_dnnmark_->getDirection() == BACKWARD);
 
     // activationing backward computation
     ProfilerStart(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
@@ -179,6 +175,7 @@ class ActivationLayer : public Layer<T> {
              DataType<T>::zero,
              bottom_desc_, bottoms_[i]->Get(), bottom_diffs_[i]->Get());
     }
+    LOG(INFO) << "Activation back propagation done.";
     ProfilerStop(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "ActBwd");
   }

@@ -24,12 +24,13 @@ int main(int argc, char **argv) {
       }
     }
   }
-  dnnmark.Initialize();
+  // Forward
+  dnnmark.Initialize(0);
+  LOG(INFO) << "Initialisation FWD";
   if (FLAGS_warmup) {
     for (int i = 0; i < 5; i++) {
       LOG(INFO) << "Warming up...";
       dnnmark.Forward();
-      dnnmark.Backward();
     }
   }
   dnnmark.GetTimer()->Clear();
@@ -38,13 +39,38 @@ int main(int argc, char **argv) {
   for (int i = 0; i < FLAGS_iterations; i++) {
     LOG(INFO) << "Iteration " << i;
     dnnmark.Forward();
+  }
+  dnnmark.GetTimer()->SumRecords();
+  float run_time = dnnmark.GetTimer()->GetTotalTime();
+  LOG(INFO) << "Forward running time(ms): " << run_time;
+
+  LOG(INFO) << "DNNMark suites: Tear down...";
+  dnnmark.TearDown();
+
+  printf("Backward start");
+  // Backward
+  dnnmark.ParseAllConfig(FLAGS_config);
+  LOG(INFO) << "Initialisation BWD";
+  dnnmark.Initialize(1);
+
+
+  dnnmark.GetTimer()->Clear();
+
+  // Real benchmark
+  for (int i = 0; i < FLAGS_iterations; i++) {
+    LOG(INFO) << "Iteration " << i;
     dnnmark.Backward();
   }
   dnnmark.GetTimer()->SumRecords();
+  LOG(INFO) << "DNNMark suites: Tear down...";
   dnnmark.TearDown();
 
-  LOG(INFO) << "Total running time(ms): " << dnnmark.GetTimer()->GetTotalTime();
-  printf("Total running time(ms): %f\n", dnnmark.GetTimer()->GetTotalTime());
-  LOG(INFO) << "DNNMark suites: Tear down...";
+  LOG(INFO) << "Backward running time(ms): " << dnnmark.GetTimer()->GetTotalTime();
+  run_time += dnnmark.GetTimer()->GetTotalTime();
+
+
+  LOG(INFO) << "Total running time(ms): " << run_time;
+  printf("Total running time(ms): %f\n", run_time);
+
   return 0;
 }

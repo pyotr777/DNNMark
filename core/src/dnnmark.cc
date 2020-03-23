@@ -37,11 +37,11 @@ namespace dnnmark {
 
 template <typename T>
 DNNMark<T>::DNNMark()
-: run_mode_(NONE), handle_(), timer_(), num_layers_added_(0) {}
+: run_mode_(NONE), handle_(), timer_(), num_layers_added_(0), direction(BOTH)  {}
 
 template <typename T>
 DNNMark<T>::DNNMark(int num_layers)
-: run_mode_(NONE), handle_(num_layers), timer_(), num_layers_added_(0) {}
+: run_mode_(NONE), handle_(num_layers), timer_(), num_layers_added_(0), direction(BOTH) {}
 
 template <typename T>
 void DNNMark<T>::SetLayerParams(LayerType layer_type,
@@ -351,17 +351,44 @@ int DNNMark<T>::ParseLayerConfig(const std::string &config_file) {
 }
 
 template <typename T>
-int DNNMark<T>::Initialize() {
+std::string DNNMark<T>::printDirection() {
+  if (direction==BOTH) {
+    return "BOTH";
+  } else if (direction==FORWARD) {
+    return "FORWARD";
+  } else if (direction==BACKWARD) {
+    return "BACKWARD";
+  }
+  return "NONE";
+}
 
+
+template <typename T>
+int DNNMark<T>::Initialize() {
+  return Initialize(BOTH);
+}
+
+
+template <typename T>
+int DNNMark<T>::Initialize(int dir) {
+  return Initialize(static_cast<Direction>(dir));
+}
+
+
+template <typename T>
+int DNNMark<T>::Initialize(Direction dir) {
   // Direction: 0 - forward, 1 - backward, 2 - forward and backward
+  direction = dir;
   LOG(INFO) << "DNNMark: Initialize...";
   LOG(INFO) << "Running mode: " << run_mode_;
+  DNNMark<T>::direction = direction;
+  LOG(INFO) << "Direction: " << printDirection();
   LOG(INFO) << "Number of Layers: " << layers_map_.size();
   for (auto it = layers_map_.begin(); it != layers_map_.end(); it++) {
     LOG(INFO) << "Layer type: " << it->second->getLayerType();
     if (it->second->getLayerType() == CONVOLUTION) {
       LOG(INFO) << "DNNMark: Setup parameters of Convolution layer";
-      std::dynamic_pointer_cast<ConvolutionLayer<T>>(it->second)->Setup();
+      std::dynamic_pointer_cast<ConvolutionLayer<T>>(it->second)->Setup(direction);
     }
     if (it->second->getLayerType() == POOLING) {
       LOG(INFO) << "DNNMark: Setup parameters of Pooling layer";

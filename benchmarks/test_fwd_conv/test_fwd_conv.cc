@@ -9,11 +9,11 @@ int main(int argc, char **argv) {
   INIT_FLAGS(argc, argv);
   INIT_LOG(argv);
   LOG(INFO) << "DNNMark suites: Start...";
-  DNNMark<TestType> dnnmark;
+  DNNMark<TestType> dnnmark(2);
   dnnmark.ParseGeneralConfig(FLAGS_config);
   dnnmark.ParseLayerConfig(FLAGS_config);
   LOG(INFO) << "Start initialization (dnnmark.Initialize)";
-  dnnmark.Initialize(); // 0 - forward, 1 - backward, 2 - forward and backward
+  dnnmark.Initialize(0); // 0 - forward, 1 - backward, 2 - forward and backward
   LOG(INFO) << "initialization done.";
   dnnmark.Forward();
   dnnmark.GetTimer()->SumRecords();
