@@ -12,7 +12,9 @@ int main(int argc, char **argv) {
   DNNMark<TestType> dnnmark;
   dnnmark.ParseGeneralConfig(FLAGS_config);
   dnnmark.ParseLayerConfig(FLAGS_config);
-  dnnmark.Initialize();
+  LOG(INFO) << "Start initialization (dnnmark.Initialize)";
+  dnnmark.Initialize(); // 0 - forward, 1 - backward, 2 - forward and backward
+  LOG(INFO) << "initialization done.";
   dnnmark.Forward();
   dnnmark.GetTimer()->SumRecords();
   dnnmark.TearDown();

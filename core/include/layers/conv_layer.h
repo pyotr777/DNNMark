@@ -110,6 +110,8 @@ class ConvolutionLayer : public Layer<T> {
   ConvolutionParam *getConvParam() { return &conv_param_; }
 
   void Setup() {
+    // Direction: 0 - forward, 1 - backward, 2 - forward and backward
+    LOG(INFO) << "Setup parameters of Convolutional layer with";// direction " << Direction;
     // Set up indispensable stuff here
     Layer<T>::Setup();
 
@@ -147,7 +149,7 @@ class ConvolutionLayer : public Layer<T> {
         top_diffs_.push_back(
           data_manager_->GetData(top_diff_chunk_ids_[i]));
       }
-
+      LOG(INFO) << "Top data memory allocation done.";
     }
 
     // Only one set of weights is considered
@@ -161,248 +163,258 @@ class ConvolutionLayer : public Layer<T> {
     weights_diff_chunk_id_ =
       data_manager_->CreateData(weights_size);
     weights_diff_ = data_manager_->GetData(weights_diff_chunk_id_);
+    LOG(INFO) << "Convolution filters memory allocation done.";
 
     // Fill the weight data
     weights_->Filler();
 
-#ifdef NVIDIA_CUDNN
-    // Set convolution forward algorithm
-    if (conv_param_.algofwd_  == "cudnn" ) {
-      if (conv_param_.workspace_size <=1 ) {
-        conv_algo_.SetFwdAlgo(*(p_dnnmark_->GetHandle()),
-                    p_dnnmark_->getRunMode(), layer_id_,
-                    bottom_desc_,
-                    desc_,
-                    top_desc_,
-                    conv_param_.conv_fwd_pref_);
-      } else {
-        conv_algo_.SetFwdAlgo(*(p_dnnmark_->GetHandle()),
-                    p_dnnmark_->getRunMode(), layer_id_,
-                    bottom_desc_,
-                    desc_,
-                    top_desc_,
-                    conv_param_.conv_fwd_pref_,
-                    conv_param_.workspace_size);
-        LOG(INFO) << "Provided workspace size " << conv_param_.workspace_size;
-      }
-      LOG(INFO) << "Set cuDNN recommended FWD conv. algo: " << conv_algo_.GetFwdAlgo();
-    } else if (conv_param_.algofwd_ == "auto" ) {
-      // Query cuDNN for the fastest FWD convolution algorithm.
-      // Use cuDNN function cudnnFindConvolutionBackwardFilterAlgorithm (called inside FindBwdFilterAlgo())
-      // NOTE: The below code selects algorithms prior to run, during setup phase.
-      LOG(INFO) << "Performing fastest FWD conv. algo search.\n";
-      conv_algo_.FindFwdAlgo(*(p_dnnmark_->GetHandle()),
-                                       p_dnnmark_->getRunMode(), layer_id_,
-                                       bottom_desc_,
-                                       desc_,
-                                       top_desc_);
-      LOG(INFO) << "cuDNN fastest FWD conv. algo:" << conv_algo_.GetFwdAlgo();
-    } else if (conv_param_.algofwd_ == "cudnnv7" ) {
-      // Query cuDNN for FWD convolution algorithms.
-      // Uses cuDNN function cudnnGetConvolutionForwardAlgorithm_v7 (called inside GetFwdAlgo_v7())
-      LOG(INFO) << "Get fastest FWD conv. algorithms.\n";
-      conv_algo_.GetFwdAlgo_v7(*(p_dnnmark_->GetHandle()),
-                                       p_dnnmark_->getRunMode(), layer_id_,
-                                       bottom_desc_,
-                                       desc_,
-                                       top_desc_);
-      LOG(INFO) << "cuDNN recommended FWD conv. algo: " << conv_algo_.GetFwdAlgo();
-    } else if (conv_param_.algofwd_  != "" ) {
-      conv_algo_.SetFwdAlgo(conv_param_.algofwd_);
-    }
-
-    LOG(INFO) << "FWD conv. algo: " << conv_algo_.GetFwdAlgo();
-
-    // Allocate workspace
-    conv_algo_.GetFwdWorkspaceSize(*(p_dnnmark_->GetHandle()),
-                                   p_dnnmark_->getRunMode(), layer_id_,
-                                   bottom_desc_,
-                                   top_desc_,
-                                   desc_,
-                                   &fwd_workspace_size_);
-    if (fwd_workspace_size_ > 0) {
-      fwd_workspace_id_ = data_manager_->CreateData(fwd_workspace_size_);
-      fwd_workspace_ = data_manager_->GetData(fwd_workspace_id_);
-      has_fwd_workspace_ = true;
-    }
-
-
-
-    // Allocate workspace in case workspace_size provided
-    if (conv_param_.workspace_size > 0 ) {
-      LOG(INFO) << "Allocating BWD Filter workspace of size " << conv_param_.workspace_size;
-      bwd_filter_workspace_id_ = data_manager_->
-                                 CreateData(conv_param_.workspace_size);
-      bwd_filter_workspace_ = data_manager_->GetData(bwd_filter_workspace_id_);
-      has_bwd_filter_workspace_ = true;
-      bwd_filter_workspace_size_ = conv_param_.workspace_size;
-    }
-
-    // Set convolution backward filter/weights algorithm
-    if (conv_param_.algo_ == "cudnn") {
-      // Chainer default behaviour
-      // Use cuDNN function cudnnGetConvolutionBackwardFilterAlgorithm
-      if (conv_param_.workspace_size <=1 ) {
-        conv_algo_.SetBwdFilterAlgo(*(p_dnnmark_->GetHandle()),
-                                         p_dnnmark_->getRunMode(), layer_id_,
-                                         bottom_desc_,
-                                         top_desc_,
-                                         desc_,
-                                         conv_param_.conv_bwd_filter_pref_);
-      } else {
-        conv_algo_.SetBwdFilterAlgo(*(p_dnnmark_->GetHandle()),
-                                         p_dnnmark_->getRunMode(), layer_id_,
-                                         bottom_desc_,
-                                         top_desc_,
-                                         desc_,
-                                         conv_param_.conv_bwd_filter_pref_,
-                                         conv_param_.workspace_size);
-        LOG(INFO) << "Provided workspace size " << conv_param_.workspace_size;
-      }
-      LOG(INFO) << "Set cuDNN recommended BWD conv. Filter algo to " << conv_algo_.GetBwdFilterAlgo();
-    } else if (conv_param_.algo_ == "cudnnv7" ) {
-      // Query cuDNN for BWD convolution filter gradient algorithm.
-      // Use cuDNN function cudnnGetConvolutionBackwardFilterAlgorithm_v7
-
-      LOG(INFO) << "Get fastest BWD conv. filter algorithms.\n";
-      conv_algo_.GetdBwdFilterAlgo_v7(*(p_dnnmark_->GetHandle()),
-                                         p_dnnmark_->getRunMode(), layer_id_,
-                                         bottom_desc_,
-                                         desc_,
-                                         top_desc_);
-      LOG(INFO) << "cuDNN recommended BWD conv. filter algo:" << conv_algo_.GetBwdFilterAlgo();
-    } else if (conv_param_.algo_ == "auto" ) {
-      // Query cuDNN for the fastest BWD convolution filter gradient algorithm.
-      // Use cuDNN function cudnnFindConvolutionBackwardFilterAlgorithm (called inside FindBwdFilterAlgo())
-
-      // NOTE: The below code selects algorithms prior to run, during setup phase.
-      LOG(INFO) << "Performing fastest BWD conv. filter algo search.\n";
-      if (conv_param_.workspace_size <=1 ) {
-        // No workspace size limit provided
-        conv_algo_.FindBwdFilterAlgo(*(p_dnnmark_->GetHandle()),
-                                         p_dnnmark_->getRunMode(), layer_id_,
-                                         bottom_desc_,
-                                         desc_,
-                                         top_desc_);
-      } else {
-        // Search for fastest algorithms using Find...AlgoEX() function
-        LOG(INFO) << (has_bwd_filter_workspace_? "Has BWD filter workspace. " : "No BWD filter workspace.") << "Provided workspace size " << conv_param_.workspace_size;
-
-        conv_algo_.FindBwdFilterAlgoEx(*(p_dnnmark_->GetHandle()),
-                                         p_dnnmark_->getRunMode(), layer_id_,
-                                         bottom_desc_,
-                                         desc_,
-                                         top_desc_,
-                                         bottoms_[0]->Get(),
-                                         top_diffs_[0]->Get(),
-                                         weights_diff_->Get(),
-                                         has_bwd_filter_workspace_? bwd_filter_workspace_->Get() : nullptr,
-                                         conv_param_.workspace_size);
-      }
-      LOG(INFO) << "cuDNN fastest BWD conv. filter algo:" << conv_algo_.GetBwdFilterAlgo();
-    } else if (conv_param_.algo_ != "") {
-        // Use default algorithm for now
-        LOG(INFO) << "Setting Bwd Filter algo to " << conv_param_.algo_;
-        conv_algo_.SetBwdFilterAlgo(conv_param_.algo_);
-    }
-#endif
-#ifdef AMD_MIOPEN
-    // Use default algorithm for now
-    LOG(INFO) << "Setting BWD Filter algo to " << conv_param_.algo_;
-    conv_algo_.SetBwdFilterAlgo(conv_param_.algo_);
-#endif
-
-    LOG(INFO) << "BWD conv. Filter algo: " << conv_algo_.GetBwdFilterAlgo();
-
-    // Allocate workspace if it has not been allocated yet
-    if (conv_param_.workspace_size <= 1 ) {
-      conv_algo_.GetBwdFilterWorkspaceSize(*(p_dnnmark_->GetHandle()),
+    #ifdef NVIDIA_CUDNN
+      // Forward pass
+      if (true) {
+        // Set convolution forward algorithm
+        if (conv_param_.algofwd_  == "cudnn" ) {
+          if (conv_param_.workspace_size <=1 ) {
+            conv_algo_.SetFwdAlgo(*(p_dnnmark_->GetHandle()),
+                        p_dnnmark_->getRunMode(), layer_id_,
+                        bottom_desc_,
+                        desc_,
+                        top_desc_,
+                        conv_param_.conv_fwd_pref_);
+          } else {
+            conv_algo_.SetFwdAlgo(*(p_dnnmark_->GetHandle()),
+                        p_dnnmark_->getRunMode(), layer_id_,
+                        bottom_desc_,
+                        desc_,
+                        top_desc_,
+                        conv_param_.conv_fwd_pref_,
+                        conv_param_.workspace_size);
+            LOG(INFO) << "Provided workspace size " << conv_param_.workspace_size;
+          }
+          LOG(INFO) << "Set cuDNN recommended FWD conv. algo: " << conv_algo_.GetFwdAlgo();
+        } else if (conv_param_.algofwd_ == "auto" ) {
+          // Query cuDNN for the fastest FWD convolution algorithm.
+          // Use cuDNN function cudnnFindConvolutionBackwardFilterAlgorithm (called inside FindBwdFilterAlgo())
+          // NOTE: The below code selects algorithms prior to run, during setup phase.
+          LOG(INFO) << "Performing fastest FWD conv. algo search.\n";
+          conv_algo_.FindFwdAlgo(*(p_dnnmark_->GetHandle()),
                                            p_dnnmark_->getRunMode(), layer_id_,
                                            bottom_desc_,
-                                           top_desc_,
                                            desc_,
-                                           &bwd_filter_workspace_size_);
-      LOG(INFO) << "BWD Filter workspace size: " << bwd_filter_workspace_size_;
-      if (bwd_filter_workspace_size_ > 0) {
-        bwd_filter_workspace_id_ = data_manager_->
-                                   CreateData(bwd_filter_workspace_size_);
-        bwd_filter_workspace_ = data_manager_->GetData(bwd_filter_workspace_id_);
-        has_bwd_filter_workspace_ = true;
-      }
-    } else {
-      LOG(INFO) << "BWD Filter workspace size: " << bwd_filter_workspace_size_;
-    }
+                                           top_desc_);
+          LOG(INFO) << "cuDNN fastest FWD conv. algo:" << conv_algo_.GetFwdAlgo();
+        } else if (conv_param_.algofwd_ == "cudnnv7" ) {
+          // Query cuDNN for FWD convolution algorithms.
+          // Uses cuDNN function cudnnGetConvolutionForwardAlgorithm_v7 (called inside GetFwdAlgo_v7())
+          LOG(INFO) << "Get fastest FWD conv. algorithms.\n";
+          conv_algo_.GetFwdAlgo_v7(*(p_dnnmark_->GetHandle()),
+                                           p_dnnmark_->getRunMode(), layer_id_,
+                                           bottom_desc_,
+                                           desc_,
+                                           top_desc_);
+          LOG(INFO) << "cuDNN recommended FWD conv. algo: " << conv_algo_.GetFwdAlgo();
+        } else if (conv_param_.algofwd_  != "" ) {
+          conv_algo_.SetFwdAlgo(conv_param_.algofwd_);
+        }
 
-#ifdef NVIDIA_CUDNN
-    // Set convolution backward data algorithm
-    if (conv_param_.algod_ == "cudnn") {
-      // Use cuDNN function cudnnGetConvolutionBackwardFilterAlgorithm
-      if (conv_param_.workspace_size <=1 ) {
-        conv_algo_.SetBwdDataAlgo(*(p_dnnmark_->GetHandle()),
-                                         p_dnnmark_->getRunMode(), layer_id_,
-                                         bottom_desc_,
-                                         top_desc_,
-                                         desc_,
-                                         conv_param_.conv_bwd_data_pref_);
-      } else {
-        conv_algo_.SetBwdDataAlgo(*(p_dnnmark_->GetHandle()),
-                                         p_dnnmark_->getRunMode(), layer_id_,
-                                         bottom_desc_,
-                                         top_desc_,
-                                         desc_,
-                                         conv_param_.conv_bwd_data_pref_,
-                                         conv_param_.workspace_size);
-        LOG(INFO) << "Provided workspace size " << conv_param_.workspace_size;
-      }
-      LOG(INFO) << "Set cuDNN recommended BWD conv. data algo to " << conv_algo_.GetBwdDataAlgo();
-    } else if (conv_param_.algod_ == "cudnnv7" ) {
-        // Query cuDNN for BWD convolution data gradient algorithm.
-        // Use cuDNN function cudnnGetConvolutionBackwardDataAlgorithm_v7 (called inside FindBwdDataAlgo())
+        LOG(INFO) << "FWD conv. algo: " << conv_algo_.GetFwdAlgo();
 
-        LOG(INFO) << "Get fastest BWD conv. data algorithms.\n";
-        conv_algo_.GetBwdDataAlgo_v7(*(p_dnnmark_->GetHandle()),
-                                         p_dnnmark_->getRunMode(), layer_id_,
-                                         bottom_desc_,
-                                         desc_,
-                                         top_desc_);
-        LOG(INFO) << "cuDNN recommended BWD conv. data algo:" << conv_algo_.GetBwdDataAlgo();
-    } else if (conv_param_.algod_ == "auto" ) {
-        // Query cuDNN for the fastest BWD convolution data gradient algorithm.
-        // Use cuDNN function cudnnFindConvolutionBackwardDataAlgorithm (called inside FindBwdDataAlgo())
-        // NOTE: The below code selects algorithms prior to run, during setup phase.
-
-        LOG(INFO) << "Performing fastest BWD conv. data algo search.\n";
-        conv_algo_.FindBwdDataAlgo(*(p_dnnmark_->GetHandle()),
-                                         p_dnnmark_->getRunMode(), layer_id_,
-                                         bottom_desc_,
-                                         desc_,
-                                         top_desc_);
-        LOG(INFO) << "cuDNN fastest BWD conv. data algo:" << conv_algo_.GetBwdDataAlgo();
-    } else if (conv_param_.algod_ != "") {
-      conv_algo_.SetBwdDataAlgo(conv_param_.algod_);
-    }
-#endif
-
-#ifdef AMD_MIOPEN
-    conv_algo_.SetBwdDataAlgo(conv_param_.algod_);
-#endif
-
-    LOG(INFO) << "BWD conv. data algo: "<< static_cast<int>(conv_algo_.GetBwdDataAlgo());
-
-    // Allocate workspace
-    conv_algo_.GetBwdDataWorkspaceSize(*(p_dnnmark_->GetHandle()),
+        // Allocate workspace
+        conv_algo_.GetFwdWorkspaceSize(*(p_dnnmark_->GetHandle()),
                                        p_dnnmark_->getRunMode(), layer_id_,
                                        bottom_desc_,
                                        top_desc_,
                                        desc_,
-                                       &bwd_data_workspace_size_);
-    if (bwd_data_workspace_size_ > 0) {
-      bwd_data_workspace_id_ = data_manager_->
-                                 CreateData(bwd_data_workspace_size_);
-      bwd_data_workspace_ = data_manager_->GetData(bwd_data_workspace_id_);
-      has_bwd_data_workspace_ = true;
-    }
+                                       &fwd_workspace_size_);
+        if (fwd_workspace_size_ > 0) {
+          fwd_workspace_id_ = data_manager_->CreateData(fwd_workspace_size_);
+          fwd_workspace_ = data_manager_->GetData(fwd_workspace_id_);
+          LOG(INFO) << "FWD convolution workspace memory allocation done.";
+          has_fwd_workspace_ = true;
+        }
+      }
+    #endif // NVIDIA_CUDNN
 
+    // Backward pass
+    if (true) {
+      #ifdef NVIDIA_CUDNN
+        // Allocate workspace in case workspace_size provided
+        if (conv_param_.workspace_size > 0 ) {
+          LOG(INFO) << "Allocating BWD Filter workspace of size " << conv_param_.workspace_size;
+          bwd_filter_workspace_id_ = data_manager_->
+                                     CreateData(conv_param_.workspace_size);
+          bwd_filter_workspace_ = data_manager_->GetData(bwd_filter_workspace_id_);
+          LOG(INFO) << "Convolution filters memory allocation done.";
+          has_bwd_filter_workspace_ = true;
+          bwd_filter_workspace_size_ = conv_param_.workspace_size;
+        }
+
+        // Set convolution backward filter/weights algorithm
+        if (conv_param_.algo_ == "cudnn") {
+          // Chainer default behaviour
+          // Use cuDNN function cudnnGetConvolutionBackwardFilterAlgorithm
+          if (conv_param_.workspace_size <=1 ) {
+            conv_algo_.SetBwdFilterAlgo(*(p_dnnmark_->GetHandle()),
+                                             p_dnnmark_->getRunMode(), layer_id_,
+                                             bottom_desc_,
+                                             top_desc_,
+                                             desc_,
+                                             conv_param_.conv_bwd_filter_pref_);
+          } else {
+            conv_algo_.SetBwdFilterAlgo(*(p_dnnmark_->GetHandle()),
+                                             p_dnnmark_->getRunMode(), layer_id_,
+                                             bottom_desc_,
+                                             top_desc_,
+                                             desc_,
+                                             conv_param_.conv_bwd_filter_pref_,
+                                             conv_param_.workspace_size);
+            LOG(INFO) << "Provided workspace size " << conv_param_.workspace_size;
+          }
+          LOG(INFO) << "Set cuDNN recommended BWD conv. Filter algo to " << conv_algo_.GetBwdFilterAlgo();
+        } else if (conv_param_.algo_ == "cudnnv7" ) {
+          // Query cuDNN for BWD convolution filter gradient algorithm.
+          // Use cuDNN function cudnnGetConvolutionBackwardFilterAlgorithm_v7
+
+          LOG(INFO) << "Get fastest BWD conv. filter algorithms.\n";
+          conv_algo_.GetdBwdFilterAlgo_v7(*(p_dnnmark_->GetHandle()),
+                                             p_dnnmark_->getRunMode(), layer_id_,
+                                             bottom_desc_,
+                                             desc_,
+                                             top_desc_);
+          LOG(INFO) << "cuDNN recommended BWD conv. filter algo:" << conv_algo_.GetBwdFilterAlgo();
+        } else if (conv_param_.algo_ == "auto" ) {
+          // Query cuDNN for the fastest BWD convolution filter gradient algorithm.
+          // Use cuDNN function cudnnFindConvolutionBackwardFilterAlgorithm (called inside FindBwdFilterAlgo())
+
+          // NOTE: The below code selects algorithms prior to run, during setup phase.
+          LOG(INFO) << "Performing fastest BWD conv. filter algo search.\n";
+          if (conv_param_.workspace_size <=1 ) {
+            // No workspace size limit provided
+            conv_algo_.FindBwdFilterAlgo(*(p_dnnmark_->GetHandle()),
+                                             p_dnnmark_->getRunMode(), layer_id_,
+                                             bottom_desc_,
+                                             desc_,
+                                             top_desc_);
+          } else {
+            // Search for fastest algorithms using Find...AlgoEX() function
+            LOG(INFO) << (has_bwd_filter_workspace_? "Has BWD filter workspace. " : "No BWD filter workspace.") << "Provided workspace size " << conv_param_.workspace_size;
+
+            conv_algo_.FindBwdFilterAlgoEx(*(p_dnnmark_->GetHandle()),
+                                             p_dnnmark_->getRunMode(), layer_id_,
+                                             bottom_desc_,
+                                             desc_,
+                                             top_desc_,
+                                             bottoms_[0]->Get(),
+                                             top_diffs_[0]->Get(),
+                                             weights_diff_->Get(),
+                                             has_bwd_filter_workspace_? bwd_filter_workspace_->Get() : nullptr,
+                                             conv_param_.workspace_size);
+          }
+          LOG(INFO) << "cuDNN fastest BWD conv. filter algo:" << conv_algo_.GetBwdFilterAlgo();
+        } else if (conv_param_.algo_ != "") {
+            // Use default algorithm for now
+            LOG(INFO) << "Setting Bwd Filter algo to " << conv_param_.algo_;
+            conv_algo_.SetBwdFilterAlgo(conv_param_.algo_);
+        }
+      #endif //NVIDIA_CUDNN
+      #ifdef AMD_MIOPEN
+        // Use default algorithm for now
+        LOG(INFO) << "Setting BWD Filter algo to " << conv_param_.algo_;
+        conv_algo_.SetBwdFilterAlgo(conv_param_.algo_);
+      #endif //AMD_MIOPEN
+
+      LOG(INFO) << "BWD conv. Filter algo: " << conv_algo_.GetBwdFilterAlgo();
+
+      // Allocate workspace if it has not been allocated yet
+      if (conv_param_.workspace_size <= 1 ) {
+        conv_algo_.GetBwdFilterWorkspaceSize(*(p_dnnmark_->GetHandle()),
+                                             p_dnnmark_->getRunMode(), layer_id_,
+                                             bottom_desc_,
+                                             top_desc_,
+                                             desc_,
+                                             &bwd_filter_workspace_size_);
+        LOG(INFO) << "BWD Filter workspace size: " << bwd_filter_workspace_size_;
+        if (bwd_filter_workspace_size_ > 0) {
+          bwd_filter_workspace_id_ = data_manager_->
+                                     CreateData(bwd_filter_workspace_size_);
+          bwd_filter_workspace_ = data_manager_->GetData(bwd_filter_workspace_id_);
+          LOG(INFO) << "BWD filter workspace memory allocation done.";
+          has_bwd_filter_workspace_ = true;
+        }
+      } else {
+        LOG(INFO) << "BWD Filter workspace size: " << bwd_filter_workspace_size_;
+      }
+
+      #ifdef NVIDIA_CUDNN
+        // Set convolution backward data algorithm
+        if (conv_param_.algod_ == "cudnn") {
+          // Use cuDNN function cudnnGetConvolutionBackwardFilterAlgorithm
+          if (conv_param_.workspace_size <=1 ) {
+            conv_algo_.SetBwdDataAlgo(*(p_dnnmark_->GetHandle()),
+                                             p_dnnmark_->getRunMode(), layer_id_,
+                                             bottom_desc_,
+                                             top_desc_,
+                                             desc_,
+                                             conv_param_.conv_bwd_data_pref_);
+          } else {
+            conv_algo_.SetBwdDataAlgo(*(p_dnnmark_->GetHandle()),
+                                             p_dnnmark_->getRunMode(), layer_id_,
+                                             bottom_desc_,
+                                             top_desc_,
+                                             desc_,
+                                             conv_param_.conv_bwd_data_pref_,
+                                             conv_param_.workspace_size);
+            LOG(INFO) << "Provided workspace size " << conv_param_.workspace_size;
+          }
+          LOG(INFO) << "Set cuDNN recommended BWD conv. data algo to " << conv_algo_.GetBwdDataAlgo();
+        } else if (conv_param_.algod_ == "cudnnv7" ) {
+            // Query cuDNN for BWD convolution data gradient algorithm.
+            // Use cuDNN function cudnnGetConvolutionBackwardDataAlgorithm_v7 (called inside FindBwdDataAlgo())
+
+            LOG(INFO) << "Get fastest BWD conv. data algorithms.\n";
+            conv_algo_.GetBwdDataAlgo_v7(*(p_dnnmark_->GetHandle()),
+                                             p_dnnmark_->getRunMode(), layer_id_,
+                                             bottom_desc_,
+                                             desc_,
+                                             top_desc_);
+            LOG(INFO) << "cuDNN recommended BWD conv. data algo:" << conv_algo_.GetBwdDataAlgo();
+        } else if (conv_param_.algod_ == "auto" ) {
+            // Query cuDNN for the fastest BWD convolution data gradient algorithm.
+            // Use cuDNN function cudnnFindConvolutionBackwardDataAlgorithm (called inside FindBwdDataAlgo())
+            // NOTE: The below code selects algorithms prior to run, during setup phase.
+
+            LOG(INFO) << "Performing fastest BWD conv. data algo search.\n";
+            conv_algo_.FindBwdDataAlgo(*(p_dnnmark_->GetHandle()),
+                                             p_dnnmark_->getRunMode(), layer_id_,
+                                             bottom_desc_,
+                                             desc_,
+                                             top_desc_);
+            LOG(INFO) << "cuDNN fastest BWD conv. data algo:" << conv_algo_.GetBwdDataAlgo();
+        } else if (conv_param_.algod_ != "") {
+          conv_algo_.SetBwdDataAlgo(conv_param_.algod_);
+        }
+      #endif //NVIDIA_CUDNN
+
+      #ifdef AMD_MIOPEN
+        conv_algo_.SetBwdDataAlgo(conv_param_.algod_);
+      #endif
+
+      LOG(INFO) << "BWD conv. data algo: "<< static_cast<int>(conv_algo_.GetBwdDataAlgo());
+
+      // Allocate workspace
+      conv_algo_.GetBwdDataWorkspaceSize(*(p_dnnmark_->GetHandle()),
+                                         p_dnnmark_->getRunMode(), layer_id_,
+                                         bottom_desc_,
+                                         top_desc_,
+                                         desc_,
+                                         &bwd_data_workspace_size_);
+      if (bwd_data_workspace_size_ > 0) {
+        bwd_data_workspace_id_ = data_manager_->
+                                   CreateData(bwd_data_workspace_size_);
+        bwd_data_workspace_ = data_manager_->GetData(bwd_data_workspace_id_);
+        LOG(INFO) << "BWD data workspace memory allocation done.";
+        has_bwd_data_workspace_ = true;
+      }
+    }
   }
 
   void ComputeOutputDim() {
@@ -427,7 +439,7 @@ class ConvolutionLayer : public Layer<T> {
     // Convolution forward computation
     for (int i = 0; i < num_bottoms_; i++) {
       LOG(INFO) << "Calling dnnmarkConvolutionForward";
-      LOG(INFO) << "workspace size" << fwd_workspace_size_;
+      LOG(INFO) << "workspace size " << fwd_workspace_size_;
       dnnmarkConvolutionForward(
                 *(p_dnnmark_->GetHandle()),
                 p_dnnmark_->getRunMode(), layer_id_,
@@ -441,7 +453,7 @@ class ConvolutionLayer : public Layer<T> {
                 DataType<T>::zero,
                 top_desc_, tops_[i]->Get());
     }
-  }
+  }  // Setup()
 
   void BackwardPropagation() {
     if (p_dnnmark_->getRunMode() == STANDALONE ||

@@ -1,17 +1,17 @@
 // The MIT License (MIT)
-// 
+//
 // Copyright (c) 2016 Northeastern University
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
-// The above copyright notice and this permission notice shall be included in 
+//
+// The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef CORE_INCLUDE_LAYERS_ACTIVATION_LAYER_H_ 
+#ifndef CORE_INCLUDE_LAYERS_ACTIVATION_LAYER_H_
 #define CORE_INCLUDE_LAYERS_ACTIVATION_LAYER_H_
 
 #include "dnn_layer.h"
@@ -37,7 +37,7 @@ class ActivationLayer : public Layer<T> {
   using Layer<T>::output_dim_;
   using Layer<T>::bottom_desc_;
   using Layer<T>::top_desc_;
-  using Layer<T>::data_manager_;  
+  using Layer<T>::data_manager_;
 
   using Layer<T>::num_bottoms_;
   using Layer<T>::bottoms_;
@@ -65,7 +65,9 @@ class ActivationLayer : public Layer<T> {
 
   ActivationParam *getActivationParam() { return &activation_param_; }
 
+
   void Setup() {
+    LOG(INFO) << "Setup parameters of activation layer";
     // Set up indispensable stuff here
     Layer<T>::Setup();
 
@@ -93,6 +95,7 @@ class ActivationLayer : public Layer<T> {
                      output_dim_.c_ *
                      output_dim_.h_ *
                      output_dim_.w_;
+      LOG(INFO) << "Initializing data for "<< num_tops_ << " tops.";
       for (int i = 0; i < num_tops_; i++) {
         top_chunk_ids_.push_back(
           data_manager_->CreateData(top_size));
@@ -114,6 +117,8 @@ class ActivationLayer : public Layer<T> {
   }
 
   void ForwardPropagation() {
+    std::string mode = (p_dnnmark_->getRunMode() == 1) ? "STANDALONE" : "COMPOSED";
+    LOG(INFO) << "Activation ForwardPropagation, mode " << mode << ", bottoms " << num_bottoms_;
     if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {
       // Fill the bottom data
@@ -122,6 +127,14 @@ class ActivationLayer : public Layer<T> {
       }
     }
 
+    LOG(INFO) << "Running activation forward";
+    // LOG(INFO) << desc_;
+    LOG(INFO) << DataType<T>::one;
+    // LOG(INFO) << bottom_desc_;
+    LOG(INFO) << bottoms_[0]->Get();
+    LOG(INFO) << DataType<T>::zero;
+    // LOG(INFO) << top_desc_;
+    LOG(INFO) << tops_[0]->Get();
     // activationing forward computation
     ProfilerStart(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "ActFwd");
@@ -130,7 +143,7 @@ class ActivationLayer : public Layer<T> {
              *(p_dnnmark_->GetHandle()),
              p_dnnmark_->getRunMode(), layer_id_,
              desc_,
-             DataType<T>::one, 
+             DataType<T>::one,
              bottom_desc_, bottoms_[i]->Get(),
              DataType<T>::zero,
              top_desc_, tops_[i]->Get());
