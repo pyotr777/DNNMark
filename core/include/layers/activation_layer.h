@@ -146,7 +146,7 @@ class ActivationLayer : public Layer<T> {
 
   }
   void BackwardPropagation() {
-    if (p_dnnmark_->getRunMode() == STANDALONE || p_dnnmark_->getDirection() == BACKWARD ||
+    if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {
       LOG(INFO) << "Initializing top tensor for Activation layer with " << num_tops_ << " tops, " << num_bottoms_ << " bottoms.";
       // Fill the top and top diff data
@@ -160,12 +160,15 @@ class ActivationLayer : public Layer<T> {
       }
     }
     LOG(INFO) << "Running activation backward with direction " << p_dnnmark_->getDirection();
-    LOG(INFO) << "Is direction BACKWARD? " << (p_dnnmark_->getDirection() == BACKWARD);
+    LOG(INFO) << "Is direction BACKWARD? " << ((p_dnnmark_->getDirection() == BACKWARD) ? "true" : "false");
 
     // activationing backward computation
     ProfilerStart(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "ActBwd");
     for (int i = 0; i < num_bottoms_; i++) {
+      LOG(INFO) << "Call dnnmarkActivationBackward, i=" << i;
+      LOG(INFO) << "Top: " << tops_[i]->Report();
+      LOG(INFO) << "Bottom: " << bottoms_[i]->Report();
       dnnmarkActivationBackward(
              *(p_dnnmark_->GetHandle()),
              p_dnnmark_->getRunMode(), layer_id_,

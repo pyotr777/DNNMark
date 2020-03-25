@@ -18,8 +18,8 @@ cd ${BUILD_DIR}
 if [ ${OPTION} = "CUDA" ]
 then
   CUDNN_PATH=${HOME}/cudnn
-# cmake -DCUDA_ENABLE=ON -DCUDNN_ROOT=${CUDNN_PATH} -DCMAKE_BUILD_TYPE=Debug ..
-  cmake -DCUDA_ENABLE=ON -DCUDNN_ROOT=${CUDNN_PATH} ..
+  cmake -DCUDA_ENABLE=ON -DCUDNN_ROOT=${CUDNN_PATH} -DCMAKE_BUILD_TYPE=Debug ..
+  # cmake -DCUDA_ENABLE=ON -DCUDNN_ROOT=${CUDNN_PATH} ..
 elif [ ${OPTION} = "HIP" ]
 then
   MIOPEN_PATH=/opt/rocm/miopen

@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
   INIT_FLAGS(argc, argv);
   INIT_LOG(argv);
   LOG(INFO) << "DNNMark suites: Start...";
-  DNNMark<TestType> dnnmark(3);
+  DNNMark<TestType> dnnmark(2);
   dnnmark.ParseAllConfig(FLAGS_config);
   dnnmark.Initialize();
   dnnmark.Backward();

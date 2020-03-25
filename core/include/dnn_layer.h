@@ -135,6 +135,7 @@ class Layer {
                         input_dim_.c_ *
                         input_dim_.h_ *
                         input_dim_.w_;
+      LOG(INFO) << "Bottom size: " << bottom_size << ", bottoms: " << num_bottoms_;
       for (int i = 0; i < num_bottoms_; i++) {
         bottom_chunk_ids_.push_back(
           data_manager_->CreateData(bottom_size));
@@ -161,7 +162,7 @@ class Layer {
         input_dim_.w_ = previous_layer->getTopDimW();
 
         // Debug info
-        LOG(INFO) << "Bottom dimension: "
+        LOG(INFO) << "Composed mode. Bottom dimension: "
                   << "N: " << input_dim_.n_ << " "
                   << "C: " << input_dim_.c_ << " "
                   << "H: " << input_dim_.h_ << " "
@@ -172,6 +173,8 @@ class Layer {
                          input_dim_.c_,
                          input_dim_.h_,
                          input_dim_.w_);
+        // LOG(INFO) << "Bottom size: " << bottom_size << ", bottoms: " << num_bottoms_;
+        LOG(INFO) << "Previous layer: " << previous_layer_name_ << "/" << previous_layer->layer_name_;
         for (int i = 0; i < num_bottoms_; i++) {
           bottom_chunk_ids_.push_back(
             previous_layer->getTopChunkID(i));

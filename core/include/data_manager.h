@@ -26,7 +26,7 @@
 #include <memory>
 #include <map>
 #include <glog/logging.h>
-
+#include <string>
 #include "common.h"
 #include "data_png.h"
 
@@ -38,6 +38,7 @@ class Data {
   PseudoNumGenerator *png_;
   size_t size_;
   T *gpu_ptr_;
+  bool filled=false;
  public:
   Data(size_t size)
   : size_(size) {
@@ -64,8 +65,16 @@ class Data {
   void Filler() {
     png_ = PseudoNumGenerator::GetInstance();
     png_->GenerateUniformData(gpu_ptr_, size_);
+    filled = true;
   }
+
   T *Get() { return gpu_ptr_; }
+
+  std::string Report() {
+    std::string s;
+    s = "Size: " + std::to_string(size_) + ", " + (filled ? "filled" : "not filled");
+    return s;
+  }
 };
 
 

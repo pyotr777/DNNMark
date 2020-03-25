@@ -3,9 +3,8 @@ run_mode=standalone
 
 [Activation]
 name=relu1
-n=100
-c=32
-h=256
-w=256
+n=20
+c=512
+h=2
+w=2
 activation_mode=relu
-
