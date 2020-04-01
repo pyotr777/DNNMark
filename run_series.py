@@ -69,7 +69,8 @@ configs = [
 algo_configs = {
     # "all-workspace10MB":
     #     "--algofwd cudnn --algo cudnn --algod cudnn --fwd_pref specify_workspace_limit --bwd_filter_pref specify_workspace_limit --bwd_data_pref specify_workspace_limit --workspace 10000000"
-    "all-auto": "--algofwd auto --algo auto --algod auto"
+    # "all-auto": "--algofwd auto --algo auto --algod auto"
+    "cudnnv7": "--algofwd cudnnv7 --algo cudnnv7 --algod cudnnv7"
 }
 
 # Use today's date or change to existing logs directory name
