@@ -159,8 +159,7 @@ class ActivationLayer : public Layer<T> {
         bottoms_[i]->Filler();
       }
     }
-    LOG(INFO) << "Running activation backward with direction " << p_dnnmark_->getDirection();
-    LOG(INFO) << "Is direction BACKWARD? " << ((p_dnnmark_->getDirection() == BACKWARD) ? "true" : "false");
+    LOG(INFO) << "Running activation backward";
 
     // activationing backward computation
     ProfilerStart(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),

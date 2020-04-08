@@ -38,6 +38,15 @@
 #include <hip/hip_runtime_api.h>
 #endif
 
+// Benchmark direction
+// If running only one way, no need to allocate memory for the other way.
+enum Direction {
+  FORWARD = 0,
+  BACKWARD,
+  BOTH
+};
+
+
 namespace dnnmark {
 
 #ifdef NVIDIA_CUDNN
@@ -163,13 +172,6 @@ enum RunMode {
   COMPOSED
 };
 
-// Behcmark direction
-// If running only one way, no need to create tensors for the other way.
-enum Direction {
-  FORWARD = 0,
-  BACKWARD,
-  BOTH
-};
 
 // Layer type
 enum LayerType {

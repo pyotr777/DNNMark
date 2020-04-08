@@ -13,11 +13,12 @@ int main(int argc, char **argv) {
   INIT_LOG(argv);
   LOG(INFO) << "DNNMark suites: Start...";
   DNNMark<TestType> dnnmark(3);
+  float run_time = 0.;
   dnnmark.ParseAllConfig(FLAGS_config);
 
   if (FLAGS_warmup) {
-    LOG(INFO) << "Warming up before initialisation...";
-    for (int i = 0; i < 5; i++) {
+    LOG(INFO) << "Warming up before initialisation..." << FLAGS_warmup;
+    for (int i = 0; i < FLAGS_warmup; i++) {
       int status = call_sgemm(0, 512);
       if (status != 0) {
         fprintf(stderr, "Error status: %d\n",status);
@@ -25,34 +26,36 @@ int main(int argc, char **argv) {
     }
   }
 
+  LOG(INFO) << "Initialisation called from benchmark";
+  dnnmark.Initialize();
+
   // Forward
   LOG(INFO) << "Initialisation FWD";
-  dnnmark.Initialize(0);
-
+  dnnmark.SetupWorkspaces(0);
   if (FLAGS_warmup) {
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < FLAGS_warmup; i++) {
       LOG(INFO) << "Warming up...";
       dnnmark.Forward();
     }
   }
-  dnnmark.GetTimer()->Clear();
 
+  dnnmark.GetTimer()->Clear();
   // Real benchmark
   for (int i = 0; i < FLAGS_iterations; i++) {
     LOG(INFO) << "Iteration " << i;
     dnnmark.Forward();
   }
   dnnmark.GetTimer()->SumRecords();
-  float run_time = dnnmark.GetTimer()->GetTotalTime();
-  LOG(INFO) << "Forward running time(ms): " << run_time;
+  run_time += dnnmark.GetTimer()->GetTotalTime();
+  dnnmark.FreeWorkspaces();
 
-  LOG(INFO) << "DNNMark suites: Tear down...";
-  dnnmark.TearDown();
+  LOG(INFO) << "Forward running time(ms): " << run_time << "\n\r";
+
+
 
   // Backward
-  dnnmark.ParseAllConfig(FLAGS_config);
   LOG(INFO) << "Initialisation BWD";
-  dnnmark.Initialize(1);
+  dnnmark.SetupWorkspaces(1);
 
   dnnmark.GetTimer()->Clear();
   // Real benchmark
@@ -61,6 +64,7 @@ int main(int argc, char **argv) {
     dnnmark.Backward();
   }
   dnnmark.GetTimer()->SumRecords();
+  dnnmark.FreeWorkspaces();
   LOG(INFO) << "DNNMark suites: Tear down...";
   dnnmark.TearDown();
 

@@ -92,31 +92,50 @@ class ConvolutionLayer : public Layer<T> {
   }
 
   ~ConvolutionLayer() {
+    LOG(INFO) << "Free convolution workspace";
     // Free the workspace
     if (has_fwd_workspace_) {
       data_manager_->RemoveData(fwd_workspace_id_);
       has_fwd_workspace_ = false;
+      fwd_workspace_size_ = 0;
     }
     if (has_bwd_data_workspace_) {
       data_manager_->RemoveData(bwd_data_workspace_id_);
       has_bwd_data_workspace_ = false;
+      bwd_data_workspace_size_ = 0;
     }
     if (has_bwd_filter_workspace_) {
       data_manager_->RemoveData(bwd_filter_workspace_id_);
       has_bwd_filter_workspace_ = false;
+      bwd_filter_workspace_size_ = 0;
+    }
+  }
+
+  void FreeWorkspaces() {
+    LOG(INFO) << "Free convolution workspace";
+    // Free the workspace
+    if (has_fwd_workspace_) {
+      data_manager_->RemoveData(fwd_workspace_id_);
+      has_fwd_workspace_ = false;
+      fwd_workspace_size_ = 0;
+    }
+    if (has_bwd_data_workspace_) {
+      data_manager_->RemoveData(bwd_data_workspace_id_);
+      has_bwd_data_workspace_ = false;
+      bwd_data_workspace_size_ = 0;
+    }
+    if (has_bwd_filter_workspace_) {
+      data_manager_->RemoveData(bwd_filter_workspace_id_);
+      has_bwd_filter_workspace_ = false;
+      bwd_filter_workspace_size_ = 0;
     }
   }
 
   ConvolutionParam *getConvParam() { return &conv_param_; }
 
-  void Setup() {
-    // Default: FWD and BWD passes
-    Setup(2);
-  }
 
-  void Setup(int direction) {
-    // Direction: 0 - forward, 1 - backward, 2 - forward and backward
-    LOG(INFO) << "Setup parameters of Convolutional layer with direction " << direction;
+  void Setup() {
+    LOG(INFO) << "Setup common parameters of a convolutional layer";
     // Set up indispensable stuff here
     Layer<T>::Setup();
 
@@ -172,10 +191,21 @@ class ConvolutionLayer : public Layer<T> {
 
     // Fill the weight data
     weights_->Filler();
+  }   // Setup()
 
+
+  void SetWorkspace() {
+    // Default: FWD and BWD passes
+    SetWorkspace(2);
+  }
+
+  void SetWorkspace(Direction direction) {
+    // Direction: 0 - forward, 1 - backward, 2 - forward and backward
+    int dir = static_cast<int>(direction);
+    LOG(INFO) << "Setup workspace of convolutional layer with direction " << direction;
     #ifdef NVIDIA_CUDNN
       // Forward pass
-      if (direction != 1) {
+      if (dir != 1) {
         // Set convolution forward algorithm
         if (conv_param_.algofwd_  == "cudnn" ) {
           if (conv_param_.workspace_size <=1 ) {
@@ -230,6 +260,7 @@ class ConvolutionLayer : public Layer<T> {
                                        top_desc_,
                                        desc_,
                                        &fwd_workspace_size_);
+        LOG(INFO) << "Allocating memory for convolution workspace: " << fwd_workspace_size_;
         if (fwd_workspace_size_ > 0) {
           fwd_workspace_id_ = data_manager_->CreateData(fwd_workspace_size_);
           fwd_workspace_ = data_manager_->GetData(fwd_workspace_id_);
@@ -240,7 +271,7 @@ class ConvolutionLayer : public Layer<T> {
     #endif // NVIDIA_CUDNN
 
     // Backward pass
-    if (direction != 0) {
+    if (dir != 0) {
       #ifdef NVIDIA_CUDNN
         // Allocate workspace in case workspace_size provided
         if (conv_param_.workspace_size > 0 ) {
@@ -420,7 +451,7 @@ class ConvolutionLayer : public Layer<T> {
         has_bwd_data_workspace_ = true;
       }
     }
-  }
+  } // SetWorkspace
 
   void ComputeOutputDim() {
     output_dim_.n_ = input_dim_.n_;
@@ -458,7 +489,7 @@ class ConvolutionLayer : public Layer<T> {
                 DataType<T>::zero,
                 top_desc_, tops_[i]->Get());
     }
-  }  // Setup()
+  }
 
   void BackwardPropagation() {
     if (p_dnnmark_->getRunMode() == STANDALONE ||

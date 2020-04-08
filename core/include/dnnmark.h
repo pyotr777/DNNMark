@@ -71,7 +71,6 @@ template <typename T>
 class DNNMark {
  private:
   RunMode run_mode_;
-  Direction direction;
   Handle handle_;
   // The map is ordered, so we don't need other container to store the layers
   std::map<int, std::shared_ptr<Layer<T>>> layers_map_;
@@ -94,13 +93,14 @@ class DNNMark {
   void ParseAllConfig(const std::string &config_file);
   int ParseGeneralConfig(const std::string &config_file);
   int ParseLayerConfig(const std::string &config_file);
-  int Initialize(int);
-  int Initialize(Direction);
+  void SetupWorkspaces(int dir);
+  void SetupWorkspaces(Direction direction);
+  void FreeWorkspaces();
   int Initialize();
   int RunAll();
   int Forward();
   int Backward();
-  std::string printDirection();
+
 
   int TearDown() {
     DataManager<T>::GetInstance()->DataManager<T>::~DataManager();
@@ -117,7 +117,6 @@ class DNNMark {
     return name_id_map_.find(name) != name_id_map_.end();
   }
   RunMode getRunMode() { return run_mode_; }
-  Direction getDirection() { return direction; }
 
   Timer *GetTimer() { return &timer_; }
 
