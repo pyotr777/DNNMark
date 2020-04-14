@@ -65,6 +65,9 @@ class Layer {
   std::vector<int> top_chunk_ids_;
   std::vector<Data<T> *> top_diffs_;
   std::vector<int> top_diff_chunk_ids_;
+  bool setup_done;
+
+
  public:
   Layer(DNNMark<T> *p_dnnmark)
   : p_dnnmark_(p_dnnmark),
@@ -189,6 +192,7 @@ class Layer {
         LOG(FATAL) << "Wrong previous layer name!!!";
       }
     }
+    setup_done = true;
   }
 
   virtual void ForwardPropagation() {}

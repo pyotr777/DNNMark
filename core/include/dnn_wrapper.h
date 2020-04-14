@@ -338,16 +338,21 @@ inline void dnnmarkActivationBackward(const Handle &handle,
                          const void *x,
                          void *dx) {
 #ifdef NVIDIA_CUDNN
+  cudnnHandle_t chandle = (mode == COMPOSED ? handle.GetCudnn(idx) : handle.GetCudnn());
+  cudnnTensorDescriptor_t yDesc = top_desc.Get();
+  cudnnTensorDescriptor_t dyDesc = top_desc.Get();
+  cudnnTensorDescriptor_t xDesc = bottom_desc.Get();
+  cudnnTensorDescriptor_t dxDesc = bottom_desc.Get();
+  cudnnActivationDescriptor_t activationDesc = activation_desc.Get();
   CUDNN_CALL(cudnnActivationBackward(
-             mode == COMPOSED ?
-             handle.GetCudnn(idx) : handle.GetCudnn(),
-             activation_desc.Get(),
+             chandle,
+             activationDesc,
              alpha,
-             top_desc.Get(), y,
-             top_desc.Get(), dy,
-             bottom_desc.Get(), x,
+             yDesc, y,
+             dyDesc, dy,
+             xDesc, x,
              beta,
-             bottom_desc.Get(), dx));
+             dxDesc, dx));
 #endif
 #ifdef AMD_MIOPEN
   MIOPEN_CALL(miopenActivationBackward(

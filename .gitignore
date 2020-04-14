@@ -21,4 +21,4 @@ logs/
 Dockerfile
 *.csv
 *.pdf
-
+*.qdrep

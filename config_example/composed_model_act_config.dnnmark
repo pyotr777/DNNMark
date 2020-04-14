@@ -3,7 +3,7 @@ run_mode=composed
 
 [Convolution]
 name=conv1
-n=100
+n=20
 c=512
 h=2
 w=2

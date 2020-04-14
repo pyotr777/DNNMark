@@ -13,9 +13,9 @@ kernel_size=3
 num_output=64
 pad=1
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
+conv_fwd_pref=$conv_fwd_pref
+conv_bwd_filter_pref=$conv_bwd_filter_pref
+conv_bwd_data_pref=$conv_bwd_data_pref
 ${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
@@ -47,9 +47,9 @@ kernel_size=3
 num_output=64
 pad=1
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
+conv_fwd_pref=$conv_fwd_pref
+conv_bwd_filter_pref=$conv_bwd_filter_pref
+conv_bwd_data_pref=$conv_bwd_data_pref
 ${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
@@ -83,9 +83,9 @@ kernel_size=3
 num_output=128
 pad=1
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
+conv_fwd_pref=$conv_fwd_pref
+conv_bwd_filter_pref=$conv_bwd_filter_pref
+conv_bwd_data_pref=$conv_bwd_data_pref
 ${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
@@ -117,9 +117,9 @@ kernel_size=3
 num_output=128
 pad=1
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
+conv_fwd_pref=$conv_fwd_pref
+conv_bwd_filter_pref=$conv_bwd_filter_pref
+conv_bwd_data_pref=$conv_bwd_data_pref
 ${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
@@ -154,9 +154,9 @@ kernel_size=3
 num_output=256
 pad=1
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
+conv_fwd_pref=$conv_fwd_pref
+conv_bwd_filter_pref=$conv_bwd_filter_pref
+conv_bwd_data_pref=$conv_bwd_data_pref
 ${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
@@ -190,9 +190,9 @@ kernel_size=3
 num_output=256
 pad=1
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
+conv_fwd_pref=$conv_fwd_pref
+conv_bwd_filter_pref=$conv_bwd_filter_pref
+conv_bwd_data_pref=$conv_bwd_data_pref
 ${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
@@ -226,9 +226,9 @@ kernel_size=3
 num_output=256
 pad=1
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
+conv_fwd_pref=$conv_fwd_pref
+conv_bwd_filter_pref=$conv_bwd_filter_pref
+conv_bwd_data_pref=$conv_bwd_data_pref
 ${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
@@ -267,9 +267,9 @@ kernel_size=3
 num_output=512
 pad=1
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
+conv_fwd_pref=$conv_fwd_pref
+conv_bwd_filter_pref=$conv_bwd_filter_pref
+conv_bwd_data_pref=$conv_bwd_data_pref
 ${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
@@ -303,9 +303,9 @@ kernel_size=3
 num_output=512
 pad=1
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
+conv_fwd_pref=$conv_fwd_pref
+conv_bwd_filter_pref=$conv_bwd_filter_pref
+conv_bwd_data_pref=$conv_bwd_data_pref
 ${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
@@ -339,9 +339,9 @@ kernel_size=3
 num_output=512
 pad=1
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
+conv_fwd_pref=$conv_fwd_pref
+conv_bwd_filter_pref=$conv_bwd_filter_pref
+conv_bwd_data_pref=$conv_bwd_data_pref
 ${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
@@ -380,9 +380,9 @@ kernel_size=3
 num_output=512
 pad=1
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
+conv_fwd_pref=$conv_fwd_pref
+conv_bwd_filter_pref=$conv_bwd_filter_pref
+conv_bwd_data_pref=$conv_bwd_data_pref
 ${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
@@ -416,9 +416,9 @@ kernel_size=3
 num_output=512
 pad=1
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
+conv_fwd_pref=$conv_fwd_pref
+conv_bwd_filter_pref=$conv_bwd_filter_pref
+conv_bwd_data_pref=$conv_bwd_data_pref
 ${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]
@@ -452,9 +452,9 @@ kernel_size=3
 num_output=512
 pad=1
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
+conv_fwd_pref=$conv_fwd_pref
+conv_bwd_filter_pref=$conv_bwd_filter_pref
+conv_bwd_data_pref=$conv_bwd_data_pref
 ${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}
 
 [BatchNorm]

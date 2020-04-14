@@ -5,6 +5,7 @@
 #include "usage.h"
 #include <gflags/gflags.h>
 #include "simpleCUBLAS.h"
+#include "cuda_profiler_api.h"
 
 using namespace dnnmark;
 
@@ -39,6 +40,7 @@ int main(int argc, char **argv) {
     }
   }
 
+  cudaProfilerStart();
   dnnmark.GetTimer()->Clear();
   // Real benchmark
   for (int i = 0; i < FLAGS_iterations; i++) {
@@ -46,6 +48,7 @@ int main(int argc, char **argv) {
     dnnmark.Forward();
   }
   dnnmark.GetTimer()->SumRecords();
+  cudaProfilerStop();
   run_time += dnnmark.GetTimer()->GetTotalTime();
   dnnmark.FreeWorkspaces();
 
@@ -57,6 +60,7 @@ int main(int argc, char **argv) {
   LOG(INFO) << "Initialisation BWD";
   dnnmark.SetupWorkspaces(1);
 
+  cudaProfilerStart();
   dnnmark.GetTimer()->Clear();
   // Real benchmark
   for (int i = 0; i < FLAGS_iterations; i++) {
@@ -64,6 +68,7 @@ int main(int argc, char **argv) {
     dnnmark.Backward();
   }
   dnnmark.GetTimer()->SumRecords();
+  cudaProfilerStop();
   dnnmark.FreeWorkspaces();
   LOG(INFO) << "DNNMark suites: Tear down...";
   dnnmark.TearDown();
