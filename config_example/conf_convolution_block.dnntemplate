@@ -16,7 +16,7 @@ epsilon=1e-5
 [Convolution]
 name=conv1
 previous_layer=batchnorm0
-conv_mode=convolution
+conv_mode=cross_correlation
 num_output=$K
 kernel_size=$S
 pad=$P
