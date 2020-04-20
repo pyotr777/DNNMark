@@ -80,6 +80,7 @@ static int call_sgemm(int device, int N) {
   float error_norm;
   float ref_norm;
   float diff;
+  bool debug = false;
   cublasHandle_t handle;
 
   int dev = gpuDeviceInit(device);
@@ -89,8 +90,9 @@ static int call_sgemm(int device, int N) {
   }
 
   /* Initialize CUBLAS */
-  printf("simpleCUBLAS test running on device %d..\n",dev);
-
+  if (debug) {
+    printf("simpleCUBLAS test running on device %d..\n",dev);
+  }
   status = cublasCreate(&handle);
 
   if (status != CUBLAS_STATUS_SUCCESS) {

@@ -666,6 +666,7 @@ inline int _ConvertSMVer2Cores(int major, int minor) {
 // General GPU Device CUDA Initialization
 inline int gpuDeviceInit(int devID) {
   int device_count;
+  bool debug = false;
   checkCudaErrors(cudaGetDeviceCount(&device_count));
 
   if (device_count == 0) {
@@ -707,7 +708,9 @@ inline int gpuDeviceInit(int devID) {
   }
 
   checkCudaErrors(cudaSetDevice(devID));
-  printf("gpuDeviceInit() CUDA Device [%d]: \"%s\n", devID, deviceProp.name);
+  if (debug) {
+    printf("gpuDeviceInit() CUDA Device [%d]: \"%s\n", devID, deviceProp.name);
+  }
 
   return devID;
 }

@@ -165,7 +165,7 @@ for run in range(profile_runs):
                     command_pars = command + " -c {} -n {} -k {} -w {} -h {} --iter {} {} --warmup 0".format(
                         channels, batch, conv, imsize, imsize, iterations, other_options
                     )
-                    profcommand = "nvprof -u s --profile-api-trace none --unified-memory-profiling off --profile-child-processes --csv --log-file {} {}".format(
+                    profcommand = "nvprof -u s --profile-api-trace none --unified-memory-profiling off --profile-child-processes --profile-from-start off --csv --log-file {} {}".format(
                         logfile, command_pars
                     )
                     task = {"comm": profcommand, "logfile": logfile, "batch": batch, "conv": conv, "nvsmi": False}
