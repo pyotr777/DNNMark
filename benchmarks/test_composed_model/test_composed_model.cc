@@ -6,6 +6,7 @@
 #include <gflags/gflags.h>
 #include "simpleCUBLAS.h"
 #include "cuda_profiler_api.h"
+#include "nvToolsExt.h"
 
 using namespace dnnmark;
 
@@ -28,18 +29,22 @@ int main(int argc, char **argv) {
   }
 
   LOG(INFO) << "Initialisation called from benchmark";
+  nvtxMark("Initialisation");
   dnnmark.Initialize();
 
   // Forward
   LOG(INFO) << "Initialisation FWD";
+  nvtxMark("Setup Workspaces");
   dnnmark.SetupWorkspaces(0);
   if (FLAGS_warmup) {
+    nvtxMark("Warming up");
     for (int i = 0; i < FLAGS_warmup; i++) {
       LOG(INFO) << "Warming up...";
       dnnmark.Forward();
     }
   }
 
+  nvtxRangePush("Forward");
   cudaProfilerStart();
   dnnmark.GetTimer()->Clear();
   // Real benchmark
@@ -49,17 +54,20 @@ int main(int argc, char **argv) {
   }
   dnnmark.GetTimer()->SumRecords();
   cudaProfilerStop();
+  nvtxRangePop();
   run_time += dnnmark.GetTimer()->GetTotalTime();
+  dnnmark.GetTimer()->Clear();
   dnnmark.FreeWorkspaces();
 
   LOG(INFO) << "Forward running time(ms): " << run_time << "\n\r";
-
+  LOG(INFO) << "Timer check: " << dnnmark.GetTimer()->GetTotalTime();
 
 
   // Backward
   LOG(INFO) << "Initialisation BWD";
   dnnmark.SetupWorkspaces(1);
 
+  nvtxRangePush("Backward");
   cudaProfilerStart();
   dnnmark.GetTimer()->Clear();
   // Real benchmark
@@ -69,6 +77,7 @@ int main(int argc, char **argv) {
   }
   dnnmark.GetTimer()->SumRecords();
   cudaProfilerStop();
+  nvtxRangePop();
   dnnmark.FreeWorkspaces();
   LOG(INFO) << "DNNMark suites: Tear down...";
   dnnmark.TearDown();
