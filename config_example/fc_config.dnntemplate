@@ -2,10 +2,9 @@
 run_mode=standalone
 
 [FullyConnected]
-name=relu1
+name=fc1
 n=$N
 c=$C
 h=$H
 w=$W
 num_output=$K
-

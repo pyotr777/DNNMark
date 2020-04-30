@@ -56,8 +56,8 @@ runs = args.runs
 profile_runs = args.profileruns
 
 # Set mini-batch sizes
-# batchsizes = [5, 6, 7, 8, 9, 10, 12, 15] + list(range(20, 501, 10))
 batchsizes = [5, 6, 7, 8, 9, 10, 12, 15] + list(range(20, 501, 10))
+batchsizes = [5, 6, 7, 8, 9, 10, 12, 15, 20, 30, 40, 50]
 
 # VGG model convolution shapes
 configs = [
