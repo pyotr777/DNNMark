@@ -36,15 +36,18 @@ template <typename T>
 class Data {
  private:
   PseudoNumGenerator *png_;
-  size_t size_;
+  size_t size_, total, free;
   T *gpu_ptr_;
   bool filled=false;
  public:
   Data(size_t size)
   : size_(size) {
     // LOG(INFO) << "Create Data chunk of size " << size_;
-    LOG(INFO) << "Create Data chunk of size " << size;
+    LOG(INFO) << "Create Data chunk of size " << size << "*" << sizeof(T);
 #ifdef NVIDIA_CUDNN
+    // Check available memory
+    CUDA_CALL(cudaMemGetInfo(&free, &total));
+    LOG(INFO) << "Memory status: " << free << "/" << total;
     CUDA_CALL(cudaMalloc(&gpu_ptr_, size * sizeof(T)));
 #endif
 #ifdef AMD_MIOPEN

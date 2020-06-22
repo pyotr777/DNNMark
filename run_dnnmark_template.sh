@@ -15,14 +15,14 @@ $(basename $0)  [-n <number of images, batch size>]
                 [-u <stride>]
                 [-p <padding>]
                 [ --algo <cudnnConvolutionBwdFilterAlgo_t> - cuDNN algorithm for backward filter convolution.
-                    Can be set to "fft", "winograd", number from 0 to 6 or "cudnn".]
+                    Can be set to "fft", "winograd", number from 0 to 6, "cudnn", "cudnnv7".]
                 [ --bwd_filter_pref <fastest/no_workspace/specify_workspace_limit> - cuDNN backward filter algorithm selection preference]
                 [ --bwd_data_pref <fastest/no_workspace/specify_workspace_limit> - cuDNN backward data algorithm selection preference]
                 [ --fwd_pref <fastest/no_workspace/specify_workspace_limit> - cuDNN forward algorithm selection preference]
                 [ --algod <cudnnConvolutionBwdDataAlgo_t> - cuDNN algorithm for backward data convolution.
-                    Can be set to one of the following: "fft","winograd","winograd_nonfused","fft_tiling",0, 1, "cudnn". ]
+                    Can be set to one of the following: "fft","winograd","winograd_nonfused","fft_tiling",0, 1, "cudnn", "cudnnv7". ]
                 [ --algofwd <cudnnConvolutionFwdAlgo_t> - cuDNN algorithm for forward convolution.
-                    Can be set to "fft", "winograd", number from 0 to 7 or "cudnn".]
+                    Can be set to "fft", "winograd", number from 0 to 7, "cudnn", "cudnnv7".]
                 [ --workspace <workspace size in bites for convolution functions>]
                 [-b <benchmark executable, default=test_composed_model>]
                 [ --iter <int> - number of FWD+BWD passes to measure time]
