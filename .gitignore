@@ -22,3 +22,4 @@ Dockerfile
 *.csv
 *.pdf
 *.qdrep
+*.log

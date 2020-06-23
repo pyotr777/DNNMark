@@ -17,19 +17,30 @@ from matplotlib.ticker import MultipleLocator
 from matplotlib.ticker import AutoMinorLocator
 from matplotlib.ticker import LinearLocator
 import pandas as pd
-sys.path.insert(0, 'lib/')
-import lib3, plotter
-
+sys.path.insert(0, '../lib/')
+import lib3
+import plotter
 import argparse
+from ast import literal_eval as make_tuple
+
+print('Parse DNNMark logs into CSV file and plot epoch times per shape, CNN-aggregated epoch time and iteration times per shape.\nv2.00')
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--text", "-t", default="", help="Notes to place on the plot")
 parser.add_argument("--dir", "-d", default=".", help="Directory with log files")
 parser.add_argument("--noVGG", action="store_true", help="Do not create VGG shape")
-parser.add_argument("--singleVGG", action="store_true", default=True,
-                    help="Do not discriminate algorithms when aggregating VGG time")
+parser.add_argument("--VGGperalgo", action="store_true",
+                    help="Discriminate algorithms when aggregating VGG time")
 parser.add_argument(
-    "--ref", "-r", default="", help="CSV file with reference time series (DF with batch and time columns)"
+    "--ref", "-r", default="",
+    help="CSV file with reference time series (DF with batch and time columns)")
+parser.add_argument(
+    "--grid", "-g", default=None, help=
+    "Grid details. Format: ((X major in units, X minor ticks number), (Y major in units, Y minor ticks number))"
+)
+parser.add_argument(
+    "--convconfigfile", default=None,
+    help="Model convolutional layers configuration. By default VGG16 cofiguration is used. Default is dnnmarkConvConfigs/vgg16.csv"
 )
 args = parser.parse_args()
 
@@ -37,24 +48,6 @@ print("Numpy:", np.__version__)
 print("Pandas:", pd.__version__)
 print("Matplotlib:", matplotlib.__version__)
 print("Seaborn:", sns.__version__)
-
-
-def drawGrid(ax, xstep=50, ystep=None):
-    ax.grid(ls=":", alpha=.6)
-    #     ax.set_ylabel("time (s)")
-    ax.set_xlim(0, None)
-    ax.set_ylim(0, None)
-    minorLocatorX = MultipleLocator(xstep / 5)
-    majorLocatorX = MultipleLocator(xstep)
-    ax.xaxis.set_major_locator(majorLocatorX)
-    ax.xaxis.set_minor_locator(minorLocatorX)
-    if ystep is not None:
-        minorLocatorY = MultipleLocator(ystep / 5.)
-        majorLocatorY = MultipleLocator(ystep)
-        ax.yaxis.set_minor_locator(minorLocatorY)
-        ax.yaxis.set_major_locator(majorLocatorY)
-    ax.grid(which='minor', linestyle=':', linewidth=.5, alpha=.5)
-    ax.grid(which="major", ls=":", alpha=0.25, color="black")
 
 
 def readLogFiles(logdir, pars):
@@ -73,23 +66,22 @@ def readLogFiles(logdir, pars):
     return dflog
 
 
-def shape_sum_column(series):
+def shape_sum_column(series, model_config=None, debug=False):
     # print("series in shape_sum_column\n", series)
-    VGG_shapes = {
-        "32_3_64": 1,
-        "32_64_64": 1,
-        "16_64_128": 1,
-        "16_128_128": 1,
-        "8_128_256": 1,
-        "8_256_256": 2,
-        "4_256_512": 1,
-        "4_512_512": 2,
-        "2_512_512": 3
-    }
+    if debug:
+        print('model_config')
+        print(model_config.head(2))
     sum_ = 0
-    for shape, value in VGG_shapes.items():
+    for row in model_config[['shape', 'count']].iterrows():
+        row=row[1] # Get the values
+        shape = row['shape']
+        count = row['count']
+        if debug:
+            print('shape/time: ',shape,'/',end='')
         try:
             time = float(series[shape])
+            if debug:
+                print(time,'*',count,'=',end='')
         except KeyError:
             print("no data for {},".format(shape), )
             return None
@@ -99,34 +91,83 @@ def shape_sum_column(series):
             print("shape:", shape)
             print(e)
             raise
+        except Exception as e:
+            print("ERROR: Could no read time for shape {} for series:".format(shape))
+            print(series)
+            print(e)
+            raise
 
-        multipl = float(value)
+        multipl = float(count)
+        if debug:
+            print(time * multipl)
         sum_ += time * multipl
 
     return sum_
 
 
 # Aggerate time group-wise
-def group_func(groupdf, agg_columns=["time"]):
+def group_func(groupdf, agg_columns=["time"], model_config=None):
+    # print('Group function with config')
+    # print(model_config.head())
     df_ = groupdf[["shape"] + agg_columns].set_index("shape")
     SUM_time = pd.DataFrame()
     for agg_column in agg_columns:
         try:
-            SUM_time["VGG " + agg_column] = df_[[agg_column]].apply(shape_sum_column, axis=0).values
+            SUM_time["CNN " + agg_column] = df_[[agg_column]].apply(
+                shape_sum_column, axis=0, model_config=model_config).values
             # SUM_time = pd.DataFrame(data=df_[[agg_column]].apply(shape_sum_column, axis=0).values, columns=["VGG time"])
         except Exception as e:
             print("Error applying shape_sum_column function to")
             print(df_[[agg_column]])
-            print("---")
+            print('-'*12)
+            print(e)
+            print("."*12)
             sys.exit(1)
     SUM_time.index.name = 'tmp'
     return SUM_time
 
 
+def plotLayersTime(df, grid="((100,10),(0.5,5))", title="DNNMark FC layers time (s)"):
+    colorlist = plotter.getColorList('tab20', 20)
+    matplotlib.rcParams['axes.prop_cycle'] = cycler(color=colorlist)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    # Stacked area plot
+    if 'machine' in df:
+        data = df.drop(['machine', 'total', 'iterations'], axis=1)
+    else:
+        data = df.copy()
+    data.set_index('batch', drop=True, inplace=True)
+    X = data.index.values
+    Y = np.transpose(data.values)
+    labels = data.columns.get_level_values(0)
+    stacks = ax.stackplot(X, Y, labels=labels, lw=0)
+    # Line plot - total time
+    if 'total' in df.columns:
+        df.plot("batch", "total", lw=2, alpha=1, ms=4, marker="o", fillstyle="full",
+                markerfacecolor="#ffffff", c="black", ax=ax)
+    ax.set_ylabel("time (s)")
+    ax.set_xlabel("mini-batch size")
+    handles, labels = ax.get_legend_handles_labels()
+
+    ncol = len(labels) // 8
+    ax.legend(handles[::-1], labels[::-1], frameon=False, loc='upper left',
+              bbox_to_anchor=(1, 1), fontsize=10, ncol=ncol)
+
+    plt.setp(ax.get_legend().get_texts(), family='Liberation Sans Narrow')
+
+    # plt.subplots_adjust(top=0.9)
+    fig.suptitle(title, fontsize=16, y=0.95)
+    ((x_step, x_subticks), (y_step, y_subticks)) = make_tuple(grid)
+    plotter.drawGrid(ax, xstep=x_step, ystep=y_step, minor_ticks_x=x_subticks,
+                     minor_ticks_y=y_subticks)
+    ax.set_xlim(0, None)
+    return ax
+
+
 output_patterns = [
     re.compile(r"Total running time\(ms\): ([0-9\.e\+]+)"),
     re.compile(r"NVDRV:([0-9\.\-]+),CUDA:([0-9\.\-x]+),cuDNN:([0-9\-\.]+)"),
-    re.compile(r"GPU[0-9]+: ([^,]+), ([0-9]+) MiB, ([0-9]+) MiB"),
+    re.compile(r"GPU([0-9]+): ([^,]+), ([0-9]+) MiB, ([0-9]+) MiB"),
     re.compile(r"CPU\(s\):\s+(\d+)"),
     re.compile(r"Model name:\s+(.+)"),
     re.compile(r"CPU MHz:\s+([0-9\.]+)"),
@@ -137,14 +178,17 @@ filename_pattern = re.compile(
 )
 columns = ["machine", "config", "shape", "batch", "algos", "run"]
 pars = {
-    "output_patterns": output_patterns,
-    "parameters":
-        [
-            "time", ["NVdrv", "CUDA", "cuDNN"], ["GPU model", "GPU memory.total", "GPU memory.free"], "CPUs",
-            "CPU model", "CPU MHz", "CPU MHz max"
-        ],
-    "filename_pattern": filename_pattern,
-    "columns": columns
+    "output_patterns":
+    output_patterns,
+    "parameters": [
+        "time", ["NVdrv", "CUDA", "cuDNN"],
+        ["GPU_N", "GPU model", "GPU memory.total", "GPU memory.free"], "CPUs",
+        "CPU model", "CPU MHz", "CPU MHz max"
+    ],
+    "filename_pattern":
+    filename_pattern,
+    "columns":
+    columns
 }
 
 logdir = args.dir
@@ -156,8 +200,8 @@ for machine, mgroup in df_logs.groupby(["machine"]):
 print(df_logs.head(1))
 
 meta_columns = [
-    "config", "NVdrv", "CUDA", "cuDNN", "GPU model", "GPU memory.total", "GPU memory.free", "CPUs", "CPU model",
-    "CPU MHz", "CPU MHz max"
+    "config", "NVdrv", "CUDA", "cuDNN", "GPU_N", "GPU model", "GPU memory.total",
+    "GPU memory.free", "CPUs", "CPU model", "CPU MHz", "CPU MHz max"
 ]
 meta_df = df_logs[meta_columns]
 print("Meta rows")
@@ -165,11 +209,15 @@ print(meta_df.head(2))
 
 meta_ = meta_df.iloc[0]
 meta_rows = int(len(meta_columns) / 2)
-meta1 = "\n".join(["{:15s}:{}".format(col, meta_[col]) for col in meta_columns[:meta_rows]])
-meta2 = "\n".join(["{:15s}:{}".format(col, meta_[col]) for col in meta_columns[meta_rows:]])
+meta1 = "\n".join(
+    ["{:15s}:{}".format(col, meta_[col]) for col in meta_columns[:meta_rows]])
+meta2 = "\n".join(
+    ["{:15s}:{}".format(col, meta_[col]) for col in meta_columns[meta_rows:]])
 print("Meta data\n{}".format(meta1))
 
 df_logs["env"] = ""
+if "GPU_N" in df_logs.columns:
+    df_logs["env"] = df_logs["env"] + "GPU #" + df_logs["GPU_N"].map(str) + "  "
 if "GPU model" in df_logs.columns:
     df_logs["env"] = df_logs["env"] + df_logs["GPU model"].map(str) + "  "
 if "GPU memory.total" in df_logs.columns:
@@ -185,7 +233,9 @@ if "CPUs" in df_logs.columns:
         df_logs["CPU model"].map(str) + "(" + df_logs["CPU MHz max"].map(str) + ")"
 
 # Drop redundunt columns
-df_logs = df_logs[["env", "GPU model", "machine", "config", "shape", "algos", "batch", "time", "run"]]
+df_logs = df_logs[[
+    "env", "GPU model", "machine", "config", "shape", "algos", "batch", "time", "run"
+]]
 df_logs.rename(columns={"GPU model": "GPU"}, inplace=True)
 
 # Average time beteween runs
@@ -197,7 +247,9 @@ if runs > 1:
     df_logs = df_logs.groupby(groupcolumns, as_index=False).agg(["mean", "max", "min"])
     df_logs.reset_index(inplace=True)
     df_logs.drop(["run"], axis=1, level=0, inplace=True)
-    df_logs.columns = [col[0] if col[1] == "" else col[1] for col in df_logs.columns.values]
+    df_logs.columns = [
+        col[0] if col[1] == "" else col[1] for col in df_logs.columns.values
+    ]
     df_logs.rename({"mean": "time"}, axis="columns", inplace=True)
 
     print(df_logs.head(2))
@@ -212,11 +264,17 @@ if error_logs.shape[0] > 0:
     print(error_logs)
     print("---")
 
-clean_logs = df_logs[~df_logs.index.isin(error_logs.index)].copy()  # Avoid warning "value set on a copy"
+clean_logs = df_logs[~df_logs.index.isin(error_logs.index)].copy(
+)  # Avoid warning "value set on a copy"
 print("Errors shape", error_logs.shape)
 
-group_columns = [c for c in clean_logs.columns if c in ["env", "config", "GPU", "machine", "shape", "algos"]]
-use_columns = group_columns + [c for c in clean_logs.columns if c in ["batch", "time", "max", "min"]]
+group_columns = [
+    c for c in clean_logs.columns
+    if c in ["env", "config", "GPU", "machine", "shape", "algos"]
+]
+use_columns = group_columns + [
+    c for c in clean_logs.columns if c in ["batch", "time", "max", "min"]
+]
 
 clean_logs = clean_logs[use_columns]
 print("Clean logs shape {}".format(clean_logs.shape))
@@ -232,9 +290,11 @@ if remove_incomplete_series:
         print("Missing data:")
         missing_data = missing_data[group_columns + ["batch"]]
         print(missing_data.shape)
-        print(missing_data.drop(["env"], axis=1))  # [["algo_pref", "batch", "shape", "time"]]
+        print(missing_data.drop(["env"],
+                                axis=1))  # [["algo_pref", "batch", "shape", "time"]]
         print("---")
-        merged = clean_logs.merge(missing_data, on=[group_columns + ["batch"]], how="left", indicator=True)
+        merged = clean_logs.merge(missing_data, on=[group_columns + ["batch"]],
+                                  how="left", indicator=True)
         print("Merged:")
         print(merged.head())
         print(merged.shape)
@@ -270,8 +330,8 @@ construct_fastest = False
 if construct_fastest:
     # Constract fastest series
     clean_logs = lib3.getLowestFromSeries(
-        clean_logs, group_columns=["GPU", "machine", "shape", "batch"], series="algos", y="time"
-    )
+        clean_logs, group_columns=["GPU", "machine", "shape", "batch"], series="algos",
+        y="time")
     print("clean logs with fastest series")
     print(clean_logs.head(n=4))
 
@@ -287,45 +347,24 @@ print(("CSV saved to {}".format(csv_file)))
 for machine in clean_logs["machine"].unique():
     print("Machine: {}".format(machine))
     mlogs = clean_logs[clean_logs["machine"] == machine]
-    if args.singleVGG:
-        fg = sns.FacetGrid(
-            mlogs.sort_values(by=["shape", "batch", "algos"]),
-            col="shape",
-            height=3,
-            aspect=1.5,
-            margin_titles=True,
-            sharey=False
-        )
-    elif args.noVGG:
-        fg = sns.FacetGrid(
-            mlogs.sort_values(by=["shape", "batch", "algos"]),
-            col="shape",
-            row="algos",
-            height=3,
-            aspect=1.5,
-            margin_titles=True,
-            sharey=False
-        )
+    if args.VGGperalgo:
+        fg = sns.FacetGrid(mlogs.sort_values(by=["shape", "batch", "algos"]), col="shape",
+                           hue="algos", height=3, aspect=1.5, margin_titles=True,
+                           sharey=False)
     else:
-        fg = sns.FacetGrid(
-            mlogs.sort_values(by=["shape", "batch", "algos"]),
-            col="shape",
-            hue="algos",
-            height=3,
-            aspect=1.5,
-            margin_titles=True,
-            sharey=False
-        )
+        fg = sns.FacetGrid(mlogs.sort_values(by=["shape", "batch", "algos"]), col="shape",
+                           height=3, aspect=1.5, margin_titles=True, sharey=False)
     if runs > 1:
         # Fill between min and max
         g = fg.map(plt.fill_between, "batch", "max", "min", color="red", alpha=0.5)
-    g = fg.map(
-        plt.plot, "batch", "time", lw=0.5, alpha=0.7, ms=2, marker="o", fillstyle="full", markerfacecolor="#ffffff"
-    ).add_legend()
+    g = fg.map(plt.plot, "batch", "time", lw=0.5, alpha=0.7, ms=2, marker="o",
+               fillstyle="full", markerfacecolor="#ffffff").add_legend()
 
     for ax_arr in np.nditer(fg.axes, flags=["refs_ok"]):
         ax = ax_arr.item()
-        drawGrid(ax, xstep=50)
+        ax.set_xlim(0, None)
+        ax.set_ylim(0, None)
+        plotter.drawGrid(ax, xstep=50)
 
     [plt.setp(axg.texts, text="") for axg in g.axes.flat]
     g.set_titles(row_template='{row_name}', col_template='{col_name}', size=9)
@@ -370,14 +409,16 @@ for machine in clean_logs["machine"].unique():
     # print(errors on the plot)
     mfont = {'family': 'monospace'}
     if error_logs.shape[0] > 0:
-        error_logs_ = error_logs[["machine", "shape", "batch",
-                                  "algos"]].sort_values(by=["algos", "shape", "batch"]).drop_duplicates()
+        error_logs_ = error_logs[[
+            "machine", "shape", "batch", "algos"
+        ]].sort_values(by=["algos", "shape", "batch"]).drop_duplicates()
         text_ = "Errors\n" + error_logs_.to_string()
         g.fig.text(x, y, text_, ha="left", va="top", fontsize=8, **mfont)
 
     fig_file = os.path.join(logdir, "DNNMark_shape_times_{}.pdf".format(machine))
     # plt.subplots_adjust(top=top)
-    plt.suptitle("DNNMark time (s) on {}".format(machine), fontsize=18, va="bottom", y=1.01)
+    plt.suptitle("DNNMark time (s) on {}".format(machine), fontsize=18, va="bottom",
+                 y=1.01)
     plt.tight_layout()
     plt.savefig(fig_file, bbox_inches="tight")
     print("Saved plot to", fig_file)
@@ -387,46 +428,80 @@ if args.noVGG:
     print("VGG aggregation is disabled with CLI option")
     sys.exit(0)
 
-# Calculate VGG time
-print("Calculate VGG time")
+# Aggregate model time
+print("Calculating aggregated model epoch time")
+
+# VGG model convolution shapes
+if args.convconfigfile is None:
+    # Use VGG16 configuraion
+    print("Simulate VGG16 convolutional layers.")
+    CNNconfig = pd.read_csv('dnnmarkConvConfigs/vgg16.csv')
+else:
+    CNNconfig = pd.read_csv(args.convconfigfile)
+
+# Strip whitespaces from column names
+CNNconfig.rename(columns=lambda x: x.strip(), inplace=True)
+
+CNNconfig['shape'] = CNNconfig['image height'].astype(
+    str
+) + "_" + CNNconfig['image width'].astype(str) + "_" + CNNconfig['input channels'].astype(
+    str) + "_" + CNNconfig['output channels'].astype(
+        str) + "_" + CNNconfig['kernel size'].astype(str) + "_" + CNNconfig['padding'].astype(
+            str) + '_' + CNNconfig['stride'].astype(str)
+
+print(CNNconfig.head(2))
+print('-' * 12)
+configs = CNNconfig.groupby(
+    CNNconfig.columns.tolist(),
+    as_index=False).size().reset_index().rename(columns={0: 'count'})
+
+configs = configs[['shape','count']]
+configs.drop_duplicates(inplace=True)
+print('Logs')
+a = clean_logs.iloc[0]
+print('shape/time', a['shape'],a['time'])
 
 aggregate_columns = []
-if args.singleVGG:
-    aggregate_columns = ["env", "config", "machine", "GPU", "batch"]
-else:
+
+if args.VGGperalgo:
     print(clean_logs["algos"].unique())
     aggregate_columns = ["env", "config", "machine", "GPU", "batch", "algos"]
+else:
+    aggregate_columns = ["env", "config", "machine", "GPU", "batch"]
 print("Clean logs columns: {}".format(clean_logs.columns.values))
 if "max" in clean_logs.columns.values:
-    df_ = clean_logs[aggregate_columns + ["time", "max", "min", "shape"]]
+    df_full = clean_logs[aggregate_columns + ["time", "max", "min", "shape"]]
 else:
-    df_ = clean_logs[aggregate_columns + ["time", "shape"]]
-print(df_.head())
-print("Shape of df_:", df_.shape)
+    df_full = clean_logs[aggregate_columns + ["time", "shape"]]
+print(df_full.head())
+print("Shape of df_full:", df_full.shape)
 if "max" in clean_logs.columns.values:
-    dnnmark_aggr = df_.groupby(by=aggregate_columns).apply(group_func, agg_columns=["time", "max", "min"])
+    dnnmark_aggr = df_full.groupby(by=aggregate_columns).apply(
+        group_func, agg_columns=["time", "max", "min"], model_config=configs)
 else:
-    dnnmark_aggr = df_.groupby(by=aggregate_columns).apply(group_func, agg_columns=["time"])
-print("VGG aggregated")
-# print(dnnmark_aggr.columns)
-# print(dnnmark_aggr)
+    dnnmark_aggr = df_full.groupby(by=aggregate_columns).apply(group_func,
+                                                               agg_columns=["time"],
+                                                               model_config=configs)
+print("CNN aggregated")
 dnnmark_aggr.reset_index(inplace=True)
 dnnmark_aggr.drop(["tmp"], axis=1, inplace=True)
-print("Aggregated df algos")
 print(dnnmark_aggr.head(2))
 
-fig, ax = plt.subplots(figsize=(10, 6))
-if args.singleVGG:
-    dnnmark_aggr[[
-        "batch", "VGG time"
-    ]].plot("batch", "VGG time", lw=1, alpha=1, ms=4, marker="o", fillstyle="full", markerfacecolor="#ffffff", ax=ax)
-    if "max" in clean_logs.columns.values:
-        ax.fill_between(dnnmark_aggr["batch"], dnnmark_aggr["VGG max"], dnnmark_aggr["VGG min"], color="red", alpha=0.3)
 
+fig, ax = plt.subplots(figsize=(10, 6))
+
+if args.VGGperalgo:
+    dnnmark_aggr[["batch", "CNN time",
+                  "algos"]].plot("batch", "CNN time", lw=1, alpha=1, ms=4, marker="o",
+                                 fillstyle="full", markerfacecolor="#ffffff", ax=ax)
 else:
-    dnnmark_aggr[[
-        "batch", "VGG time", "algos"
-    ]].plot("batch", "VGG time", lw=1, alpha=1, ms=4, marker="o", fillstyle="full", markerfacecolor="#ffffff", ax=ax)
+    dnnmark_aggr[["batch",
+                  "CNN time"]].plot("batch", "CNN time", lw=1, alpha=1, ms=4, marker="o",
+                                    fillstyle="full", markerfacecolor="#ffffff", ax=ax)
+    if "CNN max" in dnnmark_aggr.columns.values:
+        ax.fill_between(dnnmark_aggr["batch"], dnnmark_aggr["CNN max"],
+                        dnnmark_aggr["CNN min"], color="red", alpha=0.3, label="min-max")
+        print("Fill between with red")
 
 no_errors = True
 if args.ref != "":
@@ -439,30 +514,28 @@ if args.ref != "":
         print("Could not read from", args.ref)
         no_errors = False
     if no_errors:
-        ref_df.plot(
-            "batch",
-            "time",
-            lw=1,
-            ls=":",
-            color="grey",
-            alpha=1,
-            ms=4,
-            marker="o",
-            fillstyle="full",
-            markerfacecolor="#ffffff",
-            label="Reference time",
-            ax=ax
-        )
+        ref_df.plot("batch", "time", lw=1, ls=":", color="grey", alpha=1, ms=4,
+                    marker="o", fillstyle="full", markerfacecolor="#ffffff",
+                    label="Reference time", ax=ax)
 
 ax.set_title(dnnmark_aggr.iloc[0]["machine"])
 ax.legend()
-drawGrid(ax, xstep=50)
-plt.subplots_adjust(top=0.85)
-fig.suptitle("VGG-aggregated DNNMark time (s)", fontsize=16)
 
-fig.text(
-    1.01, 1., meta1 + "\n" + meta2, ha="left", va="top", transform=ax.transAxes, fontsize=7, fontfamily="monospace"
-)
+ax.set_xlim(0, None)
+ax.set_ylim(0, None)
+if args.grid is not None:
+    from ast import literal_eval as make_tuple
+    ((x_step, x_subticks), (y_step, y_subticks)) = make_tuple(args.grid)
+    print("Grid: {}/{}, {}/{}".format(x_step, x_subticks, y_step, y_subticks))
+    plotter.drawGrid(ax, xstep=x_step, ystep=y_step, minor_ticks_x=x_subticks,
+                     minor_ticks_y=y_subticks)
+else:
+    plotter.drawGrid(ax, xstep=50)
+plt.subplots_adjust(top=0.85)
+fig.suptitle("CNN-aggregated DNNMark time (s)", fontsize=16)
+
+fig.text(1.01, 1., meta1 + "\n" + meta2, ha="left", va="top", transform=ax.transAxes,
+         fontsize=7, fontfamily="monospace")
 
 text_ = ""
 if os.path.exists(os.path.join(logdir, "README")):
@@ -477,20 +550,74 @@ if args.ref != "":
 fig.text(0, 0, text_, ha="left", va="top", fontsize=8)
 
 if args.text:
-    text_ = "{:s}".format(args.text.replace(r'\n', "\n"))
-    fig.text(0.6, 0, text_, ha="left", va="top", fontsize=8)
+    text_l = "{:s}".format(args.text.replace(r'\n', "\n"))
+    fig.text(0.6, 0, text_l, ha="left", va="top", fontsize=8)
 
-fig_file = os.path.join(logdir, "VGG_time_{}.pdf".format(machine))
+fig_file = os.path.join(logdir, "CNN_time_{}.pdf".format(machine))
 plt.savefig(fig_file, bbox_inches="tight")
 print("Saved plot to", fig_file)
 
-fig_file = os.path.join(logdir, "VGG_time_{}.png".format(machine))
+fig_file = os.path.join(logdir, "CNN_time_{}.png".format(machine))
 plt.savefig(fig_file, bbox_inches="tight", dpi=144)
 print("Saved plot to", fig_file)
 plt.close()
 
-# Save VGG time
-print("VGG-aggregated data")
-csv_file = os.path.join(logdir, "VGG_time_{}.csv".format(machine))
+# Save CNN time
+print("CNN-aggregated data")
+csv_file = os.path.join(logdir, "CNN_time_{}.csv".format(machine))
 dnnmark_aggr.to_csv(csv_file, index=False)
 print(("CSV saved to {}".format(csv_file)))
+
+# Plot per layer iteration time
+
+short_df = df_full[['batch', 'time', 'shape']].copy()
+datasetsize = 50000.
+short_df['iterations'] = np.ceil(datasetsize / short_df['batch'])
+short_df['itertime'] = short_df['time'] / short_df['iterations']
+shapes = short_df['shape'].unique()
+short_piv = short_df.pivot_table(index='batch', columns='shape', values='itertime')
+short_piv.reset_index(inplace=True)
+
+shapes_in_CNN_order = CNNconfig['shape'].tolist()
+for s in shapes_in_CNN_order:
+    if s not in shapes:
+        print("Error: shape {} not in the table.".format(s))
+        print(short_df.head())
+        sys.exit(1)
+for s in shapes:
+    if s not in shapes_in_CNN_order:
+        print("Error: shape {} not in the list.".format(s))
+        print(shapes_in_CNN_order)
+        sys.exit(1)
+columns = ['batch'] + list(shapes_in_CNN_order)
+short_piv = short_piv.reindex(columns, axis=1)
+ax = plotLayersTime(
+    short_piv, grid="((100,10),(0.1,10))",
+    title="DNNMark convolutional layers iteration time on {}".format(machine))
+text_ = ""
+if os.path.exists(os.path.join(logdir, "README")):
+    with io.open(os.path.join(logdir, "README"), mode="r", encoding='utf-8') as f:
+        text_ = f.read().replace("\\n", "\n")
+    text_ += "\n"
+text_ += logdir + "\n"
+if args.text:
+    text_ += "{:s}".format(args.text.replace(r'\n', "\n"))
+    fig.text(0.6, 0, text_l, ha="left", va="top", fontsize=8)
+
+ax.text(0, -0.1, text_, ha="left", va="top", fontsize=7, transform=ax.transAxes)
+ax.text(1.01, 0.3, meta1 + "\n" + meta2, ha="left", va="top", transform=ax.transAxes,
+        fontsize=7, fontfamily="monospace")
+fig_file = os.path.join(logdir, "iterationTimesPerLayer.pdf")
+plt.savefig(fig_file, bbox_inches="tight", dpi=144)
+print("Saved iteration times plot to", fig_file)
+# Magnify small MBS zone
+right_mbs = 40
+short_piv = short_piv[short_piv['batch'] <= right_mbs]
+ax = plotLayersTime(
+    short_piv, grid="((10,10),(0.01,10))",
+    title="DNNMark convolutional layers iteration time on {}".format(machine))
+ax.text(0, -0.1, text_, ha="left", va="top", fontsize=8, transform=ax.transAxes)
+fig_file = os.path.join(logdir, "iterationTimesPerLayerZoomed.pdf")
+plt.savefig(fig_file, bbox_inches="tight", dpi=144)
+print("Saved plot to", fig_file)
+plt.close()
