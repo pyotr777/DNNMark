@@ -173,7 +173,7 @@ class ConvolutionLayer : public Layer<T> {
         top_diffs_.push_back(
           data_manager_->GetData(top_diff_chunk_ids_[i]));
       }
-      LOG(INFO) << "Top data memory allocation done.";
+      LOG(INFO) << "Top data memory allocation done for " << num_tops_ << " tops.";
     }
 
     // Only one set of weights is considered
