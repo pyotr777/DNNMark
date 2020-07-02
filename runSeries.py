@@ -70,14 +70,14 @@ profile_runs = args.profileruns
 batchsizes = [5, 6, 7, 8, 9, 10, 12, 15] + list(range(20, 501, 10))
 
 # VGG model convolution shapes
-if args.convconfigfile is None:
+if args.convconfig is None:
     # Use VGG16 configuraion
     print("Simulate VGG16 convolutional layers.")
     configs = pd.read_csv('dnnmarkConvConfigs/vgg16.csv')
     # [(2, 512, 512), (4, 512, 512), (4, 256, 512), (8, 256, 256), (8, 128, 256),
     #            (16, 128, 128), (16, 64, 128), (32, 64, 64), (32, 3, 64)]
 else:
-    configs = pd.read_csv(args.convconfigfile)
+    configs = pd.read_csv(args.convconfig)
 
 # Drop duplicate layer configurations
 configs.drop_duplicates(inplace=True)
