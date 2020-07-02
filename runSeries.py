@@ -166,7 +166,7 @@ for run in range(runs):
                 if os.path.isfile(logfile):
                     print("file", logfile, "exists.")
                 else:
-                    command_pars = command + " -h {H} -w {W} -c {C} -k {K} -s {S} -u {U} -n {batch} --iter {iter} {other} {debug}".format(
+                    command_pars = command + " -h {H} -w {W} -c {C} -k {K} -s {S} -p {P} -u {U} -n {batch} --iter {iter} {other} {debug}".format(
                         H=H, W=W, C=C, K=K, S=S, P=P, U=U, batch=batch, iter=iterations,
                         other=other_options, debug=debuginfo_option)
                     task = {
@@ -198,7 +198,7 @@ for run in range(profile_runs):
                 if os.path.isfile(logfile):
                     print("file", logfile, "exists.")
                 else:
-                    command_pars = command + " -h {H} -w {W} -c {C} -k {K} -s {S} -u {U} -n {batch} --iter {iter} {other} --warmup 0".format(
+                    command_pars = command + " -h {H} -w {W} -c {C} -k {K} -s {S} -p {P} -u {U} -n {batch} --iter {iter} {other} --warmup 0".format(
                         H=H, W=W, C=C, K=K, S=S, P=P, U=U, batch=batch, iter=iterations,
                         other=other_options)
                     profcommand = "nvprof -u s --profile-api-trace none --unified-memory-profiling off --profile-child-processes --profile-from-start off --csv --log-file {} {}".format(
