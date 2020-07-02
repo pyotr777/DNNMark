@@ -14,12 +14,6 @@ import argparse
 import pandas as pd
 import sys
 
-# Set GPU range
-gpus = [0]
-
-# Change hostname
-host = multigpuexec.getHostname()  # "mouse.cont"
-
 default_benchmark = "test_composed_model"
 benchmark = default_benchmark
 default_template = "conf_convolution_block"
@@ -44,13 +38,22 @@ parser.add_argument("--debug", action="store_true", default=False,
 parser.add_argument("--warmup", action="store_true",
                     help="Run warmup before measuring time.")
 parser.add_argument(
-    "--convconfigfile", default=None,
+    "--convconfig", default=None,
     help="Model convolutional layers configuration. By default VGG16 cofiguration is used."
 )
+parser.add_argument("--gpus", default=None, help="GPU numbers (as a Python list).")
 args = parser.parse_args()
 
+# Change hostname
+host = multigpuexec.getHostname()
 if args.host:
     host = args.host
+
+gpus = [0]
+if args.gpus is not None:
+    import ast
+    gpus = ast.literal_eval(args.gpus)
+print("GPUs: {}".format(gpus))
 
 if args.template:
     template = args.template
