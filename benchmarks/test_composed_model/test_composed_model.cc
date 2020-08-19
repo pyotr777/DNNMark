@@ -19,9 +19,15 @@ int main(int argc, char **argv) {
   dnnmark.ParseAllConfig(FLAGS_config);
 
   if (FLAGS_warmup) {
-    LOG(INFO) << "Warming up before initialisation..." << FLAGS_warmup;
-    for (int i = 0; i < FLAGS_warmup; i++) {
-      int status = call_sgemm(0, 512);
+    LOG(INFO) << "Warming up before initialisation..." << FLAGS_warmup*10 << " times";
+    int device = 0;
+    int dev = gpuDeviceInit(device);
+    if (dev == -1) {
+      return EXIT_FAILURE;
+    }
+
+    for (int i = 0; i < FLAGS_warmup*10; i++) {
+      int status = call_sgemm(device, 512);
       if (status != 0) {
         fprintf(stderr, "Error status: %d\n",status);
       }
@@ -37,9 +43,9 @@ int main(int argc, char **argv) {
   nvtxMark("Setup Workspaces");
   dnnmark.SetupWorkspaces(0);
   if (FLAGS_warmup) {
-    nvtxMark("Warming up");
+    LOG(INFO) << "Warming up..." << FLAGS_warmup << " times";
     for (int i = 0; i < FLAGS_warmup; i++) {
-      LOG(INFO) << "Warming up...";
+      LOG(INFO) << "Warming up run " << i;
       dnnmark.Forward();
     }
   }

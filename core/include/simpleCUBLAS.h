@@ -83,11 +83,7 @@ static int call_sgemm(int device, int N) {
   bool debug = false;
   cublasHandle_t handle;
 
-  int dev = gpuDeviceInit(device);
 
-  if (dev == -1) {
-    return EXIT_FAILURE;
-  }
 
   /* Initialize CUBLAS */
   if (debug) {
@@ -247,13 +243,5 @@ static int call_sgemm(int device, int N) {
   }
 
   return EXIT_SUCCESS;
-  // if (error_norm / ref_norm < 1e-6f) {
-  //   printf("simpleCUBLAS test passed.\n");
-  //   return EXIT_SUCCESS;
-  // } else {
-  //   printf("simpleCUBLAS test failed.\n");
-  //   return EXIT_FAILURE;
-  // }
-
 }
 

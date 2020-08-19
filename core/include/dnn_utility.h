@@ -830,9 +830,11 @@ void GetdBwdFilterAlgo_v7(const Handle &handle, RunMode mode, int idx,
                          const DataTensor<T> &bottom_desc,
                          const ConvolutionDesc<T> &conv_desc,
                          const DataTensor<T> &top_desc) {
-    int max_algos = 3;
+    int max_algos = 4;
     cudnnConvolutionBwdFilterAlgoPerf_t perf_results[max_algos];
     int returned_algo_count;
+    // Set the math type to allow cuDNN to use Tensor Cores:
+    CUDNN_CALL(cudnnSetConvolutionMathType(conv_desc.GetConv(), CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION) );
     CUDNN_CALL(cudnnFindConvolutionBackwardFilterAlgorithm(
                mode == COMPOSED ?
                handle.GetCudnn(idx) : handle.GetCudnn(),
@@ -845,6 +847,10 @@ void GetdBwdFilterAlgo_v7(const Handle &handle, RunMode mode, int idx,
     cudnnConvolutionBwdFilterAlgo_t algo = static_cast<cudnnConvolutionBwdFilterAlgo_t>(perf_results->algo);
     if (returned_algo_count > 0) {
       bwd_filter_algo_ = perf_results->algo;
+      LOG(INFO) << "Algo count " << returned_algo_count << ". Fastest algos:"; // << perf_results->algo;
+      for (int ii=0; ii < returned_algo_count; ii++) {
+        LOG(INFO) << "Algo " << perf_results[ii].algo << " : " << perf_results[ii].time << "ms : " << perf_results[ii].memory << "B : " << perf_results[ii].mathType;
+      }
     } else {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
     }
@@ -861,9 +867,15 @@ void GetdBwdFilterAlgo_v7(const Handle &handle, RunMode mode, int idx,
                          size_t     workspace_size)
   {
     LOG(INFO) << "In FindBwdFilterAlgoEx.";
-    int max_algos = 3;
+    LOG(INFO) << "Calling cudnnFindConvolutionBackwardFilterAlgorithmEx().\n";
+    int max_algos = 4;
     cudnnConvolutionBwdFilterAlgoPerf_t perf_results[max_algos];
     int returned_algo_count;
+
+    // Set the math type to allow cuDNN to use Tensor Cores:
+    // CUDNN_CALL(cudnnSetConvolutionMathType(conv_desc.GetConv(), CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION) );
+    // Set the math type to allow cuDNN to use Tensor Cores:
+    CUDNN_CALL( cudnnSetConvolutionMathType(conv_desc.GetConv(), CUDNN_TENSOR_OP_MATH) );
     CUDNN_CALL(cudnnFindConvolutionBackwardFilterAlgorithmEx(
                mode == COMPOSED ?
                handle.GetCudnn(idx) : handle.GetCudnn(),
@@ -879,7 +891,7 @@ void GetdBwdFilterAlgo_v7(const Handle &handle, RunMode mode, int idx,
       bwd_filter_algo_ = perf_results[0].algo;
       LOG(INFO) << "Algo count " << returned_algo_count << ". Fastest algos:"; // << perf_results->algo;
       for (int ii=0; ii < returned_algo_count; ii++) {
-        LOG(INFO) << "Algo " << perf_results[ii].algo << " : " << perf_results[ii].time << "ms : " << perf_results[ii].memory << "B";
+        LOG(INFO) << "Algo " << perf_results[ii].algo << " : " << perf_results[ii].time << "ms : " << perf_results[ii].memory << "B : " << perf_results[ii].mathType;
       }
     } else {
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;

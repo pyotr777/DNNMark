@@ -54,7 +54,7 @@ U=1
 P=1
 BENCH="test_composed_model"
 ITER=1
-WARMUP=0
+WARMUP="0"
 debug=0
 datasetsize=0
 workspace=""
@@ -119,9 +119,9 @@ while test $# -gt 0; do
         --iter)
             ITER="$2";shift;
             ;;
-		--warmup)
-			WARMUP="$2";shift;
-			;;
+        --warmup)
+            WARMUP="$2";shift;
+            ;;
         --debug)
             debug=1
             ;;
