@@ -87,7 +87,7 @@ static int call_sgemm(int device, int N) {
 
   /* Initialize CUBLAS */
   if (debug) {
-    printf("simpleCUBLAS test running on device %d..\n",dev);
+    printf("simpleCUBLAS test running on device %d..\n",device);
   }
   status = cublasCreate(&handle);
 
