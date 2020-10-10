@@ -3,8 +3,9 @@
 # Wrapper API for DNNMark
 # 2018 (C) Peter Bryzgalov @ CHITECH Stair Lab
 
-IFS='' read -r -d '' usage <<'USAGEBLOCK'
-Run DNNMark with parameters from CLI.
+version="0.04"
+IFS='' read -r -d '' usage <<USAGEBLOCK
+Run DNNMark with parameters from CLI. v${version}.
 Usage:
 $(basename $0)  [-n <number of images, batch size>]
                 [-c <number of channels in input images>]
@@ -32,6 +33,7 @@ $(basename $0)  [-n <number of images, batch size>]
                 [ --debug - debug info ]
                 [ --help  - usage info ]
                 [ -d <dataset size> - number of samples in dataset, derives number of iterations from batch size and datasetsize]
+                [ --root <path> - DNNMark installation root]
 
 Configuration is saved to temporary file conf_tmp.dnnmark.
 USAGEBLOCK
@@ -58,6 +60,7 @@ WARMUP="0"
 debug=0
 datasetsize=0
 workspace=""
+root=""
 
 while test $# -gt 0; do
     case "$1" in
@@ -128,6 +131,9 @@ while test $# -gt 0; do
         --template)
             template="config_example/$2.dnntemplate";shift;
             ;;
+        --root)
+            root="$2";shift;
+            ;;
         --)
             shift
             break;;
@@ -141,6 +147,8 @@ while test $# -gt 0; do
     esac
     shift
 done
+
+echo "Running DNNMark with CLI parameters. v${version}."
 
 if [ $CBFA ];then
     CUDNN_CBFA="algo=$CBFA"$'\n'  # Insert new line; inside double quotes not expanded.
@@ -169,21 +177,23 @@ divide_ceil() {
 # Calculate number of iterations from BS ($N) and dataset size
 if [ $datasetsize -gt 0 ]; then
     echo "datasetsize=$datasetsize"
-    # echo "$datasetsize / $N = "
-    # echo "$(divide_ceil $datasetsize $N)"
     ITER=$(divide_ceil $datasetsize $N)
 fi
 
 echo "Using template $template"
-conf="$(echo EOF;cat $template;echo EOF)"
+conf="$(echo EOF;cat ${root}${template};echo EOF)"
 
-eval "cat <<$conf" >$config_file
+eval "cat <<$conf" >${config_file}
 echo "Config: ---"
 cat $config_file
 echo "-----------"
 echo "Benchmark: $BENCH"
 echo "Iterations:$ITER"
-
-com="./build/benchmarks/${BENCH}/dnnmark_${BENCH} -config $config_file --warmup $WARMUP --iterations $ITER --debuginfo $debug"
+if [[ "$root" != "" ]]
+then
+    com="${root}/build/benchmarks/${BENCH}/dnnmark_${BENCH} -config ${config_file} --warmup $WARMUP --iterations $ITER --debuginfo $debug"
+else
+    com="./build/benchmarks/${BENCH}/dnnmark_${BENCH} -config $config_file --warmup $WARMUP --iterations $ITER --debuginfo $debug"
+fi
 echo $com
 $com
