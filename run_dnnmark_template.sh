@@ -3,7 +3,7 @@
 # Wrapper API for DNNMark
 # 2018 (C) Peter Bryzgalov @ CHITECH Stair Lab
 
-version="0.04"
+version="0.06"
 IFS='' read -r -d '' usage <<USAGEBLOCK
 Run DNNMark with parameters from CLI. v${version}.
 Usage:
@@ -181,7 +181,9 @@ if [ $datasetsize -gt 0 ]; then
 fi
 
 echo "Using template $template"
-conf="$(echo EOF;cat ${root}${template};echo EOF)"
+# Remove last '/' in root path.
+# root=$(echo $root | sed 's/\(.*\)\//\1/')
+conf="$(echo EOF;cat ${root}/${template};echo EOF)"
 
 eval "cat <<$conf" >${config_file}
 echo "Config: ---"
