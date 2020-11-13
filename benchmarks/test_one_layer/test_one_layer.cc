@@ -13,8 +13,11 @@ int main(int argc, char **argv) {
   dnnmark.ParseGeneralConfig(FLAGS_config);
   dnnmark.ParseLayerConfig(FLAGS_config);
   dnnmark.Initialize();
-  dnnmark.Forward();
-  dnnmark.Backward();
+  dnnmark.GetTimer()->Clear();
+  for (int i = 0; i < FLAGS_iterations; i++) {
+    dnnmark.Forward();
+    dnnmark.Backward();
+  }
   dnnmark.GetTimer()->SumRecords();
   dnnmark.TearDown();
   printf("Total running time(ms): %f\n", dnnmark.GetTimer()->GetTotalTime());
