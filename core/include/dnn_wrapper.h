@@ -584,6 +584,63 @@ inline void dnnmarkBatchNormalizationForwardTraining(
 #endif
 }
 
+#ifdef NVIDIA_CUDNN
+// Pytorch-style BN layer FWD pass
+template <typename T>
+// TODO: Change bn_layer.h ForawardPropagation to call this new function.
+inline void dnnmarkBatchNormalizationForwardTrainingEx(
+            const Handle &handle,
+            RunMode mode, int idx,
+            const BatchNormParam &bn_param,
+            void *alpha,
+            void *beta,
+            const DataTensor<T> &bottom_desc,
+            const void *xData,
+            const DataTensor<T> &top_desc,
+            void *yData,
+            const cudnnTensorDescriptor_t &zDesc,
+            const void *zData,
+            const DataTensor<T> &scale_bias_mean_var_desc,
+            void *bn_scale_data,
+            void *bn_bias_data,
+            double exp_avg_factor,
+            void *result_running_mean_data,
+            void *result_running_var_data,
+            double epsilon,
+            void *save_mean,
+            void *save_var,
+            const cudnnActivationDescriptor_t &activation_desc,
+            void *workspace,
+            size_t workspace_in_bytes,
+            void *reserve_space, 
+            size_t reserve_space_size
+            ) {
+  CUDNN_CALL(cudnnBatchNormalizationForwardTrainingEx(
+             mode == COMPOSED ?
+             handle.GetCudnn(idx) : handle.GetCudnn(),
+             bn_param.mode_,
+             bn_param.bnOps,
+             alpha,
+             beta,
+             bottom_desc.Get(), xData,
+             zDesc, zData,
+             top_desc.Get(), yData,
+             scale_bias_mean_var_desc.Get(),
+             bn_scale_data, bn_bias_data,
+             exp_avg_factor,
+             result_running_mean_data, result_running_var_data,
+             epsilon,
+             save_mean, save_var,
+             activation_desc,
+             workspace,
+             workspace_in_bytes,
+             reserve_space,
+             reserve_space_size));
+}
+#endif
+
+
+
 template <typename T>
 inline void dnnmarkBatchNormalizationBackward(
             const Handle &handle,

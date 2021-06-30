@@ -3,11 +3,11 @@ run_mode=standalone
 
 [BatchNorm]
 name=batchnorm
-n=100
-c=1000
-h=1
-w=1
-batchnorm_mode=per_activation
+n=20
+c=64
+h=112
+w=112
+batchnorm_mode=spatial
 save_intermediates=true
 exp_avg_factor=0.5
 epsilon=1e-5

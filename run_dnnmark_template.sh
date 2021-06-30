@@ -186,9 +186,9 @@ echo "Using template $template"
 conf="$(echo EOF;cat ${root}/${template};echo EOF)"
 
 eval "cat <<$conf" >${config_file}
-echo "Config: ---"
+echo "--- Config ---"
 cat $config_file
-echo "-----------"
+echo "--------------"
 echo "Benchmark: $BENCH"
 echo "Iterations:$ITER"
 if [[ "$root" != "" ]]

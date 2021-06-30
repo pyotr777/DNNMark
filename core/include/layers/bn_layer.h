@@ -103,6 +103,8 @@ class BatchNormLayer : public Layer<T> {
       bn_specifics_desc_.Set(1, input_dim_.c_, 1, 1);
       bn_specifics_size_ = input_dim_.c_;
     }
+
+    bn_param_.bnOps = CUDNN_BATCHNORM_OPS_BN;
     
     //Initialize bn_scale_, bn_scale_diffs_, bn_bias_, bn_bias_diffs_, bn_running_mean_, and bn_running_inv_variance_
     bn_scale_chunk_id_ = data_manager_->CreateData(bn_specifics_size_);
@@ -179,6 +181,8 @@ class BatchNormLayer : public Layer<T> {
     output_dim_.w_ = input_dim_.w_;
   }
 
+
+// TODO: alter to call dnnmarkBatchNormalizationForwardTrainingEx for pytorch. 
   void ForwardPropagation() {
     if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {
@@ -192,16 +196,46 @@ class BatchNormLayer : public Layer<T> {
     ProfilerStart(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "BnFwd");
     for (int i = 0; i < num_bottoms_; i++) {
-      dnnmarkBatchNormalizationForwardTraining(
+      // dnnmarkBatchNormalizationForwardTraining(
+      //         *(p_dnnmark_->GetHandle()),
+      //         p_dnnmark_->getRunMode(), layer_id_,
+      //         bn_param_,
+      //         //DataType<T>::one,
+      //         //DataType<T>::zero,
+      //         &alpha_,
+      //         &beta_,
+      //         bottom_desc_, bottoms_[i]->Get(),
+      //         top_desc_, tops_[i]->Get(),
+      //         bn_specifics_desc_,
+      //         bn_scale_->Get(),
+      //         bn_bias_->Get(),
+      //         bn_param_.exp_avg_factor_,
+      //         bn_running_mean_->Get(),
+      //         bn_running_inv_variance_->Get(),
+      //         bn_param_.epsilon_,
+      //         bn_saved_mean_->Get(),
+      //         bn_saved_inv_variance_->Get()
+      //         );
+
+      // Create NULL pointers
+      const cudnnTensorDescriptor_t zDesc = nullptr;
+      const void *zData = nullptr;      
+      const cudnnActivationDescriptor_t activationDesc = nullptr;
+      void *workspace = nullptr;
+      size_t workspace_in_bytes = 0;
+      void *reserve_space = nullptr;
+      size_t reserve_space_size = 0;
+      dnnmarkBatchNormalizationForwardTrainingEx(
               *(p_dnnmark_->GetHandle()),
               p_dnnmark_->getRunMode(), layer_id_,
               bn_param_,
-              //DataType<T>::one,
-              //DataType<T>::zero,
               &alpha_,
               &beta_,
-              bottom_desc_, bottoms_[i]->Get(),
-              top_desc_, tops_[i]->Get(),
+              bottom_desc_, 
+              bottoms_[i]->Get(),
+              top_desc_, 
+              tops_[i]->Get(),
+              zDesc, zData,
               bn_specifics_desc_,
               bn_scale_->Get(),
               bn_bias_->Get(),
@@ -210,8 +244,10 @@ class BatchNormLayer : public Layer<T> {
               bn_running_inv_variance_->Get(),
               bn_param_.epsilon_,
               bn_saved_mean_->Get(),
-              bn_saved_inv_variance_->Get()
-              );
+              bn_saved_inv_variance_->Get(),
+              activationDesc,
+              workspace, workspace_in_bytes,
+              reserve_space, reserve_space_size);
     }
     ProfilerStop(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "BnFwd");

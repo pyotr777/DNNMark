@@ -530,6 +530,7 @@ enum BatchNormMode {
 struct BatchNormParam {
 #ifdef NVIDIA_CUDNN
   cudnnBatchNormMode_t mode_;
+  cudnnBatchNormOps_t bnOps;
 #endif
 #ifdef AMD_MIOPEN
   miopenBatchNormMode_t mode_;
