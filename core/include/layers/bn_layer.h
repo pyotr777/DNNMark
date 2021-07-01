@@ -253,6 +253,7 @@ class BatchNormLayer : public Layer<T> {
                   layer_id_, p_dnnmark_->GetTimer(), "BnFwd");
   }
 
+  // TODO: alter to call dnnmarkBatchNormalizationBackwardEx for pytorch. 
   void BackwardPropagation() {
     if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {
@@ -271,14 +272,32 @@ class BatchNormLayer : public Layer<T> {
     ProfilerStart(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "BnBwd");
     for (int i = 0; i < num_tops_; i++) {
-      dnnmarkBatchNormalizationBackward(
+      // dnnmarkBatchNormalizationBackward(
+      //         *(p_dnnmark_->GetHandle()),
+      //         p_dnnmark_->getRunMode(), layer_id_,
+      //         bn_param_,
+      //         //DataType<T>::one,
+      //         //DataType<T>::zero,
+      //         //DataType<T>::one,
+      //         //DataType<T>::zero,
+      //         &alpha_,
+      //         &beta_,
+      //         &alpha_,
+      //         &beta_,
+      //         bottom_desc_, bottoms_[i]->Get(), bottom_diffs_[i]->Get(),
+      //         top_desc_, top_diffs_[i]->Get(),
+      //         bn_specifics_desc_,
+      //         bn_scale_->Get(),
+      //         bn_scale_diffs_->Get(),
+      //         bn_bias_diffs_->Get(),
+      //         bn_param_.epsilon_,
+      //         bn_saved_mean_->Get(),
+      //         bn_saved_inv_variance_->Get()
+      //         );
+      dnnmarkBatchNormalizationBackwardEx(
               *(p_dnnmark_->GetHandle()),
               p_dnnmark_->getRunMode(), layer_id_,
               bn_param_,
-              //DataType<T>::one,
-              //DataType<T>::zero,
-              //DataType<T>::one,
-              //DataType<T>::zero,
               &alpha_,
               &beta_,
               &alpha_,

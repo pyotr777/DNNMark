@@ -587,7 +587,6 @@ inline void dnnmarkBatchNormalizationForwardTraining(
 #ifdef NVIDIA_CUDNN
 // Pytorch-style BN layer FWD pass
 template <typename T>
-// TODO: Change bn_layer.h ForawardPropagation to call this new function.
 inline void dnnmarkBatchNormalizationForwardTrainingEx(
             const Handle &handle,
             RunMode mode, int idx,
@@ -699,6 +698,78 @@ inline void dnnmarkBatchNormalizationBackward(
               saved_mean, saved_var));
 #endif
 }
+
+
+#ifdef NVIDIA_CUDNN
+// TODO: Change bn_layer.h BackwardPropagation to call this new function.
+template <typename T>
+inline void dnnmarkBatchNormalizationBackwardEx(
+            const Handle &handle,
+            RunMode mode, int idx,
+            const BatchNormParam &bn_param,
+            const void *alpha_data_diff,
+            const void *beta_data_diff,
+            const void *alpha_param_diff,
+            const void *beta_param_diff,
+            const DataTensor<T> &bottom_desc,
+            const void *xData,
+            void *dxData,
+            const DataTensor<T> &top_desc,
+            const void *dy,
+            const DataTensor<T> &scale_bias_mean_var_desc,
+            const void *bn_scale_data,
+            void *result_bn_scale_diff,
+            void *result_bn_bias_diff,
+            double epsilon,
+            const void *saved_mean,
+            const void *saved_var) {
+
+  // Null pointers
+  const cudnnTensorDescriptor_t yDesc = nullptr;
+  const void *yData = nullptr;
+  const cudnnTensorDescriptor_t dzDesc = nullptr;
+  void *dzData = nullptr;
+  const void *bnBiasData = nullptr;
+  const cudnnActivationDescriptor_t activationDesc = nullptr;
+  void *workspace = nullptr;
+  size_t workSpaceSizeInBytes = 0;
+  void *reserveSpace = nullptr;
+  size_t reserveSpaceSizeInBytes = 0;
+
+  CUDNN_CALL(cudnnBatchNormalizationBackwardEx (
+              mode == COMPOSED ?
+              handle.GetCudnn(idx) : handle.GetCudnn(),
+              bn_param.mode_,
+              bn_param.bnOps,
+              alpha_data_diff,
+              beta_data_diff,
+              alpha_param_diff,
+              beta_param_diff,
+              bottom_desc.Get(),
+              xData,
+              yDesc,
+              yData,
+              top_desc.Get(),
+              dy,
+              dzDesc,
+              dzData,
+              bottom_desc.Get(), 
+              dxData,
+              scale_bias_mean_var_desc.Get(),
+              bn_scale_data,
+              bnBiasData,
+              result_bn_scale_diff,
+              result_bn_bias_diff,
+              epsilon,
+              saved_mean,
+              saved_var,
+              activationDesc,
+              workspace,
+              workSpaceSizeInBytes,
+              reserveSpace,
+              reserveSpaceSizeInBytes));
+}
+#endif
 
 //
 // Bypass layer
