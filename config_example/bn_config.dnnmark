@@ -4,10 +4,10 @@ run_mode=standalone
 [BatchNorm]
 name=batchnorm
 n=20
-c=64
-h=112
-w=112
+c=384
+h=7
+w=7
 batchnorm_mode=spatial
 save_intermediates=true
 exp_avg_factor=0.5
-epsilon=1e-5
+epsilon=1e-3

@@ -1,0 +1,13 @@
+[DNNMark]
+run_mode=standalone
+
+[BatchNorm]
+name=batchnorm
+n=$N
+c=$C
+h=$H
+w=$W
+batchnorm_mode=$MODE
+save_intermediates=true
+exp_avg_factor=$exponentialAverageFactor
+epsilon=$epsilon

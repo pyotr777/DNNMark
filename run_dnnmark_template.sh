@@ -3,7 +3,7 @@
 # Wrapper API for DNNMark
 # 2018 (C) Peter Bryzgalov @ CHITECH Stair Lab
 
-version="0.06"
+version="0.10"
 IFS='' read -r -d '' usage <<USAGEBLOCK
 Run DNNMark with parameters from CLI. v${version}.
 Usage:
@@ -34,6 +34,10 @@ $(basename $0)  [-n <number of images, batch size>]
                 [ --help  - usage info ]
                 [ -d <dataset size> - number of samples in dataset, derives number of iterations from batch size and datasetsize]
                 [ --root <path> - DNNMark installation root]
+                # BN Layer parameters
+                [ --bnmode <spacial/per_activation> - BN layer mode]
+                [ --epsilon <float> - BN layer epsilon parameter]
+                [ --exponentialAverageFactor <float> - BN layer factor used in the moving average computation as follows: runningMean = runningMean*(1-factor) + newMean*factor]
 
 Configuration is saved to temporary file conf_tmp.dnnmark.
 USAGEBLOCK
@@ -60,7 +64,10 @@ WARMUP="0"
 debug=0
 datasetsize=0
 workspace=""
-root=""
+root="."
+MODE="spacial"
+epsilon=0.001
+exponentialAverageFactor=0.5
 
 while test $# -gt 0; do
     case "$1" in
@@ -126,13 +133,22 @@ while test $# -gt 0; do
             WARMUP="$2";shift;
             ;;
         --debug)
-            debug=1
+            debug="$2";shift;
             ;;
         --template)
             template="config_example/$2.dnntemplate";shift;
             ;;
         --root)
             root="$2";shift;
+            ;;
+        --bnmode)
+            MODE="$2";shift;
+            ;;
+        --epsilon)
+            epsilon="$2";shift;
+            ;;
+        --exponentialAverageFactor)
+            exponentialAverageFactor="$2";shift;
             ;;
         --)
             shift
@@ -186,16 +202,11 @@ echo "Using template $template"
 conf="$(echo EOF;cat ${root}/${template};echo EOF)"
 
 eval "cat <<$conf" >${config_file}
-echo "--- Config ---"
+echo "--- Configuration file (${config_file}) ---"
 cat $config_file
-echo "--------------"
+echo "-------------------------------------------------"
 echo "Benchmark: $BENCH"
 echo "Iterations:$ITER"
-if [[ "$root" != "" ]]
-then
-    com="${root}/build/benchmarks/${BENCH}/dnnmark_${BENCH} -config ${config_file} --warmup $WARMUP --iterations $ITER --debuginfo $debug"
-else
-    com="./build/benchmarks/${BENCH}/dnnmark_${BENCH} -config $config_file --warmup $WARMUP --iterations $ITER --debuginfo $debug"
-fi
+com="${root}/build/benchmarks/${BENCH}/dnnmark_${BENCH} -config ${config_file} --warmup $WARMUP --iterations $ITER --debuginfo $debug"
 echo $com
 $com
