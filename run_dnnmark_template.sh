@@ -7,7 +7,17 @@ version="0.10"
 IFS='' read -r -d '' usage <<USAGEBLOCK
 Run DNNMark with parameters from CLI. v${version}.
 Usage:
-$(basename $0)  [-n <number of images, batch size>]
+$(basename $0)  [-b <benchmark executable, default=test_composed_model>]
+                [ --template - benchmark configuration template file]
+                [ -d <dataset size> - number of samples in dataset, derives number of iterations from batch size and datasetsize]
+                [ --warmup <int> - number of warmup iterations]
+                [ --debug - debug info ]
+                [ --help  - usage info ]
+                [ --root <path> - DNNMark installation root]
+                [ --iter <int> - number of FWD+BWD passes to measure time]                
+                [-n <number of images, batch size>]
+
+                # Convolutional layer parameter
                 [-c <number of channels in input images>]
                 [-h <height of input images>]
                 [-w <widht of input images>]
@@ -25,15 +35,8 @@ $(basename $0)  [-n <number of images, batch size>]
                 [ --algofwd <cudnnConvolutionFwdAlgo_t> - cuDNN algorithm for forward convolution.
                     Can be set to "fft", "winograd", number from 0 to 7, "cudnn", "cudnnv7".]
                 [ --workspace <workspace size in bites for convolution functions>]
-                [-b <benchmark executable, default=test_composed_model>]
-                [ --iter <int> - number of FWD+BWD passes to measure time]
-                [ --template - benchmark configuration template file]
-                [ -d <dataset size> - number of samples in dataset, derives number of iterations from batch size and datasetsize]
-                [ --warmup <int> - number of warmup iterations]
-                [ --debug - debug info ]
-                [ --help  - usage info ]
-                [ -d <dataset size> - number of samples in dataset, derives number of iterations from batch size and datasetsize]
-                [ --root <path> - DNNMark installation root]
+                [ --conv_mode Convolution mode <convolution/cross_correlation>]
+                
                 # BN Layer parameters
                 [ --bnmode <spacial/per_activation> - BN layer mode]
                 [ --epsilon <float> - BN layer epsilon parameter]
@@ -44,12 +47,12 @@ USAGEBLOCK
 
 template="config_example/conf_convolution_block.dnntemplate"
 config_file="conf_tmp.dnnmark"
+
+# Defaults
 default_conv_bwd_filter_pref="fastest"
 default_conv_fwd_pref="fastest"
 default_conv_bwd_data_pref="fastest"
 default_workspace=250000000  # 250MB
-
-# Defaults
 N=64
 C=3
 H=32
@@ -65,6 +68,7 @@ debug=0
 datasetsize=0
 workspace=""
 root="."
+conv_mode="convolution"
 MODE="spacial"
 epsilon=0.001
 exponentialAverageFactor=0.5
@@ -125,6 +129,9 @@ while test $# -gt 0; do
             ;;
         --workspace)
             workspace="workspace_size=$2"$'\n';shift;
+            ;;
+        --conv_mode)
+            conv_mode="$2";shift;
             ;;
         --iter)
             ITER="$2";shift;

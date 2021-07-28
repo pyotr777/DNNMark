@@ -182,7 +182,7 @@ class BatchNormLayer : public Layer<T> {
   }
 
 
-// TODO: alter to call dnnmarkBatchNormalizationForwardTrainingEx for pytorch. 
+// TODO: Add parameter to switch calls: dnnmarkBatchNormalizationForwardTraining/dnnmarkBatchNormalizationForwardTrainingEx. 
   void ForwardPropagation() {
     if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {
@@ -253,7 +253,7 @@ class BatchNormLayer : public Layer<T> {
                   layer_id_, p_dnnmark_->GetTimer(), "BnFwd");
   }
 
-  // TODO: alter to call dnnmarkBatchNormalizationBackwardEx for pytorch. 
+  // TODO: Add parameter to switch calls: dnnmarkBatchNormalizationBackward/dnnmarkBatchNormalizationBackwardEx
   void BackwardPropagation() {
     if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {

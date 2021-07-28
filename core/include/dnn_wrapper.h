@@ -701,7 +701,6 @@ inline void dnnmarkBatchNormalizationBackward(
 
 
 #ifdef NVIDIA_CUDNN
-// TODO: Change bn_layer.h BackwardPropagation to call this new function.
 template <typename T>
 inline void dnnmarkBatchNormalizationBackwardEx(
             const Handle &handle,
