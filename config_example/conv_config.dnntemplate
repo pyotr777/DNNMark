@@ -16,7 +16,7 @@ stride=$U
 conv_fwd_pref=$conv_fwd_pref
 conv_bwd_filter_pref=$conv_bwd_filter_pref
 conv_bwd_data_pref=$conv_bwd_data_pref
-${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}${workspace}
+${CUDNN_CBFA}${CUDNN_CBDA}${CUDNN_CFWA}${workspace}${propagation}
 
 
 [Activation]

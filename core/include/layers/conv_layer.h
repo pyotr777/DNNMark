@@ -523,6 +523,7 @@ class ConvolutionLayer : public Layer<T> {
                   bwd_filter_workspace_size_,
                   DataType<T>::zero,
                   weights_diff_->Get());
+      LOG(INFO) << "Conv param propagation: " << conv_param_.propagation_;
       if (conv_param_.propagation_) {
         dnnmarkConvolutionBackwardData(
                   *(p_dnnmark_->GetHandle()),

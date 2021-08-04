@@ -55,6 +55,9 @@
 
 namespace dnnmark {
 
+const std::string version="1.01_experimental";
+
+
 const std::map<std::string, LayerType> layer_type_map = {
 {layer_section_keywords[0], CONVOLUTION},
 {layer_section_keywords[1], POOLING},

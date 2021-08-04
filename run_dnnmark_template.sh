@@ -3,7 +3,7 @@
 # Wrapper API for DNNMark
 # 2018 (C) Peter Bryzgalov @ CHITECH Stair Lab
 
-version="0.10"
+version="0.11"
 IFS='' read -r -d '' usage <<USAGEBLOCK
 Run DNNMark with parameters from CLI. v${version}.
 Usage:
@@ -35,7 +35,8 @@ $(basename $0)  [-b <benchmark executable, default=test_composed_model>]
                 [ --algofwd <cudnnConvolutionFwdAlgo_t> - cuDNN algorithm for forward convolution.
                     Can be set to "fft", "winograd", number from 0 to 7, "cudnn", "cudnnv7".]
                 [ --workspace <workspace size in bites for convolution functions>]
-                [ --conv_mode Convolution mode <convolution/cross_correlation>]
+                [ --conv_mode <convolution/cross_correlation> - Convolution mode]
+                [ --nopropagation - For the first layer do not calculate BWD data]
                 
                 # BN Layer parameters
                 [ --bnmode <spacial/per_activation> - BN layer mode]
@@ -67,6 +68,7 @@ WARMUP="0"
 debug=0
 datasetsize=0
 workspace=""
+propagation=""
 root="."
 conv_mode="convolution"
 MODE="spacial"
@@ -129,6 +131,9 @@ while test $# -gt 0; do
             ;;
         --workspace)
             workspace="workspace_size=$2"$'\n';shift;
+            ;;
+        --nopropagation)
+            propagation="propagation=false"$'\n';
             ;;
         --conv_mode)
             conv_mode="$2";shift;

@@ -2,7 +2,6 @@
 #include "common.h"
 #include "dnnmark.h"
 #include "usage.h"
-#include "simpleCUBLAS.h"
 
 using namespace dnnmark;
 
@@ -10,7 +9,7 @@ int main(int argc, char **argv) {
   float run_time = 0.;
   INIT_FLAGS(argc, argv);
   INIT_LOG(argv);
-  LOG(INFO) << "DNNMark suites: Start...";
+  LOG(INFO) << "DNNMark suites version "<< version <<": Start...";
   DNNMark<TestType> dnnmark(2);
   dnnmark.ParseGeneralConfig(FLAGS_config);
   dnnmark.ParseLayerConfig(FLAGS_config);
@@ -23,10 +22,7 @@ int main(int argc, char **argv) {
   if (FLAGS_warmup) {
     LOG(INFO) << "Warming up before initialisation..." << FLAGS_warmup;
     for (int i = 0; i < FLAGS_warmup; i++) {
-      int status = call_sgemm(0, 512);
-      if (status != 0) {
-        fprintf(stderr, "Error status: %d\n",status);
-      }
+      dnnmark.Forward();
     }
   }
 

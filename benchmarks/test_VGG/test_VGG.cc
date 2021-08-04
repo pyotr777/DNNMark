@@ -10,7 +10,7 @@ using namespace dnnmark;
 int main(int argc, char **argv) {
   INIT_FLAGS(argc, argv);
   INIT_LOG(argv);
-  LOG(INFO) << "DNNMark suites: Start...";
+  LOG(INFO) << "DNNMark suites version "<< version <<": Start...";
   DNNMark<TestType> dnnmark(58);
   dnnmark.ParseAllConfig(FLAGS_config);
   float run_time = 0.;
@@ -31,6 +31,7 @@ int main(int argc, char **argv) {
 
   // Warm up
   if (FLAGS_warmup) {
+    LOG(INFO) << "Warming up before run... " << FLAGS_warmup;
     for (int i = 0; i < FLAGS_warmup; i++) {
       dnnmark.Forward();
     }
