@@ -491,7 +491,7 @@ class ConvolutionLayer : public Layer<T> {
     }
   }
 
-  void BackwardPropagation() {
+  void BackwardPropagation(int iterations=1) {
     if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {
       // Fill the top data and top diff data
@@ -510,22 +510,25 @@ class ConvolutionLayer : public Layer<T> {
 
     // Convolution backward computation
     for (int i = 0; i < num_tops_; i++) {
-      dnnmarkConvolutionBackwardFilter(
-                  *(p_dnnmark_->GetHandle()),
-                  p_dnnmark_->getRunMode(), layer_id_,
-                  p_dnnmark_->GetTimer(),
-                  DataType<T>::one,
-                  bottom_desc_, bottoms_[i]->Get(),
-                  top_desc_, top_diffs_[i]->Get(),
-                  desc_,
-                  &conv_algo_,
-                  has_bwd_filter_workspace_? bwd_filter_workspace_->Get() : nullptr,
-                  bwd_filter_workspace_size_,
-                  DataType<T>::zero,
-                  weights_diff_->Get());
+      for (int iter = 0; i < iterations; i++) {
+        dnnmarkConvolutionBackwardFilter(
+                    *(p_dnnmark_->GetHandle()),
+                    p_dnnmark_->getRunMode(), layer_id_,
+                    p_dnnmark_->GetTimer(),
+                    DataType<T>::one,
+                    bottom_desc_, bottoms_[i]->Get(),
+                    top_desc_, top_diffs_[i]->Get(),
+                    desc_,
+                    &conv_algo_,
+                    has_bwd_filter_workspace_? bwd_filter_workspace_->Get() : nullptr,
+                    bwd_filter_workspace_size_,
+                    DataType<T>::zero,
+                    weights_diff_->Get());
+      }
       LOG(INFO) << "Conv param propagation: " << conv_param_.propagation_;
       if (conv_param_.propagation_) {
-        dnnmarkConvolutionBackwardData(
+        for (int iter = 0; i < iterations; i++) {
+          dnnmarkConvolutionBackwardData(
                   *(p_dnnmark_->GetHandle()),
                   p_dnnmark_->getRunMode(), layer_id_,
                   p_dnnmark_->GetTimer(),
@@ -537,6 +540,7 @@ class ConvolutionLayer : public Layer<T> {
                   bwd_data_workspace_size_,
                   DataType<T>::zero,
                   bottom_desc_, bottoms_[i]->Get());
+        }
       }
     }
   }

@@ -568,12 +568,12 @@ int DNNMark<T>::Forward() {
 }
 
 template <typename T>
-int DNNMark<T>::Backward() {
+int DNNMark<T>::Backward(int iterations=1) {
   for (auto it = layers_map_.rbegin(); it != layers_map_.rend(); it++) {
     if (it->second->getLayerType() == CONVOLUTION) {
       LOG(INFO) << "DNNMark: Running convolution backward: STARTED";
       std::dynamic_pointer_cast<ConvolutionLayer<T>>(it->second)
-        ->BackwardPropagation();
+        ->BackwardPropagation(iterations);
       LOG(INFO) << "DNNMark: Running convolution backward: FINISHED";
     }
     if (it->second->getLayerType() == POOLING) {
