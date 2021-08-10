@@ -568,7 +568,7 @@ int DNNMark<T>::Forward() {
 }
 
 template <typename T>
-int DNNMark<T>::Backward(int iterations=1) {
+int DNNMark<T>::Backward(int iterations) {
   for (auto it = layers_map_.rbegin(); it != layers_map_.rend(); it++) {
     if (it->second->getLayerType() == CONVOLUTION) {
       LOG(INFO) << "DNNMark: Running convolution backward: STARTED";

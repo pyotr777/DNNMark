@@ -102,7 +102,7 @@ class DNNMark {
   int Initialize();
   int RunAll();
   int Forward();
-  int Backward(int iterations=1);
+  int Backward(int = 1);
 
 
   int TearDown() {
