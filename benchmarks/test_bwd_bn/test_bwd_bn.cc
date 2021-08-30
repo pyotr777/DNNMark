@@ -23,11 +23,19 @@ int main(int argc, char **argv) {
     }
   }
 
+  LOG(INFO) << "Iterations " << FLAGS_iterations;
+  LOG(INFO) << "Cached Iterations " << FLAGS_cachediterations;
+  int slowiterations = 1;
+  int fastiterations = 1;
+  if (FLAGS_cachediterations) {
+    fastiterations = FLAGS_iterations;
+  } else {
+    slowiterations = FLAGS_iterations;
+  }
   // Real benchmark
   dnnmark.GetTimer()->Clear();
-  for (int i = 0; i < FLAGS_iterations; i++) {
-    LOG(INFO) << "Iteration " << i;
-    dnnmark.Backward();
+  for (int i = 0; i < slowiterations; i++) {
+    dnnmark.Backward(fastiterations);
   }
   dnnmark.GetTimer()->SumRecords();
   dnnmark.TearDown();

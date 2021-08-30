@@ -548,7 +548,7 @@ int DNNMark<T>::Forward(int iterations) {
     if (it->second->getLayerType() == BN) {
       LOG(INFO) << "DNNMark: Running BatchNormalization forward: STARTED";
       std::dynamic_pointer_cast<BatchNormLayer<T>>(it->second)
-        ->ForwardPropagation();
+        ->ForwardPropagation(iterations);
       LOG(INFO) << "DNNMark: Running BatchNormalization forward: FINISHED";
     }
     if (it->second->getLayerType() == DROPOUT) {
@@ -609,7 +609,7 @@ int DNNMark<T>::Backward(int iterations) {
     if (it->second->getLayerType() == BN) {
       LOG(INFO) << "DNNMark: Running BatchNormalization backward: STARTED";
       std::dynamic_pointer_cast<BatchNormLayer<T>>(it->second)
-        ->BackwardPropagation();
+        ->BackwardPropagation(iterations);
       LOG(INFO) << "DNNMark: Running BatchNormalization backward: FINISHED";
     }
     if (it->second->getLayerType() == DROPOUT) {

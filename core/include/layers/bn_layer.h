@@ -183,7 +183,7 @@ class BatchNormLayer : public Layer<T> {
 
 
 // TODO: Add parameter to switch calls: dnnmarkBatchNormalizationForwardTraining/dnnmarkBatchNormalizationForwardTrainingEx. 
-  void ForwardPropagation() {
+  void ForwardPropagation(int iterations=1) {
     if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {
       // Fill the bottom data
@@ -214,7 +214,8 @@ class BatchNormLayer : public Layer<T> {
       //         bn_running_inv_variance_->Get(),
       //         bn_param_.epsilon_,
       //         bn_saved_mean_->Get(),
-      //         bn_saved_inv_variance_->Get()
+      //         bn_saved_inv_variance_->Get(),
+      //         iterations,
       //         );
 
       // Create NULL pointers
@@ -247,14 +248,15 @@ class BatchNormLayer : public Layer<T> {
               bn_saved_inv_variance_->Get(),
               activationDesc,
               workspace, workspace_in_bytes,
-              reserve_space, reserve_space_size);
+              reserve_space, reserve_space_size,
+              iterations);
     }
     ProfilerStop(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "BnFwd");
   }
 
   // TODO: Add parameter to switch calls: dnnmarkBatchNormalizationBackward/dnnmarkBatchNormalizationBackwardEx
-  void BackwardPropagation() {
+  void BackwardPropagation(int iterations=1) {
     if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {
       // Fill the top and top diff data
@@ -292,7 +294,8 @@ class BatchNormLayer : public Layer<T> {
       //         bn_bias_diffs_->Get(),
       //         bn_param_.epsilon_,
       //         bn_saved_mean_->Get(),
-      //         bn_saved_inv_variance_->Get()
+      //         bn_saved_inv_variance_->Get(),
+      //         iteratsions,
       //         );
       dnnmarkBatchNormalizationBackwardEx(
               *(p_dnnmark_->GetHandle()),
@@ -310,7 +313,8 @@ class BatchNormLayer : public Layer<T> {
               bn_bias_diffs_->Get(),
               bn_param_.epsilon_,
               bn_saved_mean_->Get(),
-              bn_saved_inv_variance_->Get()
+              bn_saved_inv_variance_->Get(),
+              iterations
               );
     }
     ProfilerStop(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),

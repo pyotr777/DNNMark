@@ -87,6 +87,13 @@ To run the benchmarks that have been built, go to the directory `build` and you 
 
 If you want to include warm up phase in the benchmark, one suggestion is that you mannually add it in the source code and use `-warmup [1 or 0]` to toggle the usage of the warm up phase. You can find one example the test_alexnet benchmark.
 
+### CLI parameters
+
+`--iterations <int n>`   number of iterations for Convolutional and BN layers
+`--cachediterations`   use same data in each iteration to make use of on-GPU cache
+`--debuginfo <0/1>`   print debug logs to stderr
+`--warmup <int n>`   run a number of warmup iterations    
+
 # For Contributors
 1. Fork the repository to your own remote repository.
 2. Git clone the repository: `git clone git@github.com/your_account_name/DNNMark.git`

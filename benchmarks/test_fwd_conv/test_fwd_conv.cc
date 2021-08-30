@@ -26,8 +26,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  // Real benchmark
-  dnnmark.GetTimer()->Clear();
   LOG(INFO) << "Iterations " << FLAGS_iterations;
   LOG(INFO) << "Cached Iterations " << FLAGS_cachediterations;
   int slowiterations = 1;
@@ -37,7 +35,8 @@ int main(int argc, char **argv) {
   } else {
     slowiterations = FLAGS_iterations;
   }
-  
+  // Real benchmark
+  dnnmark.GetTimer()->Clear();  
   for (int i = 0; i < slowiterations; i++) {    
     dnnmark.Forward(fastiterations);
   }

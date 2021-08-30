@@ -564,9 +564,11 @@ inline void dnnmarkBatchNormalizationForwardTraining(
             void *result_running_var,
             double epsilon,
             void *result_save_mean,
-            void *result_save_var) {
+            void *result_save_var, int iterations) {
 #ifdef NVIDIA_CUDNN
-  CUDNN_CALL(cudnnBatchNormalizationForwardTraining(
+  LOG(INFO) << "Calling cudnnBatchNormalizationForwardTraining " << iterations << " times";
+  for (int i=0; i<iterations; i++) {
+    CUDNN_CALL(cudnnBatchNormalizationForwardTraining(
              mode == COMPOSED ?
              handle.GetCudnn(idx) : handle.GetCudnn(),
              bn_param.mode_,
@@ -580,9 +582,12 @@ inline void dnnmarkBatchNormalizationForwardTraining(
              result_running_mean, result_running_var,
              epsilon,
              result_save_mean, result_save_var));
+  }
 #endif
 #ifdef AMD_MIOPEN
-  MIOPEN_CALL(miopenBatchNormalizationForwardTraining(
+  LOG(INFO) << "Calling miopenBatchNormalizationForwardTraining " << iterations << " times";
+  for (int i=0; i<iterations; i++) {
+    MIOPEN_CALL(miopenBatchNormalizationForwardTraining(
               mode == COMPOSED ?
               handle.GetMIOpen(idx) : handle.GetMIOpen(),
               bn_param.mode_,
@@ -596,6 +601,7 @@ inline void dnnmarkBatchNormalizationForwardTraining(
               result_running_mean, result_running_var,
               epsilon,
               result_save_mean, result_save_var));
+  }
 #endif
 }
 
@@ -627,9 +633,12 @@ inline void dnnmarkBatchNormalizationForwardTrainingEx(
             void *workspace,
             size_t workspace_in_bytes,
             void *reserve_space, 
-            size_t reserve_space_size
+            size_t reserve_space_size,
+            int iterations
             ) {
-  CUDNN_CALL(cudnnBatchNormalizationForwardTrainingEx(
+  LOG(INFO) << "Calling cudnnBatchNormalizationForwardTrainingEx " << iterations << " times";
+  for (int i=0; i<iterations; i++) {
+    CUDNN_CALL(cudnnBatchNormalizationForwardTrainingEx(
              mode == COMPOSED ?
              handle.GetCudnn(idx) : handle.GetCudnn(),
              bn_param.mode_,
@@ -650,6 +659,7 @@ inline void dnnmarkBatchNormalizationForwardTrainingEx(
              workspace_in_bytes,
              reserve_space,
              reserve_space_size));
+  }
 }
 #endif
 
@@ -675,9 +685,12 @@ inline void dnnmarkBatchNormalizationBackward(
             void *result_bn_bias_diff,
             double epsilon,
             const void *saved_mean,
-            const void *saved_var) {
+            const void *saved_var,
+            int iterations) {
 #ifdef NVIDIA_CUDNN
-  CUDNN_CALL(cudnnBatchNormalizationBackward(
+  LOG(INFO) << "Calling cudnnBatchNormalizationBackward " << iterations << " times";
+  for (int i=0; i<iterations; i++) {
+    CUDNN_CALL(cudnnBatchNormalizationBackward(
              mode == COMPOSED ?
              handle.GetCudnn(idx) : handle.GetCudnn(),
              bn_param.mode_,
@@ -693,9 +706,12 @@ inline void dnnmarkBatchNormalizationBackward(
              result_bn_scale_diff, result_bn_bias_diff,
              epsilon,
              saved_mean, saved_var));
+  }
 #endif
 #ifdef AMD_MIOPEN
-  MIOPEN_CALL(miopenBatchNormalizationBackward(
+  LOG(INFO) << "Calling miopenBatchNormalizationBackward " << iterations << " times";
+  for (int i=0; i<iterations; i++) {
+    MIOPEN_CALL(miopenBatchNormalizationBackward(
               mode == COMPOSED ?
               handle.GetMIOpen(idx) : handle.GetMIOpen(),
               bn_param.mode_,
@@ -711,6 +727,7 @@ inline void dnnmarkBatchNormalizationBackward(
               result_bn_scale_diff, result_bn_bias_diff,
               epsilon,
               saved_mean, saved_var));
+  }
 #endif
 }
 
@@ -736,7 +753,8 @@ inline void dnnmarkBatchNormalizationBackwardEx(
             void *result_bn_bias_diff,
             double epsilon,
             const void *saved_mean,
-            const void *saved_var) {
+            const void *saved_var,
+            int iterations) {
 
   // Null pointers
   const cudnnTensorDescriptor_t yDesc = nullptr;
@@ -749,8 +767,9 @@ inline void dnnmarkBatchNormalizationBackwardEx(
   size_t workSpaceSizeInBytes = 0;
   void *reserveSpace = nullptr;
   size_t reserveSpaceSizeInBytes = 0;
-
-  CUDNN_CALL(cudnnBatchNormalizationBackwardEx (
+  LOG(INFO) << "Calling cudnnBatchNormalizationBackwardEx " << iterations << " times";
+  for (int i=0; i<iterations; i++) {
+    CUDNN_CALL(cudnnBatchNormalizationBackwardEx (
               mode == COMPOSED ?
               handle.GetCudnn(idx) : handle.GetCudnn(),
               bn_param.mode_,
@@ -782,6 +801,7 @@ inline void dnnmarkBatchNormalizationBackwardEx(
               workSpaceSizeInBytes,
               reserveSpace,
               reserveSpaceSizeInBytes));
+  }
 }
 #endif
 
