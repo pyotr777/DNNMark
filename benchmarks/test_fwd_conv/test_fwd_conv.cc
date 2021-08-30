@@ -28,10 +28,19 @@ int main(int argc, char **argv) {
 
   // Real benchmark
   dnnmark.GetTimer()->Clear();
-  // for (int i = 0; i < FLAGS_iterations; i++) {
   LOG(INFO) << "Iterations " << FLAGS_iterations;
-  dnnmark.Forward(FLAGS_iterations);
-  // }
+  LOG(INFO) << "Cached Iterations " << FLAGS_cachediterations;
+  int slowiterations = 1;
+  int fastiterations = 1;
+  if (FLAGS_cachediterations) {
+    fastiterations = FLAGS_iterations;
+  } else {
+    slowiterations = FLAGS_iterations;
+  }
+  
+  for (int i = 0; i < slowiterations; i++) {    
+    dnnmark.Forward(fastiterations);
+  }
   dnnmark.GetTimer()->SumRecords();
   dnnmark.TearDown();
   run_time = dnnmark.GetTimer()->GetTotalTime();

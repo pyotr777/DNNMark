@@ -30,3 +30,5 @@ DEFINE_int32(warmup, 0,
     "The warmup switch to turn on/off warmup phases.");
 DEFINE_int32(iterations, 1,
     "Number of FWD+BWD passes.");
+DEFINE_bool(cachediterations, false,
+    "Iteration loop will use same data each iteration.");
