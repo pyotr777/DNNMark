@@ -55,7 +55,7 @@
 
 namespace dnnmark {
 
-const std::string version="1.01_experimental";
+const std::string version="1.04_experimental";
 
 
 const std::map<std::string, LayerType> layer_type_map = {
@@ -101,7 +101,7 @@ class DNNMark {
   void FreeWorkspaces();
   int Initialize();
   int RunAll();
-  int Forward();
+  int Forward(int = 1);
   int Backward(int = 1);
 
 

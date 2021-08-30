@@ -49,19 +49,22 @@ inline void dnnmarkConvolutionForward(const Handle &handle,
                                       size_t workspace_in_bytes,
                                       const void *beta,
                                       const DataTensor<T> &top_desc,
-                                      void *y) {
+                                      void *y, int iterations) {
 #ifdef NVIDIA_CUDNN
+  LOG(INFO) << "Calling cudnnConvolutionForward " << iterations << " times";
   ProfilerStart(handle, mode, idx, timer, "ConvFwd");
-  CUDNN_CALL(cudnnConvolutionForward(
-             mode == COMPOSED ?
-             handle.GetCudnn(idx) : handle.GetCudnn(),
-             alpha,
-             bottom_desc.Get(), x,
-             conv_desc.GetFilter(), w,
-             conv_desc.GetConv(),
-             conv_algo->GetFwdAlgo(), workspace, workspace_in_bytes,
-             beta,
-             top_desc.Get(), y));
+  for (int i = 0; i < iterations; i++) {
+    CUDNN_CALL(cudnnConvolutionForward(
+               mode == COMPOSED ?
+               handle.GetCudnn(idx) : handle.GetCudnn(),
+               alpha,
+               bottom_desc.Get(), x,
+               conv_desc.GetFilter(), w,
+               conv_desc.GetConv(),
+               conv_algo->GetFwdAlgo(), workspace, workspace_in_bytes,
+               beta,
+               top_desc.Get(), y));
+  }
   ProfilerStop(handle, mode, idx, timer, "ConvFwd");
 #endif
 #ifdef AMD_MIOPEN
@@ -73,17 +76,19 @@ inline void dnnmarkConvolutionForward(const Handle &handle,
                         x, w, y,
                         workspace, workspace_in_bytes);
   ProfilerStart(handle, mode, idx, timer, "ConvFwd");
-  MIOPEN_CALL(miopenConvolutionForward(
-              mode == COMPOSED ?
-              handle.GetMIOpen(idx) : handle.GetMIOpen(),
-              alpha,
-              bottom_desc.Get(), x,
-              conv_desc.GetFilter(), w,
-              conv_desc.GetConv(),
-              conv_algo->GetFwdAlgo(),
-              beta,
-              top_desc.Get(), y,
-              workspace, workspace_in_bytes));
+  for (int i = 0; i < iterations; i++) {
+    MIOPEN_CALL(miopenConvolutionForward(
+                mode == COMPOSED ?
+                handle.GetMIOpen(idx) : handle.GetMIOpen(),
+                alpha,
+                bottom_desc.Get(), x,
+                conv_desc.GetFilter(), w,
+                conv_desc.GetConv(),
+                conv_algo->GetFwdAlgo(),
+                beta,
+                top_desc.Get(), y,
+                workspace, workspace_in_bytes));
+  }
   ProfilerStop(handle, mode, idx, timer, "ConvFwd");
 #endif
 
@@ -102,20 +107,23 @@ inline void dnnmarkConvolutionBackwardData(const Handle &handle,
                                            size_t workspace_in_bytes,
                                            const void *beta,
                                            const DataTensor<T> &bottom_desc,
-                                           void *dx) {
+                                           void *dx, int iterations) {
 #ifdef NVIDIA_CUDNN
-  ProfilerStart(handle, mode, idx, timer, "ConvBwdData");
-  CUDNN_CALL(cudnnConvolutionBackwardData(
-             mode == COMPOSED ?
-             handle.GetCudnn(idx) : handle.GetCudnn(),
-             alpha,
-             conv_desc.GetFilter(), w,
-             top_desc.Get(), dy,
-             conv_desc.GetConv(),
-             conv_algo->GetBwdDataAlgo(),
-             workspace, workspace_in_bytes,
-             beta,
-             bottom_desc.Get(), dx));
+  LOG(INFO) << "Calling cudnnConvolutionBackwardData " << iterations << " times";
+  ProfilerStart(handle, mode, idx, timer, "ConvBwdData");  
+  for (int i = 0; i < iterations; i++) {
+    CUDNN_CALL(cudnnConvolutionBackwardData(
+               mode == COMPOSED ?
+               handle.GetCudnn(idx) : handle.GetCudnn(),
+               alpha,
+               conv_desc.GetFilter(), w,
+               top_desc.Get(), dy,
+               conv_desc.GetConv(),
+               conv_algo->GetBwdDataAlgo(),
+               workspace, workspace_in_bytes,
+               beta,
+               bottom_desc.Get(), dx));
+  }
   ProfilerStop(handle, mode, idx, timer, "ConvBwdData");
 #endif
 #ifdef AMD_MIOPEN
@@ -126,17 +134,19 @@ inline void dnnmarkConvolutionBackwardData(const Handle &handle,
                             dy, w, dx,
                             workspace, workspace_in_bytes);
   ProfilerStart(handle, mode, idx, timer, "ConvBwdData");
-  MIOPEN_CALL(miopenConvolutionBackwardData(
-              mode == COMPOSED ?
-              handle.GetMIOpen(idx) : handle.GetMIOpen(),
-              alpha,
-              top_desc.Get(), dy,
-              conv_desc.GetFilter(), w,
-              conv_desc.GetConv(),
-              conv_algo->GetBwdDataAlgo(),
-              beta,
-              bottom_desc.Get(), dx,
-              workspace, workspace_in_bytes));
+  for (int i = 0; i < iterations; i++) {
+    MIOPEN_CALL(miopenConvolutionBackwardData(
+                mode == COMPOSED ?
+                handle.GetMIOpen(idx) : handle.GetMIOpen(),
+                alpha,
+                top_desc.Get(), dy,
+                conv_desc.GetFilter(), w,
+                conv_desc.GetConv(),
+                conv_algo->GetBwdDataAlgo(),
+                beta,
+                bottom_desc.Get(), dx,
+                workspace, workspace_in_bytes));
+  }
   ProfilerStop(handle, mode, idx, timer, "ConvBwdData");
 #endif
 }
@@ -154,9 +164,11 @@ inline void dnnmarkConvolutionBackwardFilter(const Handle &handle,
                                              void *workspace,
                                              size_t workspace_in_bytes,
                                              const void *beta,
-                                             void *dw) {
+                                             void *dw,
+                                             int iterations) {
 #ifdef NVIDIA_CUDNN
   // std::string conv_algo_param;
+  LOG(INFO) << "Calling cudnnConvolutionBackwardFilter " << iterations << " times, workspace " << workspace_in_bytes << ", algo " << conv_algo->GetBwdFilterAlgo();
   cudnnFilterDescriptor_t filter_t = conv_desc.GetFilter();
   ProfilerStart(handle, mode, idx, timer, "ConvBwdFilter");
   // conv_algo_param = conv_algo->GetBwdFilterAlgoParameter();
@@ -174,18 +186,19 @@ inline void dnnmarkConvolutionBackwardFilter(const Handle &handle,
   //   LOG(INFO) << "cuDNN AUTO selected conv. bwd filter alg. to " << conv_algo->GetBwdFilterAlgo();
   //   std::cout << "cuDNN AUTO selected bwd convolution filter algorithm:"<<conv_algo->GetBwdFilterAlgo()<<"\n";
   // }
-  LOG(INFO) << "Calling cudnnConvolutionBackwardFilter with workspace " << workspace_in_bytes << " and algo " << conv_algo->GetBwdFilterAlgo();
-  CUDNN_CALL(cudnnConvolutionBackwardFilter(
-             mode == COMPOSED ?
-             handle.GetCudnn(idx) : handle.GetCudnn(),
-             alpha,
-             bottom_desc.Get(), x,
-             top_desc.Get(), dy,
-             conv_desc.GetConv(),
-             conv_algo->GetBwdFilterAlgo(),
-             workspace, workspace_in_bytes,
-             beta,
-             filter_t, dw));
+  for (int i = 0; i < iterations; i++) {
+    CUDNN_CALL(cudnnConvolutionBackwardFilter(
+               mode == COMPOSED ?
+               handle.GetCudnn(idx) : handle.GetCudnn(),
+               alpha,
+               bottom_desc.Get(), x,
+               top_desc.Get(), dy,
+               conv_desc.GetConv(),
+               conv_algo->GetBwdFilterAlgo(),
+               workspace, workspace_in_bytes,
+               beta,
+               filter_t, dw));
+  }
   ProfilerStop(handle, mode, idx, timer, "ConvBwdFilter");
 #endif
 #ifdef AMD_MIOPEN
@@ -196,17 +209,19 @@ inline void dnnmarkConvolutionBackwardFilter(const Handle &handle,
                               x, dy, dw,
                               workspace, workspace_in_bytes);
   ProfilerStart(handle, mode, idx, timer, "ConvBwdFilter");
-  MIOPEN_CALL(miopenConvolutionBackwardWeights(
-              mode == COMPOSED ?
-              handle.GetMIOpen(idx) : handle.GetMIOpen(),
-              alpha,
-              top_desc.Get(), dy,
-              bottom_desc.Get(), x,
-              conv_desc.GetConv(),
-              conv_algo->GetBwdFilterAlgo(),
-              beta,
-              conv_desc.GetFilter(), dw,
-              workspace, workspace_in_bytes));
+  for (int i = 0; i < iterations; i++) {
+    MIOPEN_CALL(miopenConvolutionBackwardWeights(
+                mode == COMPOSED ?
+                handle.GetMIOpen(idx) : handle.GetMIOpen(),
+                alpha,
+                top_desc.Get(), dy,
+                bottom_desc.Get(), x,
+                conv_desc.GetConv(),
+                conv_algo->GetBwdFilterAlgo(),
+                beta,
+                conv_desc.GetFilter(), dw,
+                workspace, workspace_in_bytes));
+  }
   ProfilerStop(handle, mode, idx, timer, "ConvBwdFilter");
 #endif
 }

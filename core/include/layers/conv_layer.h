@@ -78,6 +78,8 @@ class ConvolutionLayer : public Layer<T> {
   bool has_fwd_workspace_;
   bool has_bwd_data_workspace_;
   bool has_bwd_filter_workspace_;
+
+
  public:
   ConvolutionLayer(DNNMark<T> *p_dnnmark)
   : Layer<T>(p_dnnmark),
@@ -464,7 +466,7 @@ class ConvolutionLayer : public Layer<T> {
       conv_param_.stride_v_ + 1;
   }
 
-  void ForwardPropagation() {
+  void ForwardPropagation(int iterations=1) {
     // Fill the bottom data
     if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {
@@ -487,7 +489,7 @@ class ConvolutionLayer : public Layer<T> {
                 has_fwd_workspace_? fwd_workspace_->Get() : nullptr,
                 fwd_workspace_size_,
                 DataType<T>::zero,
-                top_desc_, tops_[i]->Get());
+                top_desc_, tops_[i]->Get(), iterations);
     }
   }
 
@@ -510,8 +512,7 @@ class ConvolutionLayer : public Layer<T> {
 
     // Convolution backward computation
     for (int i = 0; i < num_tops_; i++) {
-      for (int iter = 0; i < iterations; i++) {
-        dnnmarkConvolutionBackwardFilter(
+      dnnmarkConvolutionBackwardFilter(
                     *(p_dnnmark_->GetHandle()),
                     p_dnnmark_->getRunMode(), layer_id_,
                     p_dnnmark_->GetTimer(),
@@ -523,12 +524,11 @@ class ConvolutionLayer : public Layer<T> {
                     has_bwd_filter_workspace_? bwd_filter_workspace_->Get() : nullptr,
                     bwd_filter_workspace_size_,
                     DataType<T>::zero,
-                    weights_diff_->Get());
-      }
+                    weights_diff_->Get(), iterations);
+      
       LOG(INFO) << "Conv param propagation: " << conv_param_.propagation_;
       if (conv_param_.propagation_) {
-        for (int iter = 0; i < iterations; i++) {
-          dnnmarkConvolutionBackwardData(
+        dnnmarkConvolutionBackwardData(
                   *(p_dnnmark_->GetHandle()),
                   p_dnnmark_->getRunMode(), layer_id_,
                   p_dnnmark_->GetTimer(),
@@ -539,8 +539,7 @@ class ConvolutionLayer : public Layer<T> {
                   has_bwd_data_workspace_? bwd_data_workspace_->Get() : nullptr,
                   bwd_data_workspace_size_,
                   DataType<T>::zero,
-                  bottom_desc_, bottoms_[i]->Get());
-        }
+                  bottom_desc_, bottoms_[i]->Get(), iterations);
       }
     }
   }

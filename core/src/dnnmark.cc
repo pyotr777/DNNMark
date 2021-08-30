@@ -507,12 +507,12 @@ int DNNMark<T>::RunAll() {
 }
 
 template <typename T>
-int DNNMark<T>::Forward() {
+int DNNMark<T>::Forward(int iterations) {
   for (auto it = layers_map_.begin(); it != layers_map_.end(); it++) {
     if (it->second->getLayerType() == CONVOLUTION) {
       LOG(INFO) << "DNNMark: Running convolution forward: STARTED";
       std::dynamic_pointer_cast<ConvolutionLayer<T>>(it->second)
-        ->ForwardPropagation();
+        ->ForwardPropagation(iterations);
       LOG(INFO) << "DNNMark: Running convolution forward: FINISHED";
     }
     if (it->second->getLayerType() == POOLING) {
