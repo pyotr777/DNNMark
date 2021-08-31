@@ -6,13 +6,16 @@
 using namespace dnnmark;
 
 int main(int argc, char **argv) {
+  float run_time = 0.;
   INIT_FLAGS(argc, argv);
   INIT_LOG(argv);
   LOG(INFO) << "DNNMark suites version "<< version <<": Start...";
   DNNMark<TestType> dnnmark;
   dnnmark.ParseGeneralConfig(FLAGS_config);
   dnnmark.ParseLayerConfig(FLAGS_config);
+  LOG(INFO) << "Start initialization (dnnmark.Initialize)";
   dnnmark.Initialize();
+  dnnmark.SetupWorkspaces(2);
   LOG(INFO) << "initialization done.";
 
   // Warmup
@@ -24,16 +27,26 @@ int main(int argc, char **argv) {
     }
   }
 
+  LOG(INFO) << "Iterations " << FLAGS_iterations;
+  LOG(INFO) << "Cached Iterations " << FLAGS_cachediterations;
+  int slowiterations = 1;
+  int fastiterations = 1;
+  if (FLAGS_cachediterations) {
+    fastiterations = FLAGS_iterations;
+  } else {
+    slowiterations = FLAGS_iterations;
+  }
   // Real benchmark
   dnnmark.GetTimer()->Clear();
-  for (int i = 0; i < FLAGS_iterations; i++) {
-    dnnmark.Forward();
-    dnnmark.Backward();
+  for (int i = 0; i < slowiterations; i++) {
+    dnnmark.Forward(fastiterations);
+    dnnmark.Backward(fastiterations);
   }
   dnnmark.GetTimer()->SumRecords();
   dnnmark.TearDown();
-  printf("Total running time(ms): %f\n", dnnmark.GetTimer()->GetTotalTime());
-  LOG(INFO) << "Total running time(ms): " << dnnmark.GetTimer()->GetTotalTime();
+  run_time = dnnmark.GetTimer()->GetTotalTime();
+  printf("Total running time(ms): %f\n", run_time);
+  LOG(INFO) << "Total running time(ms): " << run_time;
   LOG(INFO) << "DNNMark suites: Tear down...";
   return 0;
 }

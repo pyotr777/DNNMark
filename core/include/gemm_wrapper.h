@@ -36,7 +36,7 @@ void dnnmarkGEMM(const Handle &handle, RunMode mode, int idx,
                  T *a, int lda,
                  T *b, int ldb,
                  T *beta,
-                 T *c, int ldc);
+                 T *c, int ldc, int iterations=1);
 
 } // namespace dnnmark
 

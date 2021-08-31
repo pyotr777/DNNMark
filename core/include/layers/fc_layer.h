@@ -138,7 +138,7 @@ class FullyConnectedLayer : public Layer<T> {
     output_dim_.w_ = 1;
   }
 
-  void ForwardPropagation() {
+  void ForwardPropagation(int iterations=1) {
     if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {
       // Fill the bottom data
@@ -157,11 +157,11 @@ class FullyConnectedLayer : public Layer<T> {
     bool is_a_transpose = true;
     bool is_b_transpose = false;
 
+    LOG(INFO) << "Calling CUBLAS_CALL/ROCBLAS_CALL " << iterations << " times";
     // Fully connected forward computation
     ProfilerStart(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "FcFwd");
-    for (int i = 0; i < num_bottoms_; i++) {
-      // Y = T(W) * X                                                               
+    for (int i = 0; i < num_bottoms_; i++) {                                                
       dnnmarkGEMM(*(p_dnnmark_->GetHandle()),
                   p_dnnmark_->getRunMode(), layer_id_,
                   is_a_transpose, is_b_transpose,
@@ -170,14 +170,14 @@ class FullyConnectedLayer : public Layer<T> {
                   weights_->Get(), lda,
                   bottoms_[i]->Get(), ldb,
                   &scale_beta_,
-                  tops_[i]->Get(), ldc);
+                  tops_[i]->Get(), ldc, iterations);
     }
     ProfilerStop(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "FcFwd");
 
   }
 
-  void BackwardPropagation() {
+  void BackwardPropagation(int iterations=1) {
     if (p_dnnmark_->getRunMode() == STANDALONE ||
         !previous_layer_name_.compare("null")) {
       // Fill the top diff data
@@ -200,11 +200,11 @@ class FullyConnectedLayer : public Layer<T> {
     bool is_a_transpose = false;
     bool is_b_transpose = true;
 
+    LOG(INFO) << "Calling CUBLAS_CALL/ROCBLAS_CALL " << iterations << " times";
     // Fully connected backward weights computation
     ProfilerStart(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "FcBwdFilter");
     for (int i = 0; i < num_tops_; i++) {
-      // d(W) = X * T(d(Y))
       dnnmarkGEMM(*(p_dnnmark_->GetHandle()),
                   p_dnnmark_->getRunMode(), layer_id_,
                   is_a_transpose, is_b_transpose,
@@ -213,7 +213,7 @@ class FullyConnectedLayer : public Layer<T> {
                   bottoms_[i]->Get(), lda,
                   top_diffs_[i]->Get(), ldb,
                   &scale_beta_,
-                  weights_diff_->Get(), ldc);
+                  weights_diff_->Get(), ldc, iterations);
     }
     ProfilerStop(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "FcBwdFilter");
@@ -231,7 +231,6 @@ class FullyConnectedLayer : public Layer<T> {
     ProfilerStart(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "FcBwdData");
     for (int i = 0; i < num_tops_; i++) {
-      // d(X) = W * d(Y)
       dnnmarkGEMM(*(p_dnnmark_->GetHandle()),
                   p_dnnmark_->getRunMode(), layer_id_,
                   is_a_transpose, is_b_transpose,
@@ -240,7 +239,7 @@ class FullyConnectedLayer : public Layer<T> {
                   weights_->Get(), lda,
                   top_diffs_[i]->Get(), ldb,
                   &scale_beta_,
-                  bottom_diffs_[i]->Get(), ldc);
+                  bottom_diffs_[i]->Get(), ldc, iterations);
     }
     ProfilerStop(*(p_dnnmark_->GetHandle()), p_dnnmark_->getRunMode(),
                   layer_id_, p_dnnmark_->GetTimer(), "FcBwdData");

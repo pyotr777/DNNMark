@@ -32,11 +32,12 @@ void dnnmarkGEMM(const Handle &handle, RunMode mode, int idx,
                  float *a, int lda,
                  float *b, int ldb,
                  float *beta,
-                 float *c, int ldc) {
+                 float *c, int ldc, int iterations) {
 #ifdef NVIDIA_CUDNN
   cublasOperation_t transa = is_a_transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
-  cublasOperation_t transb = is_b_transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
-  CUBLAS_CALL(cublasSgemm(mode == COMPOSED ?
+  cublasOperation_t transb = is_b_transpose ? CUBLAS_OP_T : CUBLAS_OP_N;  
+  for (int i = 0; i < iterations; i++) {
+    CUBLAS_CALL(cublasSgemm(mode == COMPOSED ?
                           handle.GetBlas(idx) : handle.GetBlas(),
                           transa, transb,
                           m, n, k,
@@ -45,14 +46,15 @@ void dnnmarkGEMM(const Handle &handle, RunMode mode, int idx,
                           b, ldb,
                           beta,
                           c, ldc));
+  }
 #endif
 #ifdef AMD_MIOPEN
   rocblas_operation transa = is_a_transpose ? rocblas_operation_transpose :
                              rocblas_operation_none; 
   rocblas_operation transb = is_b_transpose ? rocblas_operation_transpose :
                              rocblas_operation_none; 
-
-  ROCBLAS_CALL(rocblas_sgemm(mode == COMPOSED ?
+  for (int i = 0; i < iterations; i++) {                         
+    ROCBLAS_CALL(rocblas_sgemm(mode == COMPOSED ?
                              handle.GetBlas(idx) : handle.GetBlas(),
                              transa, transb, 
                              m, n, k, 
@@ -61,6 +63,7 @@ void dnnmarkGEMM(const Handle &handle, RunMode mode, int idx,
                              b, ldb, 
                              beta, 
                              c, ldc));
+  }
 #endif
 
 }
@@ -73,11 +76,12 @@ void dnnmarkGEMM(const Handle &handle, RunMode mode, int idx,
                  double *a, int lda,
                  double *b, int ldb,
                  double *beta,
-                 double *c, int ldc) {
+                 double *c, int ldc, int iterations) {
 #ifdef NVIDIA_CUDNN
   cublasOperation_t transa = is_a_transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
   cublasOperation_t transb = is_b_transpose ? CUBLAS_OP_T : CUBLAS_OP_N;
-  CUBLAS_CALL(cublasDgemm(mode == COMPOSED ?
+  for (int i = 0; i < iterations; i++) {
+    CUBLAS_CALL(cublasDgemm(mode == COMPOSED ?
                           handle.GetBlas(idx) : handle.GetBlas(),
                           transa, transb,
                           m, n, k,
@@ -86,14 +90,15 @@ void dnnmarkGEMM(const Handle &handle, RunMode mode, int idx,
                           b, ldb,
                           beta,
                           c, ldc));
+  }
 #endif
 #ifdef AMD_MIOPEN
   rocblas_operation transa = is_a_transpose ? rocblas_operation_transpose :
                              rocblas_operation_none; 
   rocblas_operation transb = is_b_transpose ? rocblas_operation_transpose :
                              rocblas_operation_none; 
-
-  ROCBLAS_CALL(rocblas_dgemm(mode == COMPOSED ?
+  for (int i = 0; i < iterations; i++) {
+    ROCBLAS_CALL(rocblas_dgemm(mode == COMPOSED ?
                              handle.GetBlas(idx) : handle.GetBlas(),
                              transa, transb, 
                              m, n, k, 
@@ -102,6 +107,7 @@ void dnnmarkGEMM(const Handle &handle, RunMode mode, int idx,
                              b, ldb, 
                              beta, 
                              c, ldc));
+  }
 #endif
 }
 

@@ -536,7 +536,7 @@ int DNNMark<T>::Forward(int iterations) {
     if (it->second->getLayerType() == FC) {
       LOG(INFO) << "DNNMark: Running FullyConnected forward: STARTED";
       std::dynamic_pointer_cast<FullyConnectedLayer<T>>(it->second)
-        ->ForwardPropagation();
+        ->ForwardPropagation(iterations);
       LOG(INFO) << "DNNMark: Running FullyConnected forward: FINISHED";
     }
     if (it->second->getLayerType() == SOFTMAX) {
@@ -597,7 +597,7 @@ int DNNMark<T>::Backward(int iterations) {
     if (it->second->getLayerType() == FC) {
       LOG(INFO) << "DNNMark: Running FullyConnected backward: STARTED";
       std::dynamic_pointer_cast<FullyConnectedLayer<T>>(it->second)
-        ->BackwardPropagation();
+        ->BackwardPropagation(iterations);
       LOG(INFO) << "DNNMark: Running FullyConnected backward: FINISHED";
     }
     if (it->second->getLayerType() == SOFTMAX) {
