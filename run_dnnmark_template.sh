@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Wrapper API for DNNMark
-# 2018 (C) Peter Bryzgalov @ CHITECH Stair Lab
+# 2018-2021 (C) Peter Bryzgalov @ CHITECH Stair Lab
 
-version="0.11"
+version="1.00"
 IFS='' read -r -d '' usage <<USAGEBLOCK
 Run DNNMark with parameters from CLI. v${version}.
 Usage:
@@ -14,7 +14,8 @@ $(basename $0)  [-b <benchmark executable, default=test_composed_model>]
                 [ --debug - debug info ]
                 [ --help  - usage info ]
                 [ --root <path> - DNNMark installation root]
-                [ --iter <int> - number of FWD+BWD passes to measure time]                
+                [ --iter <int> - number of FWD+BWD passes to measure time]
+                [ --cachediterations - use faster iterations without data initialisation for FC, convolutional and BN layers]             
                 [-n <number of images, batch size>]
 
                 # Convolutional layer parameter
@@ -66,6 +67,7 @@ BENCH="test_composed_model"
 ITER=1
 WARMUP="0"
 debug=0
+cachediterations=""
 datasetsize=0
 workspace=""
 propagation=""
@@ -140,6 +142,9 @@ while test $# -gt 0; do
             ;;
         --iter)
             ITER="$2";shift;
+            ;;
+        --cachediterations)
+            cachediterations=" --cachediterations";shift;
             ;;
         --warmup)
             WARMUP="$2";shift;
@@ -219,6 +224,6 @@ cat $config_file
 echo "-------------------------------------------------"
 echo "Benchmark: $BENCH"
 echo "Iterations:$ITER"
-com="${root}/build/benchmarks/${BENCH}/dnnmark_${BENCH} -config ${config_file} --warmup $WARMUP --iterations $ITER --debuginfo $debug"
+com="${root}/build/benchmarks/${BENCH}/dnnmark_${BENCH} -config ${config_file} --warmup $WARMUP --iterations ${ITER}${cachediterations} --debuginfo $debug"
 echo $com
 $com
