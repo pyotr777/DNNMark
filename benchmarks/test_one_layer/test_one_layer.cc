@@ -2,6 +2,7 @@
 #include "common.h"
 #include "dnnmark.h"
 #include "usage.h"
+#include <nvml.h>
 
 using namespace dnnmark;
 
@@ -13,6 +14,14 @@ int main(int argc, char **argv) {
   DNNMark<TestType> dnnmark;
   dnnmark.ParseGeneralConfig(FLAGS_config);
   dnnmark.ParseLayerConfig(FLAGS_config);
+
+  nvmlDevice_t device;
+  nvmlPstates_t *pstate;
+  unsigned int temp;
+  nvmlReturn_t nvmlRet;
+  // NVML
+  nvmlInit(); 
+
   LOG(INFO) << "Start initialization (dnnmark.Initialize)";
   dnnmark.Initialize();
   dnnmark.SetupWorkspaces(2);
