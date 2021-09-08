@@ -1,13 +1,17 @@
 #include <iostream>
-#include "stdio.h"
+#include <chrono>
+#include <stdio.h>
+#include <cuda_runtime.h>
+#include <nvml.h>
+#include <gflags/gflags.h>
+#include <nvToolsExt.h>
+#include <cuda_profiler_api.h>
+#include "helper_cuda.h"
 #include "common.h"
 #include "dnnmark.h"
 #include "usage.h"
-#include <gflags/gflags.h>
-#include "simpleCUBLAS.h"
-#include "cuda_profiler_api.h"
-#include "nvToolsExt.h"
-#include <nvml.h>
+#include "warmup.h"
+
 
 using namespace dnnmark;
 
@@ -18,59 +22,30 @@ int main(int argc, char **argv) {
   DNNMark<TestType> dnnmark(3);
   float run_time = 0.;
   dnnmark.ParseAllConfig(FLAGS_config);
-  nvmlDevice_t device;
-  nvmlPstates_t pstate;
-  unsigned int temp;
-  nvmlReturn_t nvmlRet;
 
   if (FLAGS_warmup) {
     LOG(INFO) << "Warming up before initialisation..." << FLAGS_warmup << " times";
     int gpu_id = 0;
     int dev = gpuDeviceInit(gpu_id);
+    std::string message;
     if (dev == -1) {
-      return EXIT_FAILURE;
+      exit(EXIT_FAILURE);
     } else {
       LOG(INFO) << "Initialized GPU " << gpu_id << " as " << dev;
     }
 
-    // NVML
-    nvmlInit();
-    LOG(INFO) << "Initialized NVML";
-    nvmlRet = nvmlDeviceGetHandleByIndex_v2(gpu_id, &device);
-    if (nvmlRet != 0) {
-      printf("Ret: %d\n",nvmlRet);
-      return EXIT_FAILURE;
-    }
-
-    nvmlRet = nvmlDeviceGetPerformanceState(device, &pstate);
-    if (nvmlRet != 0) {
-      printf("Ret: %d\n",nvmlRet);
-      return EXIT_FAILURE;
-    }
-    nvmlRet = nvmlDeviceGetTemperature(device, NVML_TEMPERATURE_GPU, &temp);
-    if (nvmlRet != 0) {
-      printf("Ret: %d\n",nvmlRet);
-      return EXIT_FAILURE;
-    }
-    printf("Staring with state: %d temp: %d \n", pstate, temp);
-    
-    for (int i = 0; i < FLAGS_warmup; i++) {
-      int status = call_sgemm(gpu_id, 512);
+    for (int i = 0; i < 2; i++) {
+      auto start = std::chrono::high_resolution_clock::now();
+      int status = warmupGPU(gpu_id, 10);  // 10 iterations, default problem sze
       if (status != 0) {
         fprintf(stderr, "Error status: %d\n",status);
       }
-      nvmlRet = nvmlDeviceGetPerformanceState(device, &pstate);
-      if (nvmlRet != 0) {
-        printf("Ret: %d\n",nvmlRet);
-        return EXIT_FAILURE;
-      }
-      nvmlRet = nvmlDeviceGetTemperature(device, NVML_TEMPERATURE_GPU, &temp);
-      if (nvmlRet != 0) {
-        printf("Ret: %d\n",nvmlRet);
-        return EXIT_FAILURE;
-      }
-      printf("State: %d Temp: %d \n", pstate, temp);
-      }
+      auto end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> diff = end - start;
+      LOG(INFO) << "time: " + std::to_string(diff.count()) + " s, ";
+      // message = "After :"+ std::to_string(diff.count()) + " s, "
+      // printGPUStateInfo(device, message);      
+    }
   }
 
   LOG(INFO) << "Initialisation called from benchmark";

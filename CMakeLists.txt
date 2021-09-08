@@ -85,6 +85,15 @@ if (CUDA_FOUND AND ${CUDA_ENABLE})
     add_definitions(-DCUDNNV6)
   endif()
 
+  # Use NVML
+  set(NVML_NAMES nvidia-ml)
+  set(NVML_LIB_DIR "${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs")
+
+  find_library(NVML_LIB_PATH
+  NO_DEFAULT_PATH
+  NAMES ${NVML_NAMES}
+  PATHS ${NVML_LIB_DIR})
+
   # Set path of DNNMark include files
   set(DNNMARK_INCLUDES ${CMAKE_SOURCE_DIR}/core/include)
   include_directories(${DNNMARK_INCLUDES})
@@ -98,7 +107,7 @@ if (CUDA_FOUND AND ${CUDA_ENABLE})
   include_directories(${DNNMARK_COMMON})
 
   # Set source files
-  file(GLOB_RECURSE DNNMARK_SOURCES RELATIVE ${CMAKE_SOURCE_DIR} core/src/*.cc)
+  file(GLOB_RECURSE DNNMARK_SOURCES RELATIVE ${CMAKE_SOURCE_DIR} core/src/*.cc core/src/*.cu)
   message(STATUS "DNNMark Source files: " ${DNNMARK_SOURCES})
 
   # Set NVCC flags
@@ -120,12 +129,14 @@ if (CUDA_FOUND AND ${CUDA_ENABLE})
   add_dependencies(${PROJECT_NAME} ${CUDA_RAND_LIBRARY})
   add_dependencies(${PROJECT_NAME} ${CUDA_LIBRARIES})
   add_dependencies(${PROJECT_NAME} ${GLOG_LIBRARY})
+  add_dependencies(${PROJECT_NAME} ${NVML_LIB_PATH})
   target_link_libraries(${PROJECT_NAME}
                         ${CUDNN_LIBRARY}
                         ${CUDA_BLAS_LIBRARY}
                         ${CUDA_RAND_LIBRARY}
                         ${CUDA_LIBRARIES}
                         ${GLOG_LIBRARY}
+                        ${NVML_LIB_PATH}
                         m)
 
 elseif(HCC_FOUND AND ${HCC_ENABLE})

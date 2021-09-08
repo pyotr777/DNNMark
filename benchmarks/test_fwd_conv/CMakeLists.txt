@@ -28,5 +28,6 @@ add_dependencies(${BENCHMARK_NAME} ${GFLAGS_LIBRARY})
 # Link libraries
 target_link_libraries(${BENCHMARK_NAME}
     ${PROJECT_NAME}
-    ${GFLAGS_LIBRARY})
+    ${GFLAGS_LIBRARY}
+    )
 

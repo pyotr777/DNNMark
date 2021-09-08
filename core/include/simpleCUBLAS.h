@@ -35,6 +35,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <chrono>
+#include <string>
+#include "nvToolsExt.h"
+#include <nvml.h>
+#include <gflags/gflags.h>
 
 /* Includes, cuda */
 #include <cublas_v2.h>
@@ -63,8 +68,50 @@ static void simple_sgemm(int n, float alpha, const float *A, const float *B,
 }
 
 
+// Print current GPU state parameters to stdout
+void printGPUStateInfo(nvmlDevice_t device, std::string message) {
+  nvmlPstates_t pstate;
+  nvmlMemory_t memory;
+  unsigned int temp;
+  unsigned int app_clock;
+  unsigned int app_clock_max;
+  float clock_perf;
+  nvmlReturn_t nvmlRet;
+
+  nvmlRet = nvmlDeviceGetPerformanceState(device, &pstate);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  nvmlRet = nvmlDeviceGetTemperature(device, NVML_TEMPERATURE_GPU, &temp);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  nvmlRet = nvmlDeviceGetClock(device, NVML_CLOCK_SM, NVML_CLOCK_ID_CURRENT, &app_clock);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  nvmlRet = nvmlDeviceGetMaxClockInfo(device, NVML_CLOCK_SM, &app_clock_max);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  nvmlRet = nvmlDeviceGetMemoryInfo(device, &memory);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  clock_perf = (float)app_clock / (float)app_clock_max * 100.;
+  printf("%s P%d, app clock %d/%d MHz (%3.0f%%), %d˚C, memory(free,total): %llu/%llu MB\n",
+         message.c_str(), pstate, app_clock, app_clock_max, clock_perf, temp, 
+         memory.free / 1000000, memory.total / 1000000);
+}
+
+
 /* Call with device number and matrix size */
-static int call_sgemm(int device, int N) {
+static int call_sgemm(int device, int size, int iterations = 1) {
   cublasStatus_t status;
   float *h_A;
   float *h_B;
@@ -75,19 +122,32 @@ static int call_sgemm(int device, int N) {
   float *d_C = 0;
   float alpha = 1.0f;
   float beta = 0.0f;
-  int n2 = N * N;
+  int n2 = size * size;
   int i;
   float error_norm;
   float ref_norm;
   float diff;
   bool debug = false;
   cublasHandle_t handle;
+  nvmlDevice_t nvmldevice;
+  nvmlReturn_t nvmlRet;
+  std::string message;
 
+  // Init NVML
+  nvmlInit();
+  LOG(INFO) << "Initialized NVML";
+  nvmlRet = nvmlDeviceGetHandleByIndex_v2(device, &nvmldevice);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  message = "Before iterations:";
+  printGPUStateInfo(nvmldevice, message);
 
 
   /* Initialize CUBLAS */
   if (debug) {
-    printf("simpleCUBLAS test running on device %d..\n",device);
+    printf("simpleCUBLAS test running on device %d..\n", device);
   }
   status = cublasCreate(&handle);
 
@@ -166,18 +226,29 @@ static int call_sgemm(int device, int N) {
     return EXIT_FAILURE;
   }
 
-  /* Performs operation using plain C code */
-  // simple_sgemm(N, alpha, h_A, h_B, beta, h_C);
-  // h_C_ref = h_C;
+  for (i = 0; i < iterations; i++) {
+    auto start = std::chrono::high_resolution_clock::now();
+    /* Performs operation using plain C code */
+    // simple_sgemm(size, alpha, h_A, h_B, beta, h_C);
+    // h_C_ref = h_C;
 
-  /* Performs operation using cublas */
-  status = cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, N, N, N, &alpha, d_A,
-                       N, d_B, N, &beta, d_C, N);
-
-  if (status != CUBLAS_STATUS_SUCCESS) {
-    fprintf(stderr, "!!!! kernel execution error.\n");
-    return EXIT_FAILURE;
+    /* Performs operation using cublas */
+    status = cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, size, size, size, &alpha, d_A,
+                         size, d_B, size, &beta, d_C, size);
+    if (status != CUBLAS_STATUS_SUCCESS) {
+      fprintf(stderr, "!!!! kernel execution error.\n");
+      return EXIT_FAILURE;
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    LOG(INFO) << std::to_string(i) + "/" + std::to_string(iterations) + " time: " +
+              std::to_string(diff.count()) + " s, ";
+    // message = " " + std::to_string(diff.count()) + " s, ";
+    // printGPUStateInfo(nvmldevice, message);
   }
+  message = "After iterations  :";
+  printGPUStateInfo(nvmldevice, message);
+
 
   /* Allocate host memory for reading back the result from device memory */
   h_C = reinterpret_cast<float *>(malloc(n2 * sizeof(h_C[0])));
@@ -195,23 +266,6 @@ static int call_sgemm(int device, int N) {
     return EXIT_FAILURE;
   }
 
-  /* Check result against reference */
-  // error_norm = 0;
-  // ref_norm = 0;
-
-  // for (i = 0; i < n2; ++i) {
-  //   diff = h_C_ref[i] - h_C[i];
-  //   error_norm += diff * diff;
-  //   ref_norm += h_C_ref[i] * h_C_ref[i];
-  // }
-
-  // error_norm = static_cast<float>(sqrt(static_cast<double>(error_norm)));
-  // ref_norm = static_cast<float>(sqrt(static_cast<double>(ref_norm)));
-
-  // if (fabs(ref_norm) < 1e-7) {
-  //   fprintf(stderr, "!!!! reference norm is 0\n");
-  //   return EXIT_FAILURE;
-  // }
 
   /* Memory clean up */
   free(h_A);

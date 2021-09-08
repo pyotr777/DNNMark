@@ -1,17 +1,17 @@
 // The MIT License (MIT)
-// 
+//
 // Copyright (c) 2016 Northeastern University
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
-// The above copyright notice and this permission notice shall be included in 
+//
+// The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -32,9 +32,9 @@ namespace dnnmark {
 static unsigned long long int seed = 1234;
 
 class PseudoNumGenerator {
- private:
+private:
 #ifdef NVIDIA_CUDNN
-  curandGenerator_t gen_;  
+  curandGenerator_t gen_;
 #endif
 
   // Constructor
@@ -47,7 +47,7 @@ class PseudoNumGenerator {
 
   // PNG instance
   static std::unique_ptr<PseudoNumGenerator> instance_;
- public:
+public:
 
   ~PseudoNumGenerator() {
 #ifdef NVIDIA_CUDNN
@@ -69,11 +69,11 @@ class PseudoNumGenerator {
     float *host_ptr = new float[size];
     for (int i = 0; i < size; i++)
       host_ptr[i] = static_cast <float> (rand()) /
-                    (static_cast <float> (RAND_MAX/seed));
+                    (static_cast <float> (RAND_MAX / seed));
     HIP_CALL(hipMemcpy(dev_ptr, host_ptr, size * sizeof(float),
                        hipMemcpyHostToDevice));
     delete []host_ptr;
-    
+
 #endif
   }
   void GenerateUniformData(double *dev_ptr, int size) {
@@ -84,16 +84,16 @@ class PseudoNumGenerator {
     double *host_ptr = new double[size];
     for (int i = 0; i < size; i++)
       host_ptr[i] = static_cast <double> (rand()) /
-                    (static_cast <double> (RAND_MAX/seed));
+                    (static_cast <double> (RAND_MAX / seed));
     HIP_CALL(hipMemcpy(dev_ptr, host_ptr, size * sizeof(double),
                        hipMemcpyHostToDevice));
     delete []host_ptr;
 #endif
-  }  
+  }
 };
 
 std::unique_ptr<PseudoNumGenerator> PseudoNumGenerator::instance_ = nullptr;
-
+// instance_ = nullptr;
 } // namespace dnnmark
 
 #endif // CORE_INCLUDE_DATA_PNG_H_
