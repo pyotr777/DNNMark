@@ -18,10 +18,13 @@ using namespace dnnmark;
 int main(int argc, char **argv) {
   INIT_FLAGS(argc, argv);
   INIT_LOG(argv);
-  LOG(INFO) << "DNNMark suites ver"<< version <<": Start...";
+  LOG(INFO) << "DNNMark suites ver" << version << ": Start...";
   DNNMark<TestType> dnnmark(3);
   float run_time = 0.;
   dnnmark.ParseAllConfig(FLAGS_config);
+  // Warmup parameters
+  int problem_size = 100000;
+  int block_size = 256;
 
   if (FLAGS_warmup) {
     LOG(INFO) << "Warming up before initialisation..." << FLAGS_warmup << " times";
@@ -34,17 +37,15 @@ int main(int argc, char **argv) {
       LOG(INFO) << "Initialized GPU " << gpu_id << " as " << dev;
     }
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < fmin(FLAGS_warmup, 10); i++) {
       auto start = std::chrono::high_resolution_clock::now();
-      int status = warmupGPU(gpu_id, 10);  // 10 iterations, default problem sze
+      int status = warmupGPU(gpu_id, FLAGS_warmup, problem_size, block_size);
       if (status != 0) {
-        fprintf(stderr, "Error status: %d\n",status);
+        fprintf(stderr, "Error status: %d\n", status);
       }
       auto end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> diff = end - start;
       LOG(INFO) << "time: " + std::to_string(diff.count()) + " s, ";
-      // message = "After :"+ std::to_string(diff.count()) + " s, "
-      // printGPUStateInfo(device, message);      
     }
   }
 

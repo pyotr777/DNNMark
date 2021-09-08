@@ -3,7 +3,7 @@
 # Wrapper API for DNNMark
 # 2018-2021 (C) Peter Bryzgalov @ CHITECH Stair Lab
 
-version="1.00"
+version="1.01"
 IFS='' read -r -d '' usage <<USAGEBLOCK
 Run DNNMark with parameters from CLI. v${version}.
 Usage:
@@ -144,7 +144,7 @@ while test $# -gt 0; do
             ITER="$2";shift;
             ;;
         --cachediterations)
-            cachediterations=" --cachediterations";shift;
+            cachediterations=" --cachediterations";
             ;;
         --warmup)
             WARMUP="$2";shift;

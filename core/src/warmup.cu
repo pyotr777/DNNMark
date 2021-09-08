@@ -22,6 +22,7 @@ void multiply(int n, int *x, int *y, int *z) {
     for (int j = 0; j < n; j++) {
       z[i] += x[i] * y[j];
     }
+    // printf("z[%d]=%d, index=%d stride=%d\n", i, z[i], index, stride);
   }
 }
 
@@ -30,8 +31,8 @@ void printGPUStateInfo(nvmlDevice_t device, std::string message) {
   nvmlPstates_t pstate;
   nvmlMemory_t memory;
   unsigned int temp;
-  unsigned int app_clock;
-  unsigned int app_clock_max;
+  unsigned int app_clock = 0;
+  unsigned int app_clock_max = 0;
   float clock_perf;
   nvmlReturn_t nvmlRet;
 
@@ -68,17 +69,18 @@ void printGPUStateInfo(nvmlDevice_t device, std::string message) {
 
 
 /* Call with device number and matrix size */
-int warmupGPU(int gpu_id, int iterations, unsigned int size) {
+int warmupGPU(int gpu_id, int iterations, unsigned int size, int block_size,
+              bool check_results) {
   // bool debug = false;
   nvmlDevice_t nvmldevice;
   nvmlReturn_t nvmlRet;
   std::string message;
+  cudaError_t error;
   unsigned int N = size;
-  int block_size = 256;
   int thread_blocks = (N + block_size - 1) / block_size;
 
-  LOG(INFO) << "blocks: " << thread_blocks << " x " << block_size << ", iterations: "
-          << iterations << std::endl;
+  std::cout << "blocks: " << thread_blocks << " x " << block_size << ", iterations: "
+            << iterations << std::endl;
 
   int *x, *y, *z;
   // Unified memory allocation
@@ -91,32 +93,81 @@ int warmupGPU(int gpu_id, int iterations, unsigned int size) {
     x[i] = 1.0f;
     y[i] = 2.0f;
   }
-
   // Init NVML
-  nvmlInit();
-  LOG(INFO) << "Initialized NVML";
+  nvmlRet = nvmlInit_v2();
+  if (nvmlRet != 0) {
+    printf("NVML init failure. Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
   nvmlRet = nvmlDeviceGetHandleByIndex_v2(gpu_id, &nvmldevice);
   if (nvmlRet != 0) {
     printf("Ret: %d\n", nvmlRet);
     exit(EXIT_FAILURE);
   }
-  message = "Before start:";
+  message = "Before start   :";
   printGPUStateInfo(nvmldevice, message);
-  
-  auto start = std::chrono::high_resolution_clock::now();
+  // Shutdown NVML
+  nvmlRet = nvmlShutdown();
+  if (nvmlRet != 0) {
+    printf("NVML shutdown failure. Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
 
+  auto start = std::chrono::high_resolution_clock::now();
   // Call Warmup procedure
   for (int i = 0; i < iterations; i++) {
     multiply <<< thread_blocks, block_size>>>(N, x, y, z);
+    cudaDeviceSynchronize();
+    error = cudaGetLastError();
+    if (error != 0) {
+      std::cout << "CUDA error? " << error << std::endl;
+      exit(EXIT_FAILURE);
+    }
   }
   // Wait for GPU to finish before accessing on host
-  cudaDeviceSynchronize();
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> diff = end - start;
   std::cout << "N=" << N << " " << iterations << " iterations at " << diff.count() * 1e+3 << "ms" << std::endl;
-
-  message = "After warming up:";
+  // Init NVML
+  nvmlRet = nvmlInit_v2();
+  if (nvmlRet != 0) {
+    printf("NVML init failure. Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  nvmlRet = nvmlDeviceGetHandleByIndex_v2(gpu_id, &nvmldevice);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  message = "After warmingup:";
   printGPUStateInfo(nvmldevice, message);
+  // Shutdown NVML
+  nvmlRet = nvmlShutdown();
+  if (nvmlRet != 0) {
+    printf("NVML init failure. Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+
+  // Print Z array
+  // std::cout << "Z:";
+  // for (int i = 0; i < fmin(N, 100); i++) {
+  //   std::cout <<  z[i] << " ";
+  // }
+  // std::cout << std::endl;
+
+  if (check_results) {
+    // Check for errors (all values should be 3.0f)
+    int maxError = 0;
+    unsigned long correct = 2 * N;
+    std::cout << "Checking result..." << std::endl;
+    for (unsigned long i = 0; i < fmin(N, 10000); i++) {
+      maxError = fmax(maxError, fabs(z[i] - correct));
+      std::cout << "\r" << i + 1 << "/" << N;
+    }
+    std::cout << std::endl;
+    std::cout << "Max error: " << maxError << std::endl;
+  }
+
   cudaFree(x);
   cudaFree(y);
   cudaFree(z);

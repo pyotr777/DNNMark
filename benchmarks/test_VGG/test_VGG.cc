@@ -4,6 +4,7 @@
 #include "usage.h"
 #include "simpleCUBLAS.h"
 #include "cuda_profiler_api.h"
+#include <gflags/gflags.h>
 
 using namespace dnnmark;
 
@@ -16,12 +17,27 @@ int main(int argc, char **argv) {
   float run_time = 0.;
 
   if (FLAGS_warmup) {
-    LOG(INFO) << "Warming up before initialisation..." << FLAGS_warmup;
+    LOG(INFO) << "Warming up before initialisation..." << FLAGS_warmup << " times";
+    auto start = std::chrono::high_resolution_clock::now();
+    int gpu_id = 0;
+    int dev = gpuDeviceInit(gpu_id);
+    std::string message;
+    if (dev == -1) {
+      exit(EXIT_FAILURE);
+    } else {
+      LOG(INFO) << "Initialized GPU " << gpu_id << " as " << dev;
+    }
+
     for (int i = 0; i < FLAGS_warmup; i++) {
-      int status = call_sgemm(0, 512);
+      start = std::chrono::high_resolution_clock::now();
+      int status = call_sgemm(gpu_id, 10000);
       if (status != 0) {
         fprintf(stderr, "Error status: %d\n",status);
       }
+      auto end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> diff = end - start;
+      LOG(INFO) << "time: " + std::to_string(diff.count()) + " s, ";
+      // printGPUStateInfo(device, message);      
     }
   }
 
