@@ -62,9 +62,27 @@ void printGPUStateInfo(nvmlDevice_t device, std::string message) {
     exit(EXIT_FAILURE);
   }
   clock_perf = (float)app_clock / (float)app_clock_max * 100.;
-  printf("%s P%d, app clock %d/%d MHz (%3.0f%%), %d˚C, memory(free,total): %llu/%llu MB\n",
-         message.c_str(), pstate, app_clock, app_clock_max, clock_perf, temp,
-         memory.free / 1000000, memory.total / 1000000);
+  // printf("%s P%d, app clock %d/%d MHz (%3.0f%%), %d˚C, memory(free,total): %llu/%llu MB\n",
+  //        message.c_str(), pstate, app_clock, app_clock_max, clock_perf, temp,
+  //        memory.free / 1000000, memory.total / 1000000);
+  LOG(INFO) << message << " P" << pstate << " app clock " << clock_perf << "%";
+}
+
+
+// Main warmup function
+void warmup(int FLAGS_warmup, int gpu_id, std::string message) {
+  if (FLAGS_warmup == 0) {
+    return;
+  }
+  LOG(INFO) << message;
+  auto start = std::chrono::high_resolution_clock::now();
+  int status = warmupGPU(gpu_id);
+  if (status != 0) {
+    fprintf(stderr, "Error status: %d\n", status);
+  }
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> diff = end - start;
+  LOG(INFO) << "Warming up time " + std::to_string(diff.count()*1000) + " ms";
 }
 
 
@@ -92,7 +110,7 @@ float getGPUclock(nvmlDevice_t device) {
 
 
 /* Call with device number and matrix size */
-int warmupGPU(int gpu_id, int iterations, bool check_results, bool debug) {
+int warmupGPU(int gpu_id, bool check_results, bool debug) {
   int elements_per_thread = 4;
   float target_warmup = 97.; //% of max app clock Hz
   int maxiter = 100;
@@ -132,8 +150,8 @@ int warmupGPU(int gpu_id, int iterations, bool check_results, bool debug) {
   int thread_blocks = (N + block_size - 1) / block_size;
 
   LOG(INFO) << "Warmup parameters: N=" << N << " elements, " << thread_blocks << " blocks x "
-            << block_size << " threads per block, arr.elements per thread:"
-            << elements_per_thread << " iterations: " << iterations << std::endl;
+            << block_size << " threads per block, elements/thread:"
+            << elements_per_thread << std::endl;
 
   int *x, *y, *z;
   // Unified memory allocation
@@ -185,10 +203,8 @@ int warmupGPU(int gpu_id, int iterations, bool check_results, bool debug) {
   cudaFree(y);
   cudaFree(z);
 
-  if (debug) {
-    message = "After :";
-    printGPUStateInfo(nvmldevice, message);
-  }
+  message = "After :";
+  printGPUStateInfo(nvmldevice, message);
   // Shutdown NVML
   nvmlRet = nvmlShutdown();
   if (nvmlRet != 0) {

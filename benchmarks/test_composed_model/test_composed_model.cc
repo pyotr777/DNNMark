@@ -1,8 +1,7 @@
 #include <iostream>
-#include <chrono>
+#include <string>
 #include <stdio.h>
 #include <cuda_runtime.h>
-#include <nvml.h>
 #include <gflags/gflags.h>
 #include <nvToolsExt.h>
 #include <cuda_profiler_api.h>
@@ -23,23 +22,7 @@ int main(int argc, char **argv) {
   float run_time = 0.;
   dnnmark.ParseAllConfig(FLAGS_config);  
 
-  if (FLAGS_warmup) {
-    LOG(INFO) << "Warming up before initialisation...";
-    int gpu_id = 0;
-    int dev = gpuDeviceInit(gpu_id);
-    std::string message;
-    if (dev == -1) {
-      exit(EXIT_FAILURE);
-    } 
-    auto start = std::chrono::high_resolution_clock::now();
-    int status = warmupGPU(gpu_id, FLAGS_warmup);
-    if (status != 0) {
-      fprintf(stderr, "Error status: %d\n", status);
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> diff = end - start;
-    LOG(INFO) << "Warming up time " + std::to_string(diff.count()*1000) + " ms";
-  }
+  warmup(FLAGS_warmup, 0, std::string("Warming up before initialization..."));
 
   LOG(INFO) << "Initialisation called from benchmark";
   nvtxMark("Initialisation");
@@ -49,31 +32,24 @@ int main(int argc, char **argv) {
   LOG(INFO) << "Initialisation FWD";
   nvtxMark("Setup Workspaces");
   dnnmark.SetupWorkspaces(0);
-  if (FLAGS_warmup) {
-    LOG(INFO) << "Warming up...";
-    int gpu_id = 0;
-    int dev = gpuDeviceInit(gpu_id);
-    std::string message;
-    if (dev == -1) {
-      exit(EXIT_FAILURE);
-    } 
-    auto start = std::chrono::high_resolution_clock::now();
-    int status = warmupGPU(gpu_id, FLAGS_warmup);
-    if (status != 0) {
-      fprintf(stderr, "Error status: %d\n", status);
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> diff = end - start;
-    LOG(INFO) << "Warming up time " + std::to_string(diff.count()*1000) + " ms";
-  }
+  warmup(FLAGS_warmup, 0, std::string("Warming up..."));
 
+
+  LOG(INFO) << "Iterations " << FLAGS_iterations;
+  LOG(INFO) << "Cached Iterations " << FLAGS_cachediterations;
+  int slowiterations = 1;
+  int fastiterations = 1;
+  if (FLAGS_cachediterations) {
+    fastiterations = FLAGS_iterations;
+  } else {
+    slowiterations = FLAGS_iterations;
+  }
   nvtxRangePush("Forward");
   cudaProfilerStart();
   dnnmark.GetTimer()->Clear();
   // Real benchmark
-  for (int i = 0; i < FLAGS_iterations; i++) {
-    LOG(INFO) << "Iteration " << i;
-    dnnmark.Forward();
+  for (int i = 0; i < slowiterations; i++) {
+    dnnmark.Forward(fastiterations);
   }
   dnnmark.GetTimer()->SumRecords();
   cudaProfilerStop();
@@ -94,9 +70,8 @@ int main(int argc, char **argv) {
   cudaProfilerStart();
   dnnmark.GetTimer()->Clear();
   // Real benchmark
-  for (int i = 0; i < FLAGS_iterations; i++) {
-    LOG(INFO) << "Iteration " << i;
-    dnnmark.Backward();
+  for (int i = 0; i < slowiterations; i++) {
+    dnnmark.Backward(fastiterations);
   }
   dnnmark.GetTimer()->SumRecords();
   cudaProfilerStop();

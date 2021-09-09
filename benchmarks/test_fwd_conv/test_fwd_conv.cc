@@ -2,6 +2,7 @@
 #include "common.h"
 #include "dnnmark.h"
 #include "usage.h"
+#include "warmup.h"
 
 using namespace dnnmark;
 
@@ -13,18 +14,14 @@ int main(int argc, char **argv) {
   DNNMark<TestType> dnnmark(2);
   dnnmark.ParseGeneralConfig(FLAGS_config);
   dnnmark.ParseLayerConfig(FLAGS_config);
+  warmup(FLAGS_warmup, 0, std::string("Warming up before initialization..."));
   LOG(INFO) << "Start initialization (dnnmark.Initialize)";
   dnnmark.Initialize();
   dnnmark.SetupWorkspaces(0);// 0 - forward, 1 - backward, 2 - forward and backward
   LOG(INFO) << "initialization done.";
 
   // Warmup
-  if (FLAGS_warmup) {
-    LOG(INFO) << "Warming up before initialisation..." << FLAGS_warmup;
-    for (int i = 0; i < FLAGS_warmup; i++) {
-      dnnmark.Forward();
-    }
-  }
+  warmup(FLAGS_warmup, 0, std::string("Warming up..."));
 
   LOG(INFO) << "Iterations " << FLAGS_iterations;
   LOG(INFO) << "Cached Iterations " << FLAGS_cachediterations;

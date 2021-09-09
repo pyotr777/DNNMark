@@ -2,7 +2,7 @@
 #include "common.h"
 #include "dnnmark.h"
 #include "usage.h"
-#include <nvml.h>
+#include "warmup.h"
 
 using namespace dnnmark;
 
@@ -14,27 +14,14 @@ int main(int argc, char **argv) {
   DNNMark<TestType> dnnmark;
   dnnmark.ParseGeneralConfig(FLAGS_config);
   dnnmark.ParseLayerConfig(FLAGS_config);
-
-  nvmlDevice_t device;
-  nvmlPstates_t *pstate;
-  unsigned int temp;
-  nvmlReturn_t nvmlRet;
-  // NVML
-  nvmlInit(); 
-
+  warmup(FLAGS_warmup, 0, std::string("Warming up before initialization..."));
   LOG(INFO) << "Start initialization (dnnmark.Initialize)";
   dnnmark.Initialize();
   dnnmark.SetupWorkspaces(2);
   LOG(INFO) << "initialization done.";
 
   // Warmup
-  if (FLAGS_warmup) {
-    LOG(INFO) << "Warming up before run... " << FLAGS_warmup;
-    for (int i = 0; i < FLAGS_warmup; i++) {
-      dnnmark.Forward();
-      dnnmark.Backward();
-    }
-  }
+  warmup(FLAGS_warmup, 0, std::string("Warming up..."));
 
   LOG(INFO) << "Iterations " << FLAGS_iterations;
   LOG(INFO) << "Cached Iterations " << FLAGS_cachediterations;
