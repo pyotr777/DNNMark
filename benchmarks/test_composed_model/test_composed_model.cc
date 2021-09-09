@@ -21,32 +21,24 @@ int main(int argc, char **argv) {
   LOG(INFO) << "DNNMark suites ver" << version << ": Start...";
   DNNMark<TestType> dnnmark(3);
   float run_time = 0.;
-  dnnmark.ParseAllConfig(FLAGS_config);
-  // Warmup parameters
-  int problem_size = 100000;
-  int block_size = 256;
+  dnnmark.ParseAllConfig(FLAGS_config);  
 
   if (FLAGS_warmup) {
-    LOG(INFO) << "Warming up before initialisation..." << FLAGS_warmup << " times";
+    LOG(INFO) << "Warming up before initialisation...";
     int gpu_id = 0;
     int dev = gpuDeviceInit(gpu_id);
     std::string message;
     if (dev == -1) {
       exit(EXIT_FAILURE);
-    } else {
-      LOG(INFO) << "Initialized GPU " << gpu_id << " as " << dev;
+    } 
+    auto start = std::chrono::high_resolution_clock::now();
+    int status = warmupGPU(gpu_id, FLAGS_warmup);
+    if (status != 0) {
+      fprintf(stderr, "Error status: %d\n", status);
     }
-
-    for (int i = 0; i < fmin(FLAGS_warmup, 10); i++) {
-      auto start = std::chrono::high_resolution_clock::now();
-      int status = warmupGPU(gpu_id, FLAGS_warmup, problem_size, block_size);
-      if (status != 0) {
-        fprintf(stderr, "Error status: %d\n", status);
-      }
-      auto end = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> diff = end - start;
-      LOG(INFO) << "time: " + std::to_string(diff.count()) + " s, ";
-    }
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    LOG(INFO) << "Warming up time " + std::to_string(diff.count()*1000) + " ms";
   }
 
   LOG(INFO) << "Initialisation called from benchmark";
@@ -58,11 +50,21 @@ int main(int argc, char **argv) {
   nvtxMark("Setup Workspaces");
   dnnmark.SetupWorkspaces(0);
   if (FLAGS_warmup) {
-    LOG(INFO) << "Warming up..." << FLAGS_warmup << " times";
-    for (int i = 0; i < FLAGS_warmup; i++) {
-      LOG(INFO) << "Warming up run " << i;
-      dnnmark.Forward();
+    LOG(INFO) << "Warming up...";
+    int gpu_id = 0;
+    int dev = gpuDeviceInit(gpu_id);
+    std::string message;
+    if (dev == -1) {
+      exit(EXIT_FAILURE);
+    } 
+    auto start = std::chrono::high_resolution_clock::now();
+    int status = warmupGPU(gpu_id, FLAGS_warmup);
+    if (status != 0) {
+      fprintf(stderr, "Error status: %d\n", status);
     }
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    LOG(INFO) << "Warming up time " + std::to_string(diff.count()*1000) + " ms";
   }
 
   nvtxRangePush("Forward");

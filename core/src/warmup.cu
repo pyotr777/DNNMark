@@ -68,19 +68,72 @@ void printGPUStateInfo(nvmlDevice_t device, std::string message) {
 }
 
 
+// Return current GPU app clock Hz % of max
+float getGPUclock(nvmlDevice_t device) {
+  unsigned int app_clock = 0;
+  unsigned int app_clock_max = 0;
+  float clock_perf;
+  nvmlReturn_t nvmlRet;
+
+  nvmlRet = nvmlDeviceGetClock(device, NVML_CLOCK_SM, NVML_CLOCK_ID_CURRENT, &app_clock);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  nvmlRet = nvmlDeviceGetMaxClockInfo(device, NVML_CLOCK_SM, &app_clock_max);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+
+  clock_perf = (float)app_clock / (float)app_clock_max * 100.;
+  return clock_perf;
+}
+
+
 /* Call with device number and matrix size */
-int warmupGPU(int gpu_id, int iterations, unsigned int size, int block_size,
-              bool check_results) {
-  // bool debug = false;
+int warmupGPU(int gpu_id, int iterations, bool check_results, bool debug) {
+  int elements_per_thread = 4;
+  float target_warmup = 97.; //% of max app clock Hz
+  int maxiter = 100;
   nvmlDevice_t nvmldevice;
   nvmlReturn_t nvmlRet;
   std::string message;
   cudaError_t error;
-  unsigned int N = size;
+
+  // Init NVML
+  nvmlRet = nvmlInit_v2();
+  if (nvmlRet != 0) {
+    printf("NVML init failure. Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  nvmlRet = nvmlDeviceGetHandleByIndex_v2(gpu_id, &nvmldevice);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  if (debug) {
+    message = "Before:";
+    printGPUStateInfo(nvmldevice, message);
+  }
+
+  // Get GPU properties (Max threads, blocks etc.)
+  cudaSetDevice(gpu_id);
+  cudaDeviceProp dev_prop;
+  cudaGetDeviceProperties(&dev_prop, gpu_id);
+  int SMs = dev_prop.multiProcessorCount;
+  int SMmax = dev_prop.maxThreadsPerMultiProcessor;
+  int max_block_size = dev_prop.maxThreadsPerBlock;
+
+
+  // Set warmup parameters
+  int block_size = max_block_size;
+  unsigned int N = SMmax * SMs * elements_per_thread;
   int thread_blocks = (N + block_size - 1) / block_size;
 
-  std::cout << "blocks: " << thread_blocks << " x " << block_size << ", iterations: "
-            << iterations << std::endl;
+  LOG(INFO) << "Warmup parameters: N=" << N << " elements, " << thread_blocks << " blocks x "
+            << block_size << " threads per block, arr.elements per thread:"
+            << elements_per_thread << " iterations: " << iterations << std::endl;
 
   int *x, *y, *z;
   // Unified memory allocation
@@ -93,68 +146,28 @@ int warmupGPU(int gpu_id, int iterations, unsigned int size, int block_size,
     x[i] = 1.0f;
     y[i] = 2.0f;
   }
-  // Init NVML
-  nvmlRet = nvmlInit_v2();
-  if (nvmlRet != 0) {
-    printf("NVML init failure. Ret: %d\n", nvmlRet);
-    exit(EXIT_FAILURE);
-  }
-  nvmlRet = nvmlDeviceGetHandleByIndex_v2(gpu_id, &nvmldevice);
-  if (nvmlRet != 0) {
-    printf("Ret: %d\n", nvmlRet);
-    exit(EXIT_FAILURE);
-  }
-  message = "Before start   :";
-  printGPUStateInfo(nvmldevice, message);
-  // Shutdown NVML
-  nvmlRet = nvmlShutdown();
-  if (nvmlRet != 0) {
-    printf("NVML shutdown failure. Ret: %d\n", nvmlRet);
-    exit(EXIT_FAILURE);
-  }
 
-  auto start = std::chrono::high_resolution_clock::now();
   // Call Warmup procedure
-  for (int i = 0; i < iterations; i++) {
+  float curr_clock = getGPUclock(nvmldevice);
+  int i = 1;
+  while (curr_clock < target_warmup and i <= maxiter) {
+    auto start = std::chrono::high_resolution_clock::now();
     multiply <<< thread_blocks, block_size>>>(N, x, y, z);
     cudaDeviceSynchronize();
+    // Wait for GPU to finish before accessing on host
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = end - start;
     error = cudaGetLastError();
     if (error != 0) {
       std::cout << "CUDA error? " << error << std::endl;
       exit(EXIT_FAILURE);
     }
+    curr_clock = getGPUclock(nvmldevice);
+    // std::cout << i << "/" << maxiter << " clock " << curr_clock << "%, time "
+    //           << diff.count() * 1e+3 << "ms" << std::endl;
+    i++;
   }
-  // Wait for GPU to finish before accessing on host
-  auto end = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> diff = end - start;
-  std::cout << "N=" << N << " " << iterations << " iterations at " << diff.count() * 1e+3 << "ms" << std::endl;
-  // Init NVML
-  nvmlRet = nvmlInit_v2();
-  if (nvmlRet != 0) {
-    printf("NVML init failure. Ret: %d\n", nvmlRet);
-    exit(EXIT_FAILURE);
-  }
-  nvmlRet = nvmlDeviceGetHandleByIndex_v2(gpu_id, &nvmldevice);
-  if (nvmlRet != 0) {
-    printf("Ret: %d\n", nvmlRet);
-    exit(EXIT_FAILURE);
-  }
-  message = "After warmingup:";
-  printGPUStateInfo(nvmldevice, message);
-  // Shutdown NVML
-  nvmlRet = nvmlShutdown();
-  if (nvmlRet != 0) {
-    printf("NVML init failure. Ret: %d\n", nvmlRet);
-    exit(EXIT_FAILURE);
-  }
-
-  // Print Z array
-  // std::cout << "Z:";
-  // for (int i = 0; i < fmin(N, 100); i++) {
-  //   std::cout <<  z[i] << " ";
-  // }
-  // std::cout << std::endl;
-
+  
   if (check_results) {
     // Check for errors (all values should be 3.0f)
     int maxError = 0;
@@ -171,6 +184,16 @@ int warmupGPU(int gpu_id, int iterations, unsigned int size, int block_size,
   cudaFree(x);
   cudaFree(y);
   cudaFree(z);
+
+  if (debug) {
+    message = "After :";
+    printGPUStateInfo(nvmldevice, message);
+  }
+  // Shutdown NVML
+  nvmlRet = nvmlShutdown();
+  if (nvmlRet != 0) {
+    printf("NVML init failure. Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
   return 0;
 }
-
