@@ -71,6 +71,7 @@ void printGPUStateInfo(nvmlDevice_t device, std::string message) {
 
 // Main warmup function
 void warmup(int FLAGS_warmup, int gpu_id, std::string message) {
+  LOG(INFO) << "Warmup function v.1.02";
   if (FLAGS_warmup == 0) {
     return;
   }
@@ -159,24 +160,32 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
             << block_size << " threads per block, elements/thread:"
             << elements_per_thread << std::endl;
 
-  int *x, *y, *z;
-  // Unified memory allocation
-  cudaMallocManaged(&x, N * sizeof(int));
-  cudaMallocManaged(&y, N * sizeof(int));
-  cudaMallocManaged(&z, N * sizeof(int));
+  int *x, *y, *z, *xd, *yd, *zd;
+  x = (int *)malloc(N * sizeof(int));
+  y = (int *)malloc(N * sizeof(int));
+  z = (int *)malloc(N * sizeof(int));
+  cudaMalloc(&xd, N * sizeof(int));
+  cudaMalloc(&yd, N * sizeof(int));
+  cudaMalloc(&zd, N * sizeof(int));
+
 
   // initialize x and y arrays on the host
   for (unsigned long i = 0; i < N; i++) {
-    x[i] = 1.0f;
-    y[i] = 2.0f;
+    x[i] = 1;
+    y[i] = 2;
+    z[i] = 0;
   }
+
+  cudaMemcpy(xd, x, N * sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(yd, y, N * sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(zd, z, N * sizeof(int), cudaMemcpyHostToDevice);
 
   // Call Warmup procedure
   float curr_clock = getGPUclock(nvmldevice);
   int i = 1;
   while (curr_clock < target_warmup and i <= maxiter) {
     auto start = std::chrono::high_resolution_clock::now();
-    multiply <<< thread_blocks, block_size>>>(N, x, y, z);
+    multiply <<< thread_blocks, block_size>>>(N, xd, yd, zd);
     cudaDeviceSynchronize();
     // Wait for GPU to finish before accessing on host
     auto end = std::chrono::high_resolution_clock::now();
@@ -194,6 +203,7 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
   
   if (check_results) {
     // Check for errors (all values should be 3.0f)
+    cudaMemcpy(z, zd, N * sizeof(int), cudaMemcpyDeviceToHost);
     int maxError = 0;
     unsigned long correct = 2 * N;
     std::cout << "Checking result..." << std::endl;
@@ -205,9 +215,12 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
     std::cout << "Max error: " << maxError << std::endl;
   }
 
-  cudaFree(x);
-  cudaFree(y);
-  cudaFree(z);
+  cudaFree(xd);
+  cudaFree(yd);
+  cudaFree(zd);
+  free(x);
+  free(y);
+  free(z);
 
   message = "After :";
   printGPUStateInfo(nvmldevice, message);
