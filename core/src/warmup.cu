@@ -65,7 +65,7 @@ void printGPUStateInfo(nvmlDevice_t device, std::string message) {
   // printf("%s P%d, app clock %d/%d MHz (%3.0f%%), %d˚C, memory(free,total): %llu/%llu MB\n",
   //        message.c_str(), pstate, app_clock, app_clock_max, clock_perf, temp,
   //        memory.free / 1000000, memory.total / 1000000);
-  LOG(INFO) << message << " P" << pstate << " app clock " << clock_perf << "%";
+  LOG(INFO) << message << " P" << pstate << ", appclock " << clock_perf << "%, " << temp << "˚C";
 }
 
 
@@ -117,6 +117,7 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
   nvmlDevice_t nvmldevice;
   nvmlReturn_t nvmlRet;
   std::string message;
+  char deviceName [50];
   cudaError_t error;
 
   // Init NVML
@@ -142,6 +143,10 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
   int SMs = dev_prop.multiProcessorCount;
   int SMmax = dev_prop.maxThreadsPerMultiProcessor;
   int max_block_size = dev_prop.maxThreadsPerBlock;
+  // get Device name
+  nvmlDeviceGetName(nvmldevice, &deviceName[0], 50);
+  LOG(INFO) << "GPU " << deviceName << ", " << SMs << " SMs, " << SMmax 
+            << " Max threads per SM, " << max_block_size << " max threads per block";
 
 
   // Set warmup parameters
@@ -149,7 +154,8 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
   unsigned int N = SMmax * SMs * elements_per_thread;
   int thread_blocks = (N + block_size - 1) / block_size;
 
-  LOG(INFO) << "Warmup parameters: N=" << N << " elements, " << thread_blocks << " blocks x "
+  LOG(INFO) << "Warmup parameters: N=" << N << " elements, " << elements_per_thread 
+            << " array elements per thread, "  << thread_blocks << " blocks x "
             << block_size << " threads per block, elements/thread:"
             << elements_per_thread << std::endl;
 
@@ -181,8 +187,8 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
       exit(EXIT_FAILURE);
     }
     curr_clock = getGPUclock(nvmldevice);
-    // std::cout << i << "/" << maxiter << " clock " << curr_clock << "%, time "
-    //           << diff.count() * 1e+3 << "ms" << std::endl;
+    std::cout << i << "/" << maxiter << " clock " << curr_clock << "%, time "
+              << diff.count() * 1e+3 << "ms" << std::endl;
     i++;
   }
   
