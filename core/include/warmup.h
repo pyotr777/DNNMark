@@ -15,3 +15,16 @@ int warmupGPU(int gpu_id, bool check_results = false, bool debug = false);
 
 // Main warmup function
 void warmup(int FLAGS_warmup, int gpu_id, std::string message);
+
+// Clock frequencies
+struct clocks_struct {
+  unsigned int gr_clock;
+  unsigned int sm_clock;
+  unsigned int sm_clock_max;
+  unsigned int mem_clock;
+  unsigned int vid_clock;
+  float clock_perf;
+};
+
+// Get clock frequencies
+clocks_struct getClocks(nvmlDevice_t device);

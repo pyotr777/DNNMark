@@ -26,16 +26,65 @@ void multiply(int n, int *x, int *y, int *z) {
   }
 }
 
+
+// Get GPU clock frequencies
+clocks_struct getClocks(nvmlDevice_t device) {
+  clocks_struct clocks;
+  unsigned int gr_clock = 0;
+  unsigned int sm_clock = 0;
+  unsigned int sm_clock_max = 0;
+  unsigned int mem_clock = 0;
+  unsigned int vid_clock = 0;
+  float clock_perf = 0;
+  nvmlReturn_t nvmlRet;
+
+  nvmlRet = nvmlDeviceGetClock(device, NVML_CLOCK_GRAPHICS, NVML_CLOCK_ID_CURRENT, &gr_clock);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  nvmlRet = nvmlDeviceGetClock(device, NVML_CLOCK_SM, NVML_CLOCK_ID_CURRENT, &sm_clock);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  nvmlRet = nvmlDeviceGetMaxClockInfo(device, NVML_CLOCK_SM, &sm_clock_max);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  nvmlRet = nvmlDeviceGetClock(device, NVML_CLOCK_MEM, NVML_CLOCK_ID_CURRENT, &mem_clock);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  nvmlRet = nvmlDeviceGetClock(device, NVML_CLOCK_VIDEO, NVML_CLOCK_ID_CURRENT, &vid_clock);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }  
+  clock_perf = (float)sm_clock / (float)sm_clock_max * 100.;
+
+  clocks.gr_clock = gr_clock;
+  clocks.sm_clock = sm_clock;
+  clocks.sm_clock_max = sm_clock_max;
+  clocks.mem_clock = mem_clock;
+  clocks.vid_clock = vid_clock;
+  clocks.clock_perf = clock_perf;
+
+  return clocks;
+}
+
+
 // Print current GPU state parameters to stdout
 void printGPUStateInfo(nvmlDevice_t device, std::string message) {
   nvmlPstates_t pstate;
   nvmlMemory_t memory;
   unsigned int temp;
-  unsigned int app_clock = 0;
-  unsigned int app_clock_max = 0;
-  float clock_perf;
+  clocks_struct clocks;
   nvmlReturn_t nvmlRet;
 
+  clocks = getClocks(device);
   nvmlRet = nvmlDeviceGetPerformanceState(device, &pstate);
   if (nvmlRet != 0) {
     printf("Ret: %d\n", nvmlRet);
@@ -45,33 +94,22 @@ void printGPUStateInfo(nvmlDevice_t device, std::string message) {
   if (nvmlRet != 0) {
     printf("Ret: %d\n", nvmlRet);
     exit(EXIT_FAILURE);
-  }
-  nvmlRet = nvmlDeviceGetClock(device, NVML_CLOCK_SM, NVML_CLOCK_ID_CURRENT, &app_clock);
-  if (nvmlRet != 0) {
-    printf("Ret: %d\n", nvmlRet);
-    exit(EXIT_FAILURE);
-  }
-  nvmlRet = nvmlDeviceGetMaxClockInfo(device, NVML_CLOCK_SM, &app_clock_max);
-  if (nvmlRet != 0) {
-    printf("Ret: %d\n", nvmlRet);
-    exit(EXIT_FAILURE);
-  }
+  }  
   nvmlRet = nvmlDeviceGetMemoryInfo(device, &memory);
   if (nvmlRet != 0) {
     printf("Ret: %d\n", nvmlRet);
     exit(EXIT_FAILURE);
   }
-  clock_perf = (float)app_clock / (float)app_clock_max * 100.;
-  // printf("%s P%d, app clock %d/%d MHz (%3.0f%%), %d˚C, memory(free,total): %llu/%llu MB\n",
-  //        message.c_str(), pstate, app_clock, app_clock_max, clock_perf, temp,
-  //        memory.free / 1000000, memory.total / 1000000);
-  LOG(INFO) << message << " P" << pstate << ", appclock " << clock_perf << "%, " << temp << "˚C";
+  
+  LOG(INFO) << message << " P" << pstate << ", smclock " << clocks.clock_perf << "%, " << temp << "˚C"
+            << " CLOCKS (graph,sm,mem,vid): " << clocks.gr_clock << "," << clocks.sm_clock << ","
+            << clocks.mem_clock << "," << clocks.vid_clock << std::endl;
 }
 
 
 // Main warmup function
 void warmup(int FLAGS_warmup, int gpu_id, std::string message) {
-  LOG(INFO) << "Warmup function v.1.02";
+  LOG(INFO) << "Warmup function v.1.03";
   if (FLAGS_warmup == 0) {
     return;
   }
@@ -87,29 +125,6 @@ void warmup(int FLAGS_warmup, int gpu_id, std::string message) {
 }
 
 
-// Return current GPU app clock Hz % of max
-float getGPUclock(nvmlDevice_t device) {
-  unsigned int app_clock = 0;
-  unsigned int app_clock_max = 0;
-  float clock_perf;
-  nvmlReturn_t nvmlRet;
-
-  nvmlRet = nvmlDeviceGetClock(device, NVML_CLOCK_SM, NVML_CLOCK_ID_CURRENT, &app_clock);
-  if (nvmlRet != 0) {
-    printf("Ret: %d\n", nvmlRet);
-    exit(EXIT_FAILURE);
-  }
-  nvmlRet = nvmlDeviceGetMaxClockInfo(device, NVML_CLOCK_SM, &app_clock_max);
-  if (nvmlRet != 0) {
-    printf("Ret: %d\n", nvmlRet);
-    exit(EXIT_FAILURE);
-  }
-
-  clock_perf = (float)app_clock / (float)app_clock_max * 100.;
-  return clock_perf;
-}
-
-
 /* Call with device number and matrix size */
 int warmupGPU(int gpu_id, bool check_results, bool debug) {
   int elements_per_thread = 4;
@@ -117,6 +132,7 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
   int maxiter = 100;
   nvmlDevice_t nvmldevice;
   nvmlReturn_t nvmlRet;
+  clocks_struct clocks;
   std::string message;
   char deviceName [50];
   cudaError_t error;
@@ -147,7 +163,7 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
   // get Device name
   nvmlDeviceGetName(nvmldevice, &deviceName[0], 50);
   LOG(INFO) << "GPU " << deviceName << ", " << SMs << " SMs, " << SMmax 
-            << " Max threads per SM, " << max_block_size << " max threads per block";
+            << " Max threads per SM, " << max_block_size << " max threads per block" << std::endl;
 
 
   // Set warmup parameters
@@ -181,9 +197,9 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
   cudaMemcpy(zd, z, N * sizeof(int), cudaMemcpyHostToDevice);
 
   // Call Warmup procedure
-  float curr_clock = getGPUclock(nvmldevice);
+  clocks = getClocks(nvmldevice);
   int i = 1;
-  while (curr_clock < target_warmup and i <= maxiter) {
+  while (clocks.clock_perf < target_warmup and i <= maxiter) {
     auto start = std::chrono::high_resolution_clock::now();
     multiply <<< thread_blocks, block_size>>>(N, xd, yd, zd);
     cudaDeviceSynchronize();
@@ -195,9 +211,12 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
       std::cout << "CUDA error? " << error << std::endl;
       exit(EXIT_FAILURE);
     }
-    curr_clock = getGPUclock(nvmldevice);
-    std::cout << i << "/" << maxiter << " clock " << curr_clock << "%, time "
-              << diff.count() * 1e+3 << "ms" << std::endl;
+    // curr_clock = getGPUclock(nvmldevice);
+    clocks = getClocks(nvmldevice);
+    std::cout << i << "/" << maxiter << " clock " << clocks.clock_perf << "%, time "
+              << diff.count() * 1e+3 << "ms"
+              << " CLOCKS (graph,sm,mem,vid): " << clocks.gr_clock << "," << clocks.sm_clock << ","
+              << clocks.mem_clock << "," << clocks.vid_clock << std::endl;
     i++;
   }
   
