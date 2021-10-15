@@ -28,3 +28,13 @@ struct clocks_struct {
 
 // Get clock frequencies
 clocks_struct getClocks(nvmlDevice_t device);
+
+// Other GPU parameters
+struct gpu_parameters_struct {
+  unsigned int temp;
+  unsigned int throttle;
+  unsigned int power;
+};
+
+// Get other GPU parameters
+gpu_parameters_struct getGPUstate(nvmlDevice_t device);

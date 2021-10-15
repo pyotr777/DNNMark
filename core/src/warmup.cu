@@ -27,6 +27,63 @@ void multiply(int n, int *x, int *y, int *z) {
 }
 
 
+// Get GPU temperatures
+gpu_parameters_struct getGPUstate(nvmlDevice_t device) {
+  gpu_parameters_struct gpu_parameters;
+  unsigned int temperature = 0;
+  unsigned int power = 0;
+  unsigned long long clock_throt_reason = 0.0;
+  // throttles: 0 - no throttles, 1 - app clock settings,
+  // 2 - HW power brake, 3 - HW slowdown, 4 - HW thermal,
+  // 5 - power cap, 6 - SW thermal, 7 - other
+  unsigned int throttle = 0; 
+  nvmlReturn_t nvmlRet;
+  nvmlRet = nvmlDeviceGetTemperature(device, NVML_TEMPERATURE_GPU, &temperature);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  nvmlRet = nvmlDeviceGetCurrentClocksThrottleReasons(device, &clock_throt_reason);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  switch (clock_throt_reason) {
+    case 0x0000000000000000LL:
+      throttle = 0;
+      break;
+    case 0x0000000000000002LL:
+      throttle = 1;
+      break;
+    case 0x0000000000000080LL:
+      throttle = 2;
+      break;
+    case 0x0000000000000008LL:
+      throttle = 3;
+      break;
+    case 0x0000000000000040LL:
+      throttle = 4;
+      break;
+    case 0x0000000000000004LL:
+      throttle = 5;
+      break;
+    case 0x0000000000000020LL:
+      throttle = 6;
+      break;
+    default:
+      throttle = 7;
+  }
+  nvmlRet = nvmlDeviceGetPowerUsage(device, &power);
+  if (nvmlRet != 0) {
+    printf("Ret: %d\n", nvmlRet);
+    exit(EXIT_FAILURE);
+  }
+  gpu_parameters.temp = temperature;
+  gpu_parameters.throttle = throttle;
+  gpu_parameters.power = power;
+  return gpu_parameters;
+}
+
 // Get GPU clock frequencies
 clocks_struct getClocks(nvmlDevice_t device) {
   clocks_struct clocks;
@@ -109,7 +166,7 @@ void printGPUStateInfo(nvmlDevice_t device, std::string message) {
 
 // Main warmup function
 void warmup(int FLAGS_warmup, int gpu_id, std::string message) {
-  LOG(INFO) << "Warmup function v.1.03";
+  LOG(INFO) << "Warmup function v.1.07." ;
   if (FLAGS_warmup == 0) {
     return;
   }
@@ -127,12 +184,15 @@ void warmup(int FLAGS_warmup, int gpu_id, std::string message) {
 
 /* Call with device number and matrix size */
 int warmupGPU(int gpu_id, bool check_results, bool debug) {
-  int elements_per_thread = 4;
+  int elements_per_thread = 2;
   float target_warmup = 97.; //% of max app clock Hz
+  float last_freq = 0.; // Last observed frequency (%)
   int maxiter = 100;
+  int decrease_count = 5; // allow 5 times of Hz decreasing before stopping warmup
   nvmlDevice_t nvmldevice;
   nvmlReturn_t nvmlRet;
   clocks_struct clocks;
+  gpu_parameters_struct gpu_parameters;
   std::string message;
   char deviceName [50];
   cudaError_t error;
@@ -147,12 +207,10 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
   if (nvmlRet != 0) {
     printf("Ret: %d\n", nvmlRet);
     exit(EXIT_FAILURE);
-  }
-  if (debug) {
-    message = "Before:";
-    printGPUStateInfo(nvmldevice, message);
-  }
-
+  }  
+  message = "Before:";
+  printGPUStateInfo(nvmldevice, message);
+  
   // Get GPU properties (Max threads, blocks etc.)
   cudaSetDevice(gpu_id);
   cudaDeviceProp dev_prop;
@@ -198,9 +256,10 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
 
   // Call Warmup procedure
   clocks = getClocks(nvmldevice);
+  // gpu_parameters = getGPUstate(nvmldevice);
   int i = 1;
-  while (clocks.clock_perf < target_warmup and i <= maxiter) {
-    auto start = std::chrono::high_resolution_clock::now();
+  auto start = std::chrono::high_resolution_clock::now();
+  while (clocks.clock_perf < target_warmup and i <= maxiter and decrease_count > 0) {
     multiply <<< thread_blocks, block_size>>>(N, xd, yd, zd);
     cudaDeviceSynchronize();
     // Wait for GPU to finish before accessing on host
@@ -213,10 +272,23 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
     }
     // curr_clock = getGPUclock(nvmldevice);
     clocks = getClocks(nvmldevice);
+    gpu_parameters = getGPUstate(nvmldevice);
     std::cout << i << "/" << maxiter << " clock " << clocks.clock_perf << "%, time "
               << diff.count() * 1e+3 << "ms"
               << " CLOCKS (graph,sm,mem,vid): " << clocks.gr_clock << "," << clocks.sm_clock << ","
-              << clocks.mem_clock << "," << clocks.vid_clock << std::endl;
+              << clocks.mem_clock << "," << clocks.vid_clock 
+              << ", temp: " << gpu_parameters.temp 
+              << "˚C, pwr: " << gpu_parameters.power/1000.
+              << "W, throttle: " << gpu_parameters.throttle
+              << std::endl;
+    // Compare frequency with previous iteration
+    if (clocks.clock_perf < last_freq) {
+      decrease_count--;
+      if (decrease_count <=0) {
+        LOG(INFO) << "SM frequency is decreasing. Stopping warmup." << std::endl;
+      }
+    }
+    last_freq = clocks.clock_perf;
     i++;
   }
   

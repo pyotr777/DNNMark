@@ -52,7 +52,3 @@ RUN chmod -R 755 /DNNMark
 # RUN chmod a+w /DNNMark
 ADD dockerfiles/conf_tmp.dnnmark /DNNMark/conf_tmp.dnnmark
 RUN chmod a+w /DNNMark/conf_tmp.dnnmark
-
-
-
-
