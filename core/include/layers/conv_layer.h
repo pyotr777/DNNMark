@@ -209,26 +209,7 @@ class ConvolutionLayer : public Layer<T> {
       // Forward pass
       if (dir != 1) {
         // Set convolution forward algorithm
-        if (conv_param_.algofwd_  == "cudnn" ) {
-          if (conv_param_.workspace_size <=1 ) {
-            conv_algo_.SetFwdAlgo(*(p_dnnmark_->GetHandle()),
-                        p_dnnmark_->getRunMode(), layer_id_,
-                        bottom_desc_,
-                        desc_,
-                        top_desc_,
-                        conv_param_.conv_fwd_pref_);
-          } else {
-            conv_algo_.SetFwdAlgo(*(p_dnnmark_->GetHandle()),
-                        p_dnnmark_->getRunMode(), layer_id_,
-                        bottom_desc_,
-                        desc_,
-                        top_desc_,
-                        conv_param_.conv_fwd_pref_,
-                        conv_param_.workspace_size);
-            LOG(INFO) << "Provided workspace size " << conv_param_.workspace_size;
-          }
-          LOG(INFO) << "Set cuDNN recommended FWD conv. algo: " << conv_algo_.GetFwdAlgo();
-        } else if (conv_param_.algofwd_ == "auto" ) {
+        if (conv_param_.algofwd_ == "auto" ) {
           // Query cuDNN for the fastest FWD convolution algorithm.
           // Use cuDNN function cudnnFindConvolutionBackwardFilterAlgorithm (called inside FindBwdFilterAlgo())
           // NOTE: The below code selects algorithms prior to run, during setup phase.
@@ -287,28 +268,7 @@ class ConvolutionLayer : public Layer<T> {
         }
 
         // Set convolution backward filter/weights algorithm
-        if (conv_param_.algo_ == "cudnn") {
-          // Chainer default behaviour
-          // Use cuDNN function cudnnGetConvolutionBackwardFilterAlgorithm
-          if (conv_param_.workspace_size <=1 ) {
-            conv_algo_.SetBwdFilterAlgo(*(p_dnnmark_->GetHandle()),
-                                             p_dnnmark_->getRunMode(), layer_id_,
-                                             bottom_desc_,
-                                             top_desc_,
-                                             desc_,
-                                             conv_param_.conv_bwd_filter_pref_);
-          } else {
-            conv_algo_.SetBwdFilterAlgo(*(p_dnnmark_->GetHandle()),
-                                             p_dnnmark_->getRunMode(), layer_id_,
-                                             bottom_desc_,
-                                             top_desc_,
-                                             desc_,
-                                             conv_param_.conv_bwd_filter_pref_,
-                                             conv_param_.workspace_size);
-            LOG(INFO) << "Provided workspace size " << conv_param_.workspace_size;
-          }
-          LOG(INFO) << "Set cuDNN recommended BWD conv. Filter algo to " << conv_algo_.GetBwdFilterAlgo();
-        } else if (conv_param_.algo_ == "cudnnv7" ) {
+        if (conv_param_.algo_ == "cudnnv7" ) {
           // Query cuDNN for BWD convolution filter gradient algorithm.
           // Use cuDNN function cudnnGetConvolutionBackwardFilterAlgorithm_v7
 
@@ -384,27 +344,7 @@ class ConvolutionLayer : public Layer<T> {
 
       #ifdef NVIDIA_CUDNN
         // Set convolution backward data algorithm
-        if (conv_param_.algod_ == "cudnn") {
-          // Use cuDNN function cudnnGetConvolutionBackwardFilterAlgorithm
-          if (conv_param_.workspace_size <=1 ) {
-            conv_algo_.SetBwdDataAlgo(*(p_dnnmark_->GetHandle()),
-                                             p_dnnmark_->getRunMode(), layer_id_,
-                                             bottom_desc_,
-                                             top_desc_,
-                                             desc_,
-                                             conv_param_.conv_bwd_data_pref_);
-          } else {
-            conv_algo_.SetBwdDataAlgo(*(p_dnnmark_->GetHandle()),
-                                             p_dnnmark_->getRunMode(), layer_id_,
-                                             bottom_desc_,
-                                             top_desc_,
-                                             desc_,
-                                             conv_param_.conv_bwd_data_pref_,
-                                             conv_param_.workspace_size);
-            LOG(INFO) << "Provided workspace size " << conv_param_.workspace_size;
-          }
-          LOG(INFO) << "Set cuDNN recommended BWD conv. data algo to " << conv_algo_.GetBwdDataAlgo();
-        } else if (conv_param_.algod_ == "cudnnv7" ) {
+        if (conv_param_.algod_ == "cudnnv7" ) {
             // Query cuDNN for BWD convolution data gradient algorithm.
             // Use cuDNN function cudnnGetConvolutionBackwardDataAlgorithm_v7 (called inside FindBwdDataAlgo())
 

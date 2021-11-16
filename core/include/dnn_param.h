@@ -82,11 +82,7 @@ struct ConvolutionParam {
   std::string algod_;
   // Workspace size parameter
   int workspace_size;
-#ifdef NVIDIA_CUDNN
-  cudnnConvolutionFwdPreference_t conv_fwd_pref_;
-  cudnnConvolutionBwdFilterPreference_t conv_bwd_filter_pref_;
-  cudnnConvolutionBwdDataPreference_t conv_bwd_data_pref_;
-#endif
+
 #ifdef AMD_MIOPEN
   miopenConvAlgoPerf_t *pref_;
 #endif
@@ -103,13 +99,11 @@ struct ConvolutionParam {
     upscale_x_(1), upscale_y_(1),
     kernel_size_h_(5), kernel_size_w_(5), propagation_(true),
     algo_set_(false), algo_(""), algod_(""), algofwd_(""),
-    workspace_size(1),
 #ifdef NVIDIA_CUDNN
-    conv_fwd_pref_(CUDNN_CONVOLUTION_FWD_PREFER_FASTEST),
-    conv_bwd_filter_pref_(CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FASTEST),
-    conv_bwd_data_pref_(CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST) {}
-#endif
+    workspace_size(1) {}
+#endif    
 #ifdef AMD_MIOPEN
+    workspace_size(1),
     pref_(nullptr) {}
 #endif
 
@@ -196,40 +190,6 @@ inline void SetupConvParam(const std::string &var, const std::string &val,
         conv_param->algofwd_ = val;
     } else if (!var.compare("workspace_size")) {
         conv_param->workspace_size = atoi(val.c_str());
-    } else if (!var.compare("conv_fwd_pref")) {
-#ifdef NVIDIA_CUDNN
-      if (!val.compare("no_workspace"))
-        conv_param->conv_fwd_pref_ = CUDNN_CONVOLUTION_FWD_NO_WORKSPACE;
-      else if (!val.compare("fastest"))
-        conv_param->conv_fwd_pref_ = CUDNN_CONVOLUTION_FWD_PREFER_FASTEST;
-      else if (!val.compare("specify_workspace_limit"))
-        conv_param->conv_fwd_pref_ =
-          CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT;
-#endif
-    } else if (!var.compare("conv_bwd_filter_pref")) {
-#ifdef NVIDIA_CUDNN
-      if (!val.compare("no_workspace"))
-        conv_param->conv_bwd_filter_pref_ =
-          CUDNN_CONVOLUTION_BWD_FILTER_NO_WORKSPACE;
-      else if (!val.compare("fastest"))
-        conv_param->conv_bwd_filter_pref_ =
-          CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FASTEST;
-      else if (!val.compare("specify_workspace_limit"))
-        conv_param->conv_bwd_filter_pref_ =
-          CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT;
-#endif
-    } else if (!var.compare("conv_bwd_data_pref")) {
-#ifdef NVIDIA_CUDNN
-      if (!val.compare("no_workspace"))
-        conv_param->conv_bwd_data_pref_ =
-          CUDNN_CONVOLUTION_BWD_DATA_NO_WORKSPACE;
-      else if (!val.compare("fastest"))
-        conv_param->conv_bwd_data_pref_ =
-          CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST;
-      else if (!val.compare("specify_workspace_limit"))
-        conv_param->conv_bwd_data_pref_ =
-          CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT;
-#endif
     }
   } else {
     LOG(FATAL) << var << ": Keywords not exists" << std::endl;

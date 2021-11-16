@@ -642,40 +642,7 @@ class ConvAlgo {
   void SetFwdAlgo(cudnnConvolutionFwdAlgo_t fwd_algo) {
     fwd_algo_ = fwd_algo;
   }
-  void SetFwdAlgo(const Handle &handle, RunMode mode, int idx,
-                  const DataTensor<T> &bottom_desc,
-                  const ConvolutionDesc<T> &conv_desc,
-                  const DataTensor<T> &top_desc,
-                  cudnnConvolutionFwdPreference_t pref) {
-    CUDNN_CALL(cudnnGetConvolutionForwardAlgorithm(
-               mode == COMPOSED ?
-               handle.GetCudnn(idx) : handle.GetCudnn(),
-               bottom_desc.Get(),
-               conv_desc.GetFilter(),
-               conv_desc.GetConv(),
-               top_desc.Get(),
-               pref,
-               -1,
-               &fwd_algo_));
-  }
-  void SetFwdAlgo(const Handle &handle, RunMode mode, int idx,
-                  const DataTensor<T> &bottom_desc,
-                  const ConvolutionDesc<T> &conv_desc,
-                  const DataTensor<T> &top_desc,
-                  cudnnConvolutionFwdPreference_t pref,
-                  int workspace_size) {
-    CUDNN_CALL(cudnnGetConvolutionForwardAlgorithm(
-               mode == COMPOSED ?
-               handle.GetCudnn(idx) : handle.GetCudnn(),
-               bottom_desc.Get(),
-               conv_desc.GetFilter(),
-               conv_desc.GetConv(),
-               top_desc.Get(),
-               pref,
-               workspace_size,
-               &fwd_algo_));
-  }
-
+  
 
   void GetFwdAlgo_v7(const Handle &handle, RunMode mode, int idx,
                    const DataTensor<T> &bottom_desc,
@@ -764,41 +731,7 @@ class ConvAlgo {
              << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING << "\n";
     }
   }
-  void SetBwdFilterAlgo(const Handle &handle, RunMode mode, int idx,
-                        const DataTensor<T> &bottom_desc,
-                        const DataTensor<T> &top_desc,
-                        const ConvolutionDesc<T> &conv_desc,
-                        cudnnConvolutionBwdFilterPreference_t pref) {
-     CUDNN_CALL(cudnnGetConvolutionBackwardFilterAlgorithm(
-                mode == COMPOSED ?
-                handle.GetCudnn(idx) : handle.GetCudnn(),
-                bottom_desc.Get(),
-                top_desc.Get(),
-                conv_desc.GetConv(),
-                conv_desc.GetFilter(),
-                pref,
-                -1,
-                &bwd_filter_algo_));
-  }
-
-  void SetBwdFilterAlgo(const Handle &handle, RunMode mode, int idx,
-                        const DataTensor<T> &bottom_desc,
-                        const DataTensor<T> &top_desc,
-                        const ConvolutionDesc<T> &conv_desc,
-                        cudnnConvolutionBwdFilterPreference_t pref,
-                        int workspace_size) {
-     CUDNN_CALL(cudnnGetConvolutionBackwardFilterAlgorithm(
-                mode == COMPOSED ?
-                handle.GetCudnn(idx) : handle.GetCudnn(),
-                bottom_desc.Get(),
-                top_desc.Get(),
-                conv_desc.GetConv(),
-                conv_desc.GetFilter(),
-                pref,
-                workspace_size,
-                &bwd_filter_algo_));
-  }
-
+  
 
 void GetdBwdFilterAlgo_v7(const Handle &handle, RunMode mode, int idx,
                          const DataTensor<T> &bottom_desc,
@@ -928,41 +861,7 @@ void GetdBwdFilterAlgo_v7(const Handle &handle, RunMode mode, int idx,
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING;
     }
   }
-  void SetBwdDataAlgo(const Handle &handle, RunMode mode, int idx,
-                      const DataTensor<T> &bottom_desc,
-                      const DataTensor<T> &top_desc,
-                      const ConvolutionDesc<T> &conv_desc,
-                      cudnnConvolutionBwdDataPreference_t pref) {
-     CUDNN_CALL(cudnnGetConvolutionBackwardDataAlgorithm(
-                mode == COMPOSED ?
-                handle.GetCudnn(idx) : handle.GetCudnn(),
-                conv_desc.GetFilter(),
-                top_desc.Get(),
-                conv_desc.GetConv(),
-                bottom_desc.Get(),
-                pref,
-                -1,
-                &bwd_data_algo_));
-  }
-
-  void SetBwdDataAlgo(const Handle &handle, RunMode mode, int idx,
-                      const DataTensor<T> &bottom_desc,
-                      const DataTensor<T> &top_desc,
-                      const ConvolutionDesc<T> &conv_desc,
-                      cudnnConvolutionBwdDataPreference_t pref,
-                      int workspace_size) {
-     CUDNN_CALL(cudnnGetConvolutionBackwardDataAlgorithm(
-                mode == COMPOSED ?
-                handle.GetCudnn(idx) : handle.GetCudnn(),
-                conv_desc.GetFilter(),
-                top_desc.Get(),
-                conv_desc.GetConv(),
-                bottom_desc.Get(),
-                pref,
-                workspace_size,
-                &bwd_data_algo_));
-  }
-
+  
 
 void GetBwdDataAlgo_v7(const Handle &handle, RunMode mode, int idx,
                        const DataTensor<T> &bottom_desc,

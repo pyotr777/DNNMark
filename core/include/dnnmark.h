@@ -55,7 +55,7 @@
 
 namespace dnnmark {
 
-const std::string version="1.09_experimental";
+const std::string version="2.01_experimental_cudnn8";
 
 
 const std::map<std::string, LayerType> layer_type_map = {

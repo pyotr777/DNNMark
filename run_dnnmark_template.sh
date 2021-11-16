@@ -3,7 +3,7 @@
 # Wrapper API for DNNMark
 # 2018-2021 (C) Peter Bryzgalov @ CHITECH Stair Lab
 
-version="1.01"
+version="1.02"
 IFS='' read -r -d '' usage <<USAGEBLOCK
 Run DNNMark with parameters from CLI. v${version}.
 Usage:
@@ -27,14 +27,11 @@ $(basename $0)  [-b <benchmark executable, default=test_composed_model>]
                 [-u <stride>]
                 [-p <padding>]
                 [ --algo <cudnnConvolutionBwdFilterAlgo_t> - cuDNN algorithm for backward filter convolution.
-                    Can be set to "fft", "winograd", number from 0 to 6, "cudnn", "cudnnv7".]
-                [ --bwd_filter_pref <fastest/no_workspace/specify_workspace_limit> - cuDNN backward filter algorithm selection preference]
-                [ --bwd_data_pref <fastest/no_workspace/specify_workspace_limit> - cuDNN backward data algorithm selection preference]
-                [ --fwd_pref <fastest/no_workspace/specify_workspace_limit> - cuDNN forward algorithm selection preference]
+                    Can be set to "fft", "winograd", number from 0 to 6, "auto", "cudnnv7".]                
                 [ --algod <cudnnConvolutionBwdDataAlgo_t> - cuDNN algorithm for backward data convolution.
-                    Can be set to one of the following: "fft","winograd","winograd_nonfused","fft_tiling",0, 1, "cudnn", "cudnnv7". ]
+                    Can be set to one of the following: "fft","winograd","winograd_nonfused","fft_tiling",0, 1, "auto", "cudnnv7". ]
                 [ --algofwd <cudnnConvolutionFwdAlgo_t> - cuDNN algorithm for forward convolution.
-                    Can be set to "fft", "winograd", number from 0 to 7, "cudnn", "cudnnv7".]
+                    Can be set to "fft", "winograd", number from 0 to 7, "auto", "cudnnv7".]
                 [ --workspace <workspace size in bites for convolution functions>]
                 [ --conv_mode <convolution/cross_correlation> - Convolution mode]
                 [ --nopropagation - For the first layer do not calculate BWD data]

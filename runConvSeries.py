@@ -12,6 +12,7 @@ import math
 import argparse
 import pandas as pd
 import sys
+
 sys.path.append('../lib')
 import multigpuexec
 import ast
@@ -51,8 +52,8 @@ parser.add_argument(
     "--template", default=template,
     help="Configuration file template with .dnntemplate extension. Default: {}".format(
         template))
-parser.add_argument("--policy", default='chainer',
-                    help='Convolution algorithms selection policy: chainer/pytorch.')
+parser.add_argument("--policy", default='pytorch',
+                    help='Convolution algorithms selection policy.')
 parser.add_argument("--debug", action="store_true", default=False,
                     help="Run DNNMark with --debuginfo option.")
 parser.add_argument("--warmup", action="store_true",
@@ -134,10 +135,7 @@ configs.rename(columns=lambda x: x.strip(), inplace=True)
 
 # Set algorithm combinations
 algo_configs = {
-    # "all-workspace10MB":
-    "chainer":
-    "--algofwd cudnn --algo cudnn --algod cudnn --fwd_pref specify_workspace_limit --bwd_filter_pref specify_workspace_limit --bwd_data_pref specify_workspace_limit --workspace 10000000",
-    # "tf": "--algofwd auto --algo auto --algod auto"
+    "tf": "--algofwd auto --algo auto --algod auto",
     "pytorch": "--algofwd cudnnv7 --algo cudnnv7 --algod cudnnv7"
 }
 algoconf = algo_configs[args.policy]
@@ -161,7 +159,6 @@ if args.datasetsize is not None:
     datasetsize = args.datasetsize
 
 if args.dnnmark is not None:
-    # TODO: Replace with in-container path after docker image is fixed.
     command = os.path.join(args.dnnmark, "run_dnnmark_template.sh")
     command += " --root {}".format(args.dnnmark)
 else:
