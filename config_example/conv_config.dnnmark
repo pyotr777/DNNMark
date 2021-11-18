@@ -13,7 +13,3 @@ num_output=32
 kernel_size=5
 pad=2
 stride=1
-conv_fwd_pref=fastest
-conv_bwd_filter_pref=fastest
-conv_bwd_data_pref=fastest
-

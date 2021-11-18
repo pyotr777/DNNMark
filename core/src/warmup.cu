@@ -282,10 +282,10 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
               << "W, throttle: " << gpu_parameters.throttle
               << std::endl;
     // Compare frequency with previous iteration
-    if (clocks.clock_perf < last_freq) {
+    if (clocks.clock_perf <= last_freq) {
       decrease_count--;
       if (decrease_count <=0) {
-        LOG(INFO) << "SM frequency is decreasing. Stopping warmup." << std::endl;
+        LOG(INFO) << "SM frequency is not increasing. Stopping warmup." << std::endl;
       }
     }
     last_freq = clocks.clock_perf;
