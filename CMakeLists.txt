@@ -19,6 +19,7 @@ find_package(CUDA)
 
 # Detect GPU device
 if(CUDA_FOUND AND ${CUDA_ENABLE})
+  message("CUDA found and ${CUDA_ENABLE}")
   try_run(RUN_RESULT_VAR COMPILE_RESULT_VAR
     ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/tools/has_cuda_gpu.c
@@ -38,6 +39,7 @@ if(CUDA_FOUND AND ${CUDA_ENABLE})
   else()
     set(CUDA_HAVE_GPU FALSE)
   endif()
+  message("CUDA has GPU is ${CUDA_HAVE_GPU}")
 endif()
 
 # Detect HCC
@@ -68,6 +70,8 @@ if (CUDA_FOUND AND ${CUDA_ENABLE})
   if (EXISTS ${CUDNN_ROOT})
     message(STATUS "CuDNN library root path: " ${CUDNN_ROOT})
     include_directories(${CUDNN_ROOT}/include)
+    message(STATUS "cuDNN version " ${CUDNN_V})
+    add_definitions(-DCUDNN_V=${CUDNN_V})
   else()
     message(FATAL_ERROR "Path to CuDNN library not exists")
   endif()

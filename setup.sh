@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 
 if [ $# -ne 1 ]
 then
@@ -18,7 +18,10 @@ cd ${BUILD_DIR}
 if [ ${OPTION} = "CUDA" ]
 then
   CUDNN_PATH=${HOME}/cudnn
-  cmake -DCUDA_ENABLE=ON -DCUDNN_ROOT=${CUDNN_PATH} -DCMAKE_BUILD_TYPE=Debug ..
+  CUDNN_V=$(dpkg -l | grep cudnn | grep hi | awk '{print $2}')
+  echo "CUDNN_V=$CUDNN_V"
+  CUDNN_V=${CUDNN_V/libcudnn/}
+  cmake -DCUDA_ENABLE=ON -DCUDNN_ROOT=${CUDNN_PATH} -DCUDNN_V=${CUDNN_V} -DCMAKE_BUILD_TYPE=Debug ..
   # cmake -DCUDA_ENABLE=ON -DCUDNN_ROOT=${CUDNN_PATH} ..
 elif [ ${OPTION} = "HIP" ]
 then

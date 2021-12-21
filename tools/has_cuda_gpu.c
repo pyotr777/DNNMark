@@ -8,6 +8,7 @@ int main() {
   cudaError_t cudaResultCode = cudaGetDeviceCount(&deviceCount);
   if (cudaResultCode != cudaSuccess) 
     deviceCount = 0;
+    printf("Called cudaGetDeviceCount and the result is %d, device count in %d\n", cudaResultCode, deviceCount);
   /* machines with no GPUs can still report one emulation device */
   for (device = 0; device < deviceCount; ++device) {
     cudaGetDeviceProperties(&properties, device);

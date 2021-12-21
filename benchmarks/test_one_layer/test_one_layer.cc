@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
   float run_time = 0.;
   INIT_FLAGS(argc, argv);
   INIT_LOG(argv);
-  LOG(INFO) << "DNNMark suites version "<< version <<": Start...";
+  LOG(INFO) << "DNNMark suites version " << version << ": Start...";
   DNNMark<TestType> dnnmark;
   dnnmark.ParseGeneralConfig(FLAGS_config);
   dnnmark.ParseLayerConfig(FLAGS_config);

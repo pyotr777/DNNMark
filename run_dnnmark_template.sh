@@ -3,7 +3,7 @@
 # Wrapper API for DNNMark
 # 2018-2021 (C) Peter Bryzgalov @ CHITECH Stair Lab
 
-version="1.02"
+version="1.03"
 IFS='' read -r -d '' usage <<USAGEBLOCK
 Run DNNMark with parameters from CLI. v${version}.
 Usage:
@@ -182,7 +182,6 @@ echo "Running DNNMark with CLI parameters. v${version}."
 
 if [ $CBFA ];then
     CUDNN_CBFA="algo=$CBFA"$'\n'  # Insert new line; inside double quotes not expanded.
-    echo "$CBFA"
     if [ "$CBFA" = "cudnn" ];then
         echo "algo is cudnn"
         if [ ! $conv_bwd_filter_pref ];then
