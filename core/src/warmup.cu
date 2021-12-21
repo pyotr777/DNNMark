@@ -166,7 +166,7 @@ void printGPUStateInfo(nvmlDevice_t device, std::string message) {
 
 // Main warmup function
 void warmup(int FLAGS_warmup, int gpu_id, std::string message) {
-  LOG(INFO) << "Warmup function v.1.07." ;
+  LOG(INFO) << "Warmup function v.1.09." ;
   if (FLAGS_warmup == 0) {
     return;
   }
@@ -188,7 +188,8 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
   float target_warmup = 97.; //% of max app clock Hz
   float last_freq = 0.; // Last observed frequency (%)
   int maxiter = 100;
-  int decrease_count = 5; // allow 5 times of Hz decreasing before stopping warmup
+  const int decrease_count_start = 10; // allow this many times of Hz not increasing before stopping warmup
+  int decrease_count = decrease_count_start;
   nvmlDevice_t nvmldevice;
   nvmlReturn_t nvmlRet;
   clocks_struct clocks;
@@ -287,6 +288,8 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
       if (decrease_count <=0) {
         LOG(INFO) << "SM frequency is not increasing. Stopping warmup." << std::endl;
       }
+    } else {
+      decrease_count = decrease_count_start;;
     }
     last_freq = clocks.clock_perf;
     i++;

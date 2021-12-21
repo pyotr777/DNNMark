@@ -55,24 +55,24 @@
 
 namespace dnnmark {
 
-const std::string version="2.02_experimental_cudnn8";
+const std::string version = "2.03_experimental_cudnn8";
 
 
 const std::map<std::string, LayerType> layer_type_map = {
-{layer_section_keywords[0], CONVOLUTION},
-{layer_section_keywords[1], POOLING},
-{layer_section_keywords[2], LRN},
-{layer_section_keywords[3], ACTIVATION},
-{layer_section_keywords[4], FC},
-{layer_section_keywords[5], SOFTMAX},
-{layer_section_keywords[6], BN},
-{layer_section_keywords[7], DROPOUT},
-{layer_section_keywords[8], BYPASS}
+  {layer_section_keywords[0], CONVOLUTION},
+  {layer_section_keywords[1], POOLING},
+  {layer_section_keywords[2], LRN},
+  {layer_section_keywords[3], ACTIVATION},
+  {layer_section_keywords[4], FC},
+  {layer_section_keywords[5], SOFTMAX},
+  {layer_section_keywords[6], BN},
+  {layer_section_keywords[7], DROPOUT},
+  {layer_section_keywords[8], BYPASS}
 };
 
 template <typename T>
 class DNNMark {
- private:
+private:
   RunMode run_mode_;
   Handle handle_;
   // The map is ordered, so we don't need other container to store the layers
@@ -89,7 +89,7 @@ class DNNMark {
                       const std::string &var,
                       const std::string &val);
 
- public:
+public:
 
   DNNMark();
   DNNMark(int num_layers);
