@@ -10,6 +10,11 @@ project(dnnmark)
 # Set path of sub-directory with other cmake file
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
+# Pthread library flag
+set(PTHREAD_FLAG "-pthread")
+set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${PTHREAD_FLAG}")
+set(PLATFORM_SPECIFIC_LIBS "-lpthread")
+
 # Set
 option (CUDA_ENABLE "Only run benchmark on Nvidia device" OFF)
 option (HCC_ENABLE "Only run benchmark on AMD device" OFF)
