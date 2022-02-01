@@ -8,7 +8,7 @@ using namespace dnnmark;
 int main(int argc, char **argv) {
   INIT_FLAGS(argc, argv);
   INIT_LOG(argv);
-  LOG(INFO) << "DNNMark suites version "<< version <<": Start...";
+  LOG(INFO) << "DNNMark suites version " << version << ": Start...";
   DNNMark<TestType> dnnmark(2);
   dnnmark.ParseAllConfig(FLAGS_config);
   dnnmark.Initialize();
@@ -35,6 +35,9 @@ int main(int argc, char **argv) {
   dnnmark.GetTimer()->Clear();
   for (int i = 0; i < slowiterations; i++) {
     dnnmark.Backward(fastiterations);
+  }
+  if (FLAGS_detailedtime) {
+    dnnmark.GetTimer()->PrintTimingTable();
   }
   dnnmark.GetTimer()->SumRecords();
   dnnmark.TearDown();

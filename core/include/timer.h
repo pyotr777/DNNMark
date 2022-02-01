@@ -31,12 +31,12 @@ namespace dnnmark {
 
 // Class StopWatch
 class StopWatch {
- private:
+private:
   struct timeval start_;
   struct timeval end_;
   bool started_;
 
- public:
+public:
   StopWatch() :
     started_(false) {}
 
@@ -57,23 +57,23 @@ class StopWatch {
   }
   double DiffInMs() {
     return static_cast<double>(end_.tv_sec * 1000 +
-        static_cast<double>(end_.tv_usec) / 1000) -
-        static_cast<double>(start_.tv_sec * 1000 +
-            static_cast<double>(start_.tv_usec) / 1000);
+                               static_cast<double>(end_.tv_usec) / 1000) -
+           static_cast<double>(start_.tv_sec * 1000 +
+                               static_cast<double>(start_.tv_usec) / 1000);
   }
 };
 
 class Timer {
- private:
+private:
   StopWatch watch_;
   std::vector<std::string> layer_table_;
   std::vector<double> timing_table_;
   int num_records_;
   double total_time_;
 
- public:
+public:
   Timer()
-  : watch_(), num_records_(0), total_time_(0.0) {}
+    : watch_(), num_records_(0), total_time_(0.0) {}
 
   void Start(const std::string &layer) {
     watch_.Start();
@@ -91,8 +91,8 @@ class Timer {
 
   // Reset all the recorded value to 0
   void Clear() {
-	  layer_table_.clear();
-	  timing_table_.clear();
+    layer_table_.clear();
+    timing_table_.clear();
     total_time_ = 0;
   }
 
@@ -102,6 +102,14 @@ class Timer {
     for (auto const &i : layer_table_) {
       LOG(INFO) << i << ": " << timing_table_[index] << "ms";
       total_time_ += timing_table_[index];
+      index++;
+    }
+  }
+
+  void PrintTimingTable() {
+    int index = 0;
+    for (auto const &i : layer_table_) {
+      printf("Operation %s: %fms\n", i.c_str(), timing_table_[index]);
       index++;
     }
   }

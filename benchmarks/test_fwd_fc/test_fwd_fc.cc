@@ -2,13 +2,14 @@
 #include "common.h"
 #include "dnnmark.h"
 #include "usage.h"
+#include "warmup.h"
 
 using namespace dnnmark;
 
 int main(int argc, char **argv) {
   INIT_FLAGS(argc, argv);
   INIT_LOG(argv);
-  LOG(INFO) << "DNNMark suites version "<< version <<": Start...";
+  LOG(INFO) << "DNNMark suites version " << version << ": Start...";
   DNNMark<TestType> dnnmark;
   dnnmark.ParseGeneralConfig(FLAGS_config);
   dnnmark.ParseLayerConfig(FLAGS_config);
@@ -16,18 +17,24 @@ int main(int argc, char **argv) {
   LOG(INFO) << "initialization done.";
 
   // Warmup
-  if (FLAGS_warmup) {
-    LOG(INFO) << "Warming up before run... " << FLAGS_warmup;
-    for (int i = 0; i < FLAGS_warmup; i++) {
-      dnnmark.Forward();
-    }
+  warmup(FLAGS_warmup, 0, std::string("Warming up..."));
+  LOG(INFO) << "Iterations " << FLAGS_iterations;
+  LOG(INFO) << "Cached Iterations " << FLAGS_cachediterations;
+  int slowiterations = 1;
+  int fastiterations = 1;
+  if (FLAGS_cachediterations) {
+    fastiterations = FLAGS_iterations;
+  } else {
+    slowiterations = FLAGS_iterations;
   }
 
   // Real benchmark
   dnnmark.GetTimer()->Clear();
-  for (int i = 0; i < FLAGS_iterations; i++) {
-    LOG(INFO) << "Iteration " << i;
-    dnnmark.Forward();
+  for (int i = 0; i < slowiterations; i++) {
+    dnnmark.Forward(fastiterations);
+  }
+  if (FLAGS_detailedtime) {
+    dnnmark.GetTimer()->PrintTimingTable();
   }
   dnnmark.GetTimer()->SumRecords();
   dnnmark.TearDown();

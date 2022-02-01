@@ -9,20 +9,13 @@ using namespace dnnmark;
 int main(int argc, char **argv) {
   INIT_FLAGS(argc, argv);
   INIT_LOG(argv);
-  LOG(INFO) << "DNNMark suites version "<< version <<": Start...";
+  LOG(INFO) << "DNNMark suites version " << version << ": Start...";
   DNNMark<TestType> dnnmark;
   dnnmark.ParseGeneralConfig(FLAGS_config);
   dnnmark.ParseLayerConfig(FLAGS_config);
   dnnmark.Initialize();
   LOG(INFO) << "initialization done.";
 
-  // Warmup
-  // if (FLAGS_warmup) {
-  //   LOG(INFO) << "Warming up before run... " << FLAGS_warmup;
-  //   for (int i = 0; i < FLAGS_warmup; i++) {
-  //     dnnmark.Backward();
-  //   }
-  // }
   warmup(FLAGS_warmup, 0, std::string("Warming up..."));
 
   LOG(INFO) << "Iterations " << FLAGS_iterations;
@@ -38,6 +31,9 @@ int main(int argc, char **argv) {
   dnnmark.GetTimer()->Clear();
   for (int i = 0; i < slowiterations; i++) {
     dnnmark.Backward(fastiterations);
+  }
+  if (FLAGS_detailedtime) {
+    dnnmark.GetTimer()->PrintTimingTable();
   }
   dnnmark.GetTimer()->SumRecords();
   dnnmark.TearDown();

@@ -30,6 +30,7 @@ DECLARE_int32(debuginfo);
 DECLARE_int32(warmup);
 DECLARE_int32(iterations);
 DECLARE_bool(cachediterations);
+DECLARE_bool(detailedtime);
 
 #define INIT_FLAGS(X, Y) \
 gflags::SetUsageMessage(\

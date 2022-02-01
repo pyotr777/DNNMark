@@ -54,16 +54,17 @@ inline void dnnmarkConvolutionForward(const Handle &handle,
   LOG(INFO) << "Calling cudnnConvolutionForward " << iterations << " times, workspace " << workspace_in_bytes << "B, algo " << conv_algo->GetFwdAlgo();
   ProfilerStart(handle, mode, idx, timer, "ConvFwd");
   for (int i = 0; i < iterations; i++) {
-    CUDNN_CALL(cudnnConvolutionForward(
-                 mode == COMPOSED ?
-                 handle.GetCudnn(idx) : handle.GetCudnn(),
-                 alpha,
-                 bottom_desc.Get(), x,
-                 conv_desc.GetFilter(), w,
-                 conv_desc.GetConv(),
-                 conv_algo->GetFwdAlgo(), workspace, workspace_in_bytes,
-                 beta,
-                 top_desc.Get(), y));
+    CUDNN_CALL(
+      cudnnConvolutionForward(
+        mode == COMPOSED ?
+        handle.GetCudnn(idx) : handle.GetCudnn(),
+        alpha,
+        bottom_desc.Get(), x,
+        conv_desc.GetFilter(), w,
+        conv_desc.GetConv(),
+        conv_algo->GetFwdAlgo(), workspace, workspace_in_bytes,
+        beta,
+        top_desc.Get(), y));
   }
   ProfilerStop(handle, mode, idx, timer, "ConvFwd");
 #endif

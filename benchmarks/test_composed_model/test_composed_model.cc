@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
   LOG(INFO) << "DNNMark suites ver" << version << ": Start...";
   DNNMark<TestType> dnnmark(3);
   float run_time = 0.;
-  dnnmark.ParseAllConfig(FLAGS_config);  
+  dnnmark.ParseAllConfig(FLAGS_config);
 
   warmup(FLAGS_warmup, 0, std::string("Warming up before initialization..."));
 
@@ -50,6 +50,9 @@ int main(int argc, char **argv) {
   // Real benchmark
   for (int i = 0; i < slowiterations; i++) {
     dnnmark.Forward(fastiterations);
+  }
+  if (FLAGS_detailedtime) {
+    dnnmark.GetTimer()->PrintTimingTable();
   }
   dnnmark.GetTimer()->SumRecords();
   cudaProfilerStop();

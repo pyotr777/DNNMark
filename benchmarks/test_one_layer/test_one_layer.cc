@@ -38,6 +38,9 @@ int main(int argc, char **argv) {
     dnnmark.Forward(fastiterations);
     dnnmark.Backward(fastiterations);
   }
+  if (FLAGS_detailedtime) {
+    dnnmark.GetTimer()->PrintTimingTable();
+  }
   dnnmark.GetTimer()->SumRecords();
   dnnmark.TearDown();
   run_time = dnnmark.GetTimer()->GetTotalTime();
