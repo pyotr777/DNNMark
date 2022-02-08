@@ -26,6 +26,7 @@
 #include <sys/time.h>
 #include <numeric>
 #include <map>
+#include <chrono>
 
 namespace dnnmark {
 
@@ -72,12 +73,35 @@ private:
   double total_time_;
 
 public:
+  std::vector<long double> cpu_times;
+  long double cputime_elapsed;
+  long double cpu_start, cpu_finish;
   Timer()
     : watch_(), num_records_(0), total_time_(0.0) {}
 
+  long double get_time_nanosec(void) {
+    return static_cast<long double>(
+             std::chrono::duration_cast<std::chrono::nanoseconds>(
+               std::chrono::steady_clock::now().time_since_epoch()).count());
+  }
+
   void Start(const std::string &layer) {
     watch_.Start();
+    // Record CPU start time
+    cpu_start = get_time_nanosec();
     layer_table_.push_back(layer);
+  }
+
+  void StopCPU(const std::string & layer) {
+    if (!layer.compare(layer_table_.back())) {
+      // Record end time
+      cpu_finish = get_time_nanosec();
+      cputime_elapsed = cpu_finish - cpu_start;
+      // LOG(INFO) << ">>> CPU time : " << cputime_elapsed << "nanos";
+      cpu_times.push_back(cputime_elapsed);
+    } else {
+      LOG(FATAL) << "Layer to measure doesn't match";
+    }
   }
 
   // Stop and record the current elapsed time and record it
@@ -93,6 +117,7 @@ public:
   void Clear() {
     layer_table_.clear();
     timing_table_.clear();
+    cpu_times.clear();
     total_time_ = 0;
   }
 
@@ -109,7 +134,8 @@ public:
   void PrintTimingTable() {
     int index = 0;
     for (auto const &i : layer_table_) {
-      printf("Operation %s: %fms\n", i.c_str(), timing_table_[index]);
+      printf("Operation %s: GPU time %fms, CPU time %Lfms\n",
+             i.c_str(), timing_table_[index], cpu_times[index] / 1000000.);
       index++;
     }
   }

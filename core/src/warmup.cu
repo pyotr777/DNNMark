@@ -158,7 +158,7 @@ void printGPUStateInfo(nvmlDevice_t device, std::string message) {
     exit(EXIT_FAILURE);
   }
   
-  LOG(INFO) << message << " P" << pstate << ", smclock " << clocks.clock_perf << "%, " << temp << "˚C"
+  std::cout << message << " P" << pstate << ", smclock " << clocks.clock_perf << "%, " << temp << "˚C"
             << " CLOCKS (graph,sm,mem,vid): " << clocks.gr_clock << "," << clocks.sm_clock << ","
             << clocks.mem_clock << "," << clocks.vid_clock << std::endl;
 }
@@ -274,7 +274,7 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
     // curr_clock = getGPUclock(nvmldevice);
     clocks = getClocks(nvmldevice);
     gpu_parameters = getGPUstate(nvmldevice);
-    std::cout << i << "/" << maxiter << " clock " << clocks.clock_perf << "%, time "
+    LOG(INFO) << i << "/" << maxiter << " clock " << clocks.clock_perf << "%, time "
               << diff.count() * 1e+3 << "ms"
               << " CLOCKS (graph,sm,mem,vid): " << clocks.gr_clock << "," << clocks.sm_clock << ","
               << clocks.mem_clock << "," << clocks.vid_clock 

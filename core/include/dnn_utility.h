@@ -37,17 +37,18 @@
 #include "common.h"
 #include "dnn_param.h"
 #include "timer.h"
+#include <chrono>
 
 namespace dnnmark {
 
 class Handle {
 #ifdef NVIDIA_CUDNN
- private:
+private:
   cudnnHandle_t *cudnn_handles_;
   cublasHandle_t *blas_handles_;
   int num_cudnn_handles_;
   int num_blas_handles_;
- public:
+public:
   Handle();
   Handle(int num);
   ~Handle();
@@ -59,12 +60,12 @@ class Handle {
   int num_blas() const { return num_blas_handles_; }
 #endif
 #ifdef AMD_MIOPEN
- private:
+private:
   miopenHandle_t *miopen_handles_;
   rocblas_handle *rocblas_handles_;
   int num_miopen_handles_;
   int num_rocblas_handles_;
- public:
+public:
   Handle();
   Handle(int num);
   ~Handle();
@@ -78,9 +79,9 @@ class Handle {
 };
 
 class Descriptor {
- protected:
+protected:
   bool set_;
- public:
+public:
   Descriptor();
   ~Descriptor();
   bool isSet();
@@ -88,7 +89,7 @@ class Descriptor {
 
 template <typename T>
 class DataTensor : public Descriptor {
- private:
+private:
 #ifdef NVIDIA_CUDNN
   cudnnTensorDescriptor_t desc_;
 #endif
@@ -96,9 +97,9 @@ class DataTensor : public Descriptor {
   miopenTensorDescriptor_t desc_;
 #endif
 
- public:
+public:
   DataTensor()
-  : Descriptor() {
+    : Descriptor() {
 #ifdef NVIDIA_CUDNN
     CUDNN_CALL(cudnnCreateTensorDescriptor(&desc_));
 #endif
@@ -137,1060 +138,1062 @@ class DataTensor : public Descriptor {
   cudnnTensorDescriptor_t Get() const {
 #endif
 #ifdef AMD_MIOPEN
-  miopenTensorDescriptor_t Get() const {
+    miopenTensorDescriptor_t Get() const {
 #endif
-    if (set_)
-      return desc_;
-    return nullptr;
-  }
-
-};
-
-template <typename T>
-class ConvolutionDesc : public Descriptor {
- private:
-#ifdef NVIDIA_CUDNN
-  cudnnFilterDescriptor_t filter_desc_;
-  cudnnConvolutionDescriptor_t conv_desc_;
-#endif
-#ifdef AMD_MIOPEN
-  miopenTensorDescriptor_t filter_desc_;
-  miopenConvolutionDescriptor_t conv_desc_;
-#endif
-
- public:
-  ConvolutionDesc()
-  : Descriptor() {
-#ifdef NVIDIA_CUDNN
-    CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_desc_));
-    CUDNN_CALL(cudnnCreateFilterDescriptor(&filter_desc_));
-#endif
-#ifdef AMD_MIOPEN
-    MIOPEN_CALL(miopenCreateConvolutionDescriptor(&conv_desc_));
-    MIOPEN_CALL(miopenCreateTensorDescriptor(&filter_desc_));
-#endif
-  }
-
-  ~ConvolutionDesc() {
-#ifdef NVIDIA_CUDNN
-    CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_desc_));
-    CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_desc_));
-#endif
-#ifdef AMD_MIOPEN
-    MIOPEN_CALL(miopenDestroyConvolutionDescriptor(conv_desc_));
-    MIOPEN_CALL(miopenDestroyTensorDescriptor(filter_desc_));
-#endif
-  }
-
-  void Set(const ConvolutionParam &param, int num_channel) {
-    if (!set_) {
-#ifdef NVIDIA_CUDNN
-      CUDNN_CALL(cudnnSetConvolution2dDescriptor(conv_desc_,
-                 param.pad_h_, param.pad_w_,
-                 param.stride_u_, param.stride_v_,
-                 param.upscale_x_, param.upscale_y_,
-                 param.mode_, DataType<T>::type));
-
-      CUDNN_CALL(cudnnSetFilter4dDescriptor(filter_desc_,
-                 DataType<T>::type, CUDNN_TENSOR_NCHW,
-                 param.output_num_, num_channel,
-                 param.kernel_size_h_, param.kernel_size_w_));
-#endif
-#ifdef AMD_MIOPEN
-      MIOPEN_CALL(miopenInitConvolutionDescriptor(conv_desc_,
-                 param.mode_,
-                 param.pad_h_, param.pad_w_,
-                 param.stride_u_, param.stride_v_,
-                 param.upscale_x_, param.upscale_y_));
-
-      MIOPEN_CALL(miopenSet4dTensorDescriptor(filter_desc_,
-                 DataType<T>::type,
-                 param.output_num_, num_channel,
-                 param.kernel_size_h_, param.kernel_size_w_));
-#endif
+      if (set_)
+        return desc_;
+      return nullptr;
     }
-    set_ = true;
-  }
 
+  };
+
+  template <typename T>
+  class ConvolutionDesc : public Descriptor {
+  private:
 #ifdef NVIDIA_CUDNN
-  cudnnFilterDescriptor_t GetFilter() const {
+    cudnnFilterDescriptor_t filter_desc_;
+    cudnnConvolutionDescriptor_t conv_desc_;
 #endif
 #ifdef AMD_MIOPEN
-  miopenTensorDescriptor_t GetFilter() const {
+    miopenTensorDescriptor_t filter_desc_;
+    miopenConvolutionDescriptor_t conv_desc_;
 #endif
-    if (set_)
-      return filter_desc_;
-    return nullptr;
-  }
 
+  public:
+    ConvolutionDesc()
+      : Descriptor() {
 #ifdef NVIDIA_CUDNN
-  cudnnConvolutionDescriptor_t GetConv() const {
+      CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_desc_));
+      CUDNN_CALL(cudnnCreateFilterDescriptor(&filter_desc_));
 #endif
 #ifdef AMD_MIOPEN
-  miopenConvolutionDescriptor_t GetConv() const {
-#endif
-    if (set_)
-      return conv_desc_;
-    return nullptr;
-  }
-
-
-};
-
-template <typename T>
-class PoolingDesc : public Descriptor {
- private:
-#ifdef NVIDIA_CUDNN
-  cudnnPoolingDescriptor_t pooling_desc_;
-#endif
-#ifdef AMD_MIOPEN
-  miopenPoolingDescriptor_t pooling_desc_;
-#endif
- public:
-  PoolingDesc()
-  : Descriptor() {
-#ifdef NVIDIA_CUDNN
-    CUDNN_CALL(cudnnCreatePoolingDescriptor(&pooling_desc_));
-#endif
-#ifdef AMD_MIOPEN
-    MIOPEN_CALL(miopenCreatePoolingDescriptor(&pooling_desc_));
-#endif
-  }
-
-  ~PoolingDesc() {
-#ifdef NVIDIA_CUDNN
-    CUDNN_CALL(cudnnDestroyPoolingDescriptor(pooling_desc_));
-#endif
-#ifdef AMD_MIOPEN
-    MIOPEN_CALL(miopenDestroyPoolingDescriptor(pooling_desc_));
-#endif
-  }
-
-  void Set(const PoolingParam &param) {
-    if (!set_) {
-#ifdef NVIDIA_CUDNN
-      CUDNN_CALL(cudnnSetPooling2dDescriptor(pooling_desc_,
-                 param.mode_, CUDNN_PROPAGATE_NAN,
-                 param.kernel_size_h_, param.kernel_size_w_,
-                 param.pad_h_, param.pad_w_,
-                 param.stride_h_, param.stride_w_));
-#endif
-#ifdef AMD_MIOPEN
-      MIOPEN_CALL(miopenSet2dPoolingDescriptor(pooling_desc_,
-                 param.mode_,
-                 param.kernel_size_h_, param.kernel_size_w_,
-                 param.pad_h_, param.pad_w_,
-                 param.stride_h_, param.stride_w_));
+      MIOPEN_CALL(miopenCreateConvolutionDescriptor(&conv_desc_));
+      MIOPEN_CALL(miopenCreateTensorDescriptor(&filter_desc_));
 #endif
     }
 
-    set_ = true;
-  }
-
+    ~ConvolutionDesc() {
 #ifdef NVIDIA_CUDNN
-  cudnnPoolingDescriptor_t Get() const {
+      CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_desc_));
+      CUDNN_CALL(cudnnDestroyFilterDescriptor(filter_desc_));
 #endif
 #ifdef AMD_MIOPEN
-  miopenPoolingDescriptor_t Get() const {
-#endif
-    if (set_)
-      return pooling_desc_;
-    return nullptr;
-  }
-
-  void GetWorkspaceSize(const DataTensor<T> &y_desc,
-                        size_t *workspace_size) {
-#ifdef AMD_MIOPEN
-    if (set_)
-      MIOPEN_CALL(miopenPoolingGetWorkSpaceSize(y_desc.Get(), workspace_size));
-    else
-      LOG(FATAL) << "Pooling descriptor NOT set";
-#endif
-  }
-};
-
-template <typename T>
-class LRNDesc : public Descriptor {
- private:
-#ifdef NVIDIA_CUDNN
-  cudnnLRNDescriptor_t lrn_desc_;
-#endif
-#ifdef AMD_MIOPEN
-  miopenLRNDescriptor_t lrn_desc_;
-#endif
- public:
-  LRNDesc()
-  : Descriptor() {
-#ifdef NVIDIA_CUDNN
-    CUDNN_CALL(cudnnCreateLRNDescriptor(&lrn_desc_));
-#endif
-#ifdef AMD_MIOPEN
-    MIOPEN_CALL(miopenCreateLRNDescriptor(&lrn_desc_));
-#endif
-  }
-
-  ~LRNDesc() {
-#ifdef NVIDIA_CUDNN
-    CUDNN_CALL(cudnnDestroyLRNDescriptor(lrn_desc_));
-#endif
-#ifdef AMD_MIOPEN
-    MIOPEN_CALL(miopenDestroyLRNDescriptor(lrn_desc_));
-#endif
-  }
-
-  void Set(const LRNParam &param) {
-    if (!set_) {
-#ifdef NVIDIA_CUDNN
-      CUDNN_CALL(cudnnSetLRNDescriptor(lrn_desc_,
-                 param.local_size_,
-                 param.alpha_, param.beta_,
-                 param.k_));
-#endif
-#ifdef AMD_MIOPEN
-      MIOPEN_CALL(miopenSetLRNDescriptor(lrn_desc_,
-                  param.mode_,
-                  param.local_size_,
-                  param.alpha_, param.beta_,
-                  param.k_));
+      MIOPEN_CALL(miopenDestroyConvolutionDescriptor(conv_desc_));
+      MIOPEN_CALL(miopenDestroyTensorDescriptor(filter_desc_));
 #endif
     }
 
-    set_ = true;
-  }
-
+    void Set(const ConvolutionParam &param, int num_channel) {
+      if (!set_) {
 #ifdef NVIDIA_CUDNN
-  cudnnLRNDescriptor_t Get() const {
+        CUDNN_CALL(cudnnSetConvolution2dDescriptor(conv_desc_,
+                   param.pad_h_, param.pad_w_,
+                   param.stride_u_, param.stride_v_,
+                   param.upscale_x_, param.upscale_y_,
+                   param.mode_, DataType<T>::type));
+
+        CUDNN_CALL(cudnnSetFilter4dDescriptor(filter_desc_,
+                                              DataType<T>::type, CUDNN_TENSOR_NCHW,
+                                              param.output_num_, num_channel,
+                                              param.kernel_size_h_, param.kernel_size_w_));
 #endif
 #ifdef AMD_MIOPEN
-  miopenLRNDescriptor_t Get() const {
-#endif
-    if (set_)
-      return lrn_desc_;
-    return nullptr;
-  }
+        MIOPEN_CALL(miopenInitConvolutionDescriptor(conv_desc_,
+                    param.mode_,
+                    param.pad_h_, param.pad_w_,
+                    param.stride_u_, param.stride_v_,
+                    param.upscale_x_, param.upscale_y_));
 
-  void GetWorkspaceSize(const DataTensor<T> &y_desc,
-                        size_t *workspace_size) {
-#ifdef AMD_MIOPEN
-    if (set_)
-      MIOPEN_CALL(miopenLRNGetWorkSpaceSize(y_desc.Get(), workspace_size));
-    else
-      LOG(FATAL) << "LRN descriptor NOT set";
+        MIOPEN_CALL(miopenSet4dTensorDescriptor(filter_desc_,
+                                                DataType<T>::type,
+                                                param.output_num_, num_channel,
+                                                param.kernel_size_h_, param.kernel_size_w_));
 #endif
-  }
-
-};
-
-template <typename T>
-class ActivationDesc : public Descriptor {
- private:
-#ifdef NVIDIA_CUDNN
-  cudnnActivationDescriptor_t activation_desc_;
-#endif
-#ifdef AMD_MIOPEN
-  miopenActivationDescriptor_t activation_desc_;
-#endif
- public:
-  ActivationDesc()
-  : Descriptor() {
-#ifdef NVIDIA_CUDNN
-    CUDNN_CALL(cudnnCreateActivationDescriptor(&activation_desc_));
-#endif
-#ifdef AMD_MIOPEN
-    MIOPEN_CALL(miopenCreateActivationDescriptor(&activation_desc_));
-#endif
-  }
-
-  ~ActivationDesc() {
-#ifdef NVIDIA_CUDNN
-    CUDNN_CALL(cudnnDestroyActivationDescriptor(activation_desc_));
-#endif
-#ifdef AMD_MIOPEN
-    MIOPEN_CALL(miopenDestroyActivationDescriptor(activation_desc_));
-#endif
-  }
-
-  void Set(const ActivationParam &param) {
-    if (!set_) {
-#ifdef NVIDIA_CUDNN
-      CUDNN_CALL(cudnnSetActivationDescriptor(activation_desc_,
-                 param.mode_,
-                 CUDNN_PROPAGATE_NAN,
-                 double(0.0)));
-#endif
-#ifdef AMD_MIOPEN
-      MIOPEN_CALL(miopenSetActivationDescriptor(activation_desc_,
-                 param.mode_,
-                 param.alpha_,
-                 param.beta_,
-                 param.power_));
-#endif
-    }
-
-    set_ = true;
-  }
-
-#ifdef NVIDIA_CUDNN
-  cudnnActivationDescriptor_t Get() const {
-#endif
-#ifdef AMD_MIOPEN
-  miopenActivationDescriptor_t Get() const {
-#endif
-    if (set_)
-      return activation_desc_;
-    return nullptr;
-  }
-
-};
-
-template <typename T>
-class BypassDesc : public Descriptor {
- private:
-#ifdef NVIDIA_CUDNN
-  DataDim dim_;
-#endif
-#ifdef AMD_MIOPEN
-  miopenActivationDescriptor_t activation_desc_;
-#endif
- public:
-  BypassDesc()
-  : Descriptor() {
-#ifdef AMD_MIOPEN
-    MIOPEN_CALL(miopenCreateActivationDescriptor(&activation_desc_));
-#endif
-  }
-
-  ~BypassDesc() {
-#ifdef AMD_MIOPEN
-    MIOPEN_CALL(miopenDestroyActivationDescriptor(activation_desc_));
-#endif
-  }
-
-  void Set(DataDim dim) {
-    if (!set_) {
-#ifdef NVIDIA_CUDNN
-      dim_.n_ = dim.n_;
-      dim_.c_ = dim.c_;
-      dim_.h_ = dim.h_;
-      dim_.w_ = dim.w_;
-#endif
-#ifdef AMD_MIOPEN
-      MIOPEN_CALL(miopenSetActivationDescriptor(activation_desc_,
-                 miopenActivationPASTHRU,
-                 0, 0, 0));
-#endif
-    }
-
-    set_ = true;
-  }
-
-#ifdef NVIDIA_CUDNN
-  DataDim Get() const {
-    return dim_;
-  }
-#endif
-#ifdef AMD_MIOPEN
-  miopenActivationDescriptor_t Get() const {
-    if (set_)
-      return activation_desc_;
-    return nullptr;
-  }
-#endif
-};
-
-template <typename T>
-class DropoutDesc : public Descriptor {
- private:
-#ifdef NVIDIA_CUDNN
-  cudnnDropoutDescriptor_t dropout_desc_;
-#endif
-#ifdef AMD_MIOPEN
-#endif
- public:
-  DropoutDesc()
-  : Descriptor() {
-#ifdef NVIDIA_CUDNN
-    CUDNN_CALL(cudnnCreateDropoutDescriptor(&dropout_desc_));
-#endif
-#ifdef AMD_MIOPEN
-#endif
-  }
-
-  ~DropoutDesc() {
-#ifdef NVIDIA_CUDNN
-    CUDNN_CALL(cudnnDestroyDropoutDescriptor(dropout_desc_));
-#endif
-#ifdef AMD_MIOPEN
-#endif
-  }
-
-  void SetStatesSize(const Handle &handle, RunMode mode, int idx,
-                     size_t *state_size) {
-#ifdef NVIDIA_CUDNN
-    CUDNN_CALL(cudnnDropoutGetStatesSize(mode ?
-                                         handle.GetCudnn(idx):
-                                         handle.GetCudnn(),
-                                         state_size));
-#endif
-#ifdef AMD_MIOPEN
-#endif
-  }
-
-  void SetReserveSpaceSize(DataTensor<T> &bottom_desc,
-                           size_t *reserve_space_size) {
-#ifdef NVIDIA_CUDNN
-    CUDNN_CALL(cudnnDropoutGetReserveSpaceSize(bottom_desc.Get(),
-                                               reserve_space_size));
-#endif
-#ifdef AMD_MIOPEN
-#endif
-  }
-
-  void Set(const Handle &handle, RunMode mode, int idx,
-           const DropoutParam &dropout_param,
-           void *states, size_t state_size) {
-    if (!set_) {
-#ifdef NVIDIA_CUDNN
-      if (state_size > 0)
-        CUDNN_CALL(cudnnSetDropoutDescriptor(dropout_desc_,
-                                       mode == COMPOSED ?
-                                       handle.GetCudnn(idx):
-                                       handle.GetCudnn(),
-                                       dropout_param.dropout_p_,
-                                       states,
-                                       state_size,
-                                       dropout_param.random_seed_));
-      else
-        LOG(FATAL) << "The size is ZERO";
-#endif
-#ifdef AMD_MIOPEN
-#endif
-    }
-
-    set_ = true;
-  }
-
-#ifdef NVIDIA_CUDNN
-  cudnnDropoutDescriptor_t Get() const {
-    return dropout_desc_;
-  }
-#endif
-#ifdef AMD_MIOPEN
-#endif
-};
-
-template <typename T>
-class ConvAlgo {
-#ifdef NVIDIA_CUDNN
- private:
-  cudnnConvolutionFwdAlgo_t fwd_algo_;
-  cudnnConvolutionBwdFilterAlgo_t bwd_filter_algo_;
-  cudnnConvolutionBwdDataAlgo_t bwd_data_algo_;
-  std::string bwd_filter_algo_par;
-
- public:
-  ConvAlgo()
-  : fwd_algo_(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD),
-    bwd_filter_algo_(CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0),
-    bwd_data_algo_(CUDNN_CONVOLUTION_BWD_DATA_ALGO_0),
-    bwd_filter_algo_par("") {}
-
-
-  cudnnConvolutionBwdDataAlgo_t getDataAlgo(){
-    return (bwd_data_algo_);
-  }
-
-
-  void SetFwdAlgo(std::string algo) {
-    LOG(INFO) << "Setting FWD algo to " << algo << ".\n";
-    if (!algo.compare("fft")) {
-      fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_FFT;
-    } else if (!algo.compare("winograd")) {
-      fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD;
-    } else if (algo != "") {
-      if (algo =="0") {
-        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
-      } else if (algo =="1") {
-        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
-      } else if (algo =="2") {
-        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_GEMM;
-      } else if (algo =="3") {
-        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_DIRECT;
-      } else if (algo =="4") {
-        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_FFT;
-      } else if (algo =="5") {
-        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING;
-      } else if (algo =="6") {
-        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD;
-      } else if (algo =="7") {
-        fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED;
-      } else {
-        std::cerr << "Fwd Convolution Algorithm not recognized:" << algo << "\n";
-
-        std::cout << "FWD algo list:\n";
-        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM=" << CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM << "\n";
-        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM=" << CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM << "\n";
-        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_GEMM=" << CUDNN_CONVOLUTION_FWD_ALGO_GEMM << "\n";
-        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_DIRECT=" << CUDNN_CONVOLUTION_FWD_ALGO_DIRECT << "\n";
-        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_FFT=" << CUDNN_CONVOLUTION_FWD_ALGO_FFT << ",fft\n";
-        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING=" << CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING << "\n";
-        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD=" << CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD << ",winograd\n";
-        std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED=" << CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED << "\n";
       }
+      set_ = true;
     }
-  }
-  void SetFwdAlgo(cudnnConvolutionFwdAlgo_t fwd_algo) {
-    fwd_algo_ = fwd_algo;
-  }
-  
 
-  void GetFwdAlgo_v7(const Handle &handle, RunMode mode, int idx,
-                   const DataTensor<T> &bottom_desc,
-                   const ConvolutionDesc<T> &conv_desc,
-                   const DataTensor<T> &top_desc) {
-    const int max_algos = 3;
-    cudnnConvolutionFwdAlgoPerf_t perf_results[max_algos];
-    int returned_algo_count;
-    LOG(INFO) << "Calling cudnnGetConvolutionForwardAlgorithm_v7().\n";
-    CUDNN_CALL(cudnnGetConvolutionForwardAlgorithm_v7(
-               mode == COMPOSED ?
-               handle.GetCudnn(idx) : handle.GetCudnn(),
-               bottom_desc.Get(),
-               conv_desc.GetFilter(),
-               conv_desc.GetConv(),
-               top_desc.Get(),
-               max_algos, &returned_algo_count,
-               perf_results));
-    if (returned_algo_count > 0) {
-      fwd_algo_ = perf_results->algo;
-    } else {
-      fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
-    }
-  }
-
-
-  void FindFwdAlgo(const Handle &handle, RunMode mode, int idx,
-                   const DataTensor<T> &bottom_desc,
-                   const ConvolutionDesc<T> &conv_desc,
-                   const DataTensor<T> &top_desc) {
-    const int max_algos = 3;
-    cudnnConvolutionFwdAlgoPerf_t perf_results[max_algos];
-    int returned_algo_count;
-    LOG(INFO) << "Calling cudnnFindConvolutionForwardAlgorithm().\n";
-    CUDNN_CALL(cudnnFindConvolutionForwardAlgorithm(
-               mode == COMPOSED ?
-               handle.GetCudnn(idx) : handle.GetCudnn(),
-               bottom_desc.Get(),
-               conv_desc.GetFilter(),
-               conv_desc.GetConv(),
-               top_desc.Get(),
-               max_algos, &returned_algo_count,
-               perf_results));
-    if (returned_algo_count > 0) {
-      fwd_algo_ = perf_results->algo;
-    } else {
-      fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
-    }
-  }
-
-
-  void SetBwdFilterAlgo(cudnnConvolutionBwdFilterAlgo_t bwd_filter_algo) {
-    bwd_filter_algo_ = bwd_filter_algo;
-  }
-  void SetBwdFilterAlgo(std::string algo) {
-    if (algo.empty()) {
-        return;
-    }
-    if (!algo.compare("fft")) {
-      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT;
-    } else if (!algo.compare("winograd")) {
-      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD;
-    } else if (algo =="0") {
-      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
-    } else if (algo =="1") {
-      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
-    } else if (algo =="2") {
-      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT;
-    } else if (algo =="3") {
-      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3;
-    } else if (algo =="4") {
-      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD;
-    } else if (algo =="5") {
-      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED;
-    } else if (algo =="6") {
-      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING;
-    } else if (algo!="") {
-      std::cerr << "BWD Convolution Filter Algorithm not recognized: "<< algo << "\n";
-      std::cout << "BWD Filter algo list:\n";
-        std::cout << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 << "\n"
-             << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 << "\n"
-             << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT="<< CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT << ",fft\n"
-             << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 << "\n"
-             << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD << ",winograd\n"
-             << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED << "\n"
-             << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING << "\n";
-    }
-  }
-  
-
-void GetdBwdFilterAlgo_v7(const Handle &handle, RunMode mode, int idx,
-                         const DataTensor<T> &bottom_desc,
-                         const ConvolutionDesc<T> &conv_desc,
-                         const DataTensor<T> &top_desc) {
-    int max_algos = 3;
-    cudnnConvolutionBwdFilterAlgoPerf_t perf_results[max_algos];
-    int returned_algo_count;
-    LOG(INFO) << "Calling cudnnGetConvolutionBackwardFilterAlgorithm_v7().\n";
-    CUDNN_CALL(cudnnGetConvolutionBackwardFilterAlgorithm_v7(
-               mode == COMPOSED ?
-               handle.GetCudnn(idx) : handle.GetCudnn(),
-               bottom_desc.Get(),
-               top_desc.Get(),
-               conv_desc.GetConv(),
-               conv_desc.GetFilter(),
-               max_algos, &returned_algo_count,
-               perf_results));
-    cudnnConvolutionBwdFilterAlgo_t algo = static_cast<cudnnConvolutionBwdFilterAlgo_t>(perf_results->algo);
-    if (returned_algo_count > 0) {
-      bwd_filter_algo_ = perf_results->algo;
-    } else {
-      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
-    }
-  }
-
-
-  void FindBwdFilterAlgo(const Handle &handle, RunMode mode, int idx,
-                         const DataTensor<T> &bottom_desc,
-                         const ConvolutionDesc<T> &conv_desc,
-                         const DataTensor<T> &top_desc) {
-    int max_algos = 4;
-    cudnnConvolutionBwdFilterAlgoPerf_t perf_results[max_algos];
-    int returned_algo_count;
-    // Set the math type to allow cuDNN to use Tensor Cores:
-    CUDNN_CALL(cudnnSetConvolutionMathType(conv_desc.GetConv(), CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION) );
-    CUDNN_CALL(cudnnFindConvolutionBackwardFilterAlgorithm(
-               mode == COMPOSED ?
-               handle.GetCudnn(idx) : handle.GetCudnn(),
-               bottom_desc.Get(),
-               top_desc.Get(),
-               conv_desc.GetConv(),
-               conv_desc.GetFilter(),
-               max_algos, &returned_algo_count,
-               perf_results));
-    cudnnConvolutionBwdFilterAlgo_t algo = static_cast<cudnnConvolutionBwdFilterAlgo_t>(perf_results->algo);
-    if (returned_algo_count > 0) {
-      bwd_filter_algo_ = perf_results->algo;
-      LOG(INFO) << "Algo count " << returned_algo_count << ". Fastest algos:"; // << perf_results->algo;
-      for (int ii=0; ii < returned_algo_count; ii++) {
-        LOG(INFO) << "Algo " << perf_results[ii].algo << " : " << perf_results[ii].time << "ms : " << perf_results[ii].memory << "B : " << perf_results[ii].mathType;
+#ifdef NVIDIA_CUDNN
+    cudnnFilterDescriptor_t GetFilter() const {
+#endif
+#ifdef AMD_MIOPEN
+      miopenTensorDescriptor_t GetFilter() const {
+#endif
+        if (set_)
+          return filter_desc_;
+        return nullptr;
       }
-    } else {
-      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
-    }
-  }
 
-  void FindBwdFilterAlgoEx(const Handle &handle, RunMode mode, int idx,
-                         const DataTensor<T> &bottom_desc,
-                         const ConvolutionDesc<T> &conv_desc,
-                         const DataTensor<T> &top_desc,
-                         const void *x,
-                         const void *dy,
-                         void       *dw,
-                         void       *workSpace,
-                         size_t     workspace_size)
-  {
-    LOG(INFO) << "In FindBwdFilterAlgoEx.";
-    LOG(INFO) << "Calling cudnnFindConvolutionBackwardFilterAlgorithmEx().\n";
-    int max_algos = 4;
-    cudnnConvolutionBwdFilterAlgoPerf_t perf_results[max_algos];
-    int returned_algo_count;
-
-    // Set the math type to allow cuDNN to use Tensor Cores:
-    // CUDNN_CALL(cudnnSetConvolutionMathType(conv_desc.GetConv(), CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION) );
-    // Set the math type to allow cuDNN to use Tensor Cores:
-    CUDNN_CALL( cudnnSetConvolutionMathType(conv_desc.GetConv(), CUDNN_TENSOR_OP_MATH) );
-    CUDNN_CALL(cudnnFindConvolutionBackwardFilterAlgorithmEx(
-               mode == COMPOSED ?
-               handle.GetCudnn(idx) : handle.GetCudnn(),
-               bottom_desc.Get(), x,
-               top_desc.Get(), dy,
-               conv_desc.GetConv(),
-               conv_desc.GetFilter(), dw,
-               max_algos, &returned_algo_count,
-               perf_results,
-               workSpace, workspace_size));
-
-    if (returned_algo_count > 0) {
-      bwd_filter_algo_ = perf_results[0].algo;
-      LOG(INFO) << "Algo count " << returned_algo_count << ". Fastest algos:"; // << perf_results->algo;
-      for (int ii=0; ii < returned_algo_count; ii++) {
-        LOG(INFO) << "Algo " << perf_results[ii].algo << " : " << perf_results[ii].time << "ms : " << perf_results[ii].memory << "B : " << perf_results[ii].mathType;
-      }
-    } else {
-      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
-      LOG(INFO) << "No algo returned. Using Algo 0.";
-    }
-  }
-
-  void SetBwdDataAlgo(cudnnConvolutionBwdDataAlgo_t bwd_data_algo) {
-    bwd_data_algo_ = bwd_data_algo;
-  }
-  void SetBwdDataAlgo(std::string algo) {
-    if (algo.empty()) {
-        return;
-    }
-    if (!algo.compare("fft")) {
-      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT;
-    } else if (!algo.compare("winograd")) {
-      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD;
-    } else if (algo =="0") {
-      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
-    } else if (algo =="1") {
-      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
-    } else if (algo =="2") {
-      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT;
-    } else if (algo =="3") {
-      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING;
-    } else if (algo =="4") {
-      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD;
-    } else if (algo =="5") {
-      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED;
-    } else if (!algo.compare("winograd_nonfused")) {
-      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED;
-    } else if (!algo.compare("fft_tiling")) {
-      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING;
-    }
-  }
-  
-
-void GetBwdDataAlgo_v7(const Handle &handle, RunMode mode, int idx,
-                       const DataTensor<T> &bottom_desc,
-                       const ConvolutionDesc<T> &conv_desc,
-                       const DataTensor<T> &top_desc) {
-    int max_algos = 3;
-    cudnnConvolutionBwdDataAlgoPerf_t perf_results[max_algos];
-    int returned_algo_count;
-    LOG(INFO) << "Calling cudnnGetConvolutionBackwardDataAlgorithm_v7().\n";
-    CUDNN_CALL(cudnnGetConvolutionBackwardDataAlgorithm_v7(
-               mode == COMPOSED ?
-               handle.GetCudnn(idx) : handle.GetCudnn(),
-               conv_desc.GetFilter(),
-               top_desc.Get(),
-               conv_desc.GetConv(),
-               bottom_desc.Get(),
-               1, &returned_algo_count,
-               perf_results));
-    if (returned_algo_count > 0) {
-      bwd_data_algo_ = perf_results->algo;
-    } else {
-      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
-    }
-  }
+#ifdef NVIDIA_CUDNN
+      cudnnConvolutionDescriptor_t GetConv() const {
+#endif
+#ifdef AMD_MIOPEN
+        miopenConvolutionDescriptor_t GetConv() const {
+#endif
+          if (set_)
+            return conv_desc_;
+          return nullptr;
+        }
 
 
-  void FindBwdDataAlgo(const Handle &handle, RunMode mode, int idx,
-                       const DataTensor<T> &bottom_desc,
-                       const ConvolutionDesc<T> &conv_desc,
-                       const DataTensor<T> &top_desc) {
-    int max_algos = 3;
-    cudnnConvolutionBwdDataAlgoPerf_t perf_results[max_algos];
-    int returned_algo_count;
-    CUDNN_CALL(cudnnFindConvolutionBackwardDataAlgorithm(
-               mode == COMPOSED ?
-               handle.GetCudnn(idx) : handle.GetCudnn(),
-               conv_desc.GetFilter(),
-               top_desc.Get(),
-               conv_desc.GetConv(),
-               bottom_desc.Get(),
-               1, &returned_algo_count,
-               perf_results));
-    if (returned_algo_count > 0) {
-      bwd_data_algo_ = perf_results->algo;
-    } else {
-      bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
-    }
-  }
+      };
 
-  cudnnConvolutionFwdAlgo_t GetFwdAlgo() const {
-    return fwd_algo_;
-  }
-  void GetFwdWorkspaceSize(const Handle &handle, RunMode mode, int idx,
-                           const DataTensor<T> &bottom_desc,
-                           const DataTensor<T> &top_desc,
-                           const ConvolutionDesc<T> &conv_desc,
-                           size_t *workspace_size) {
-    CUDNN_CALL(cudnnGetConvolutionForwardWorkspaceSize(
-               mode == COMPOSED ?
-               handle.GetCudnn(idx) : handle.GetCudnn(),
-               bottom_desc.Get(),
-               conv_desc.GetFilter(),
-               conv_desc.GetConv(),
-               top_desc.Get(),
-               fwd_algo_,
-               workspace_size));
-  }
+      template <typename T>
+      class PoolingDesc : public Descriptor {
+      private:
+#ifdef NVIDIA_CUDNN
+        cudnnPoolingDescriptor_t pooling_desc_;
+#endif
+#ifdef AMD_MIOPEN
+        miopenPoolingDescriptor_t pooling_desc_;
+#endif
+      public:
+        PoolingDesc()
+          : Descriptor() {
+#ifdef NVIDIA_CUDNN
+          CUDNN_CALL(cudnnCreatePoolingDescriptor(&pooling_desc_));
+#endif
+#ifdef AMD_MIOPEN
+          MIOPEN_CALL(miopenCreatePoolingDescriptor(&pooling_desc_));
+#endif
+        }
 
-  std::string GetBwdFilterAlgoParameter() {
-    return bwd_filter_algo_par;
-  }
+        ~PoolingDesc() {
+#ifdef NVIDIA_CUDNN
+          CUDNN_CALL(cudnnDestroyPoolingDescriptor(pooling_desc_));
+#endif
+#ifdef AMD_MIOPEN
+          MIOPEN_CALL(miopenDestroyPoolingDescriptor(pooling_desc_));
+#endif
+        }
+
+        void Set(const PoolingParam &param) {
+          if (!set_) {
+#ifdef NVIDIA_CUDNN
+            CUDNN_CALL(cudnnSetPooling2dDescriptor(pooling_desc_,
+                                                   param.mode_, CUDNN_PROPAGATE_NAN,
+                                                   param.kernel_size_h_, param.kernel_size_w_,
+                                                   param.pad_h_, param.pad_w_,
+                                                   param.stride_h_, param.stride_w_));
+#endif
+#ifdef AMD_MIOPEN
+            MIOPEN_CALL(miopenSet2dPoolingDescriptor(pooling_desc_,
+                        param.mode_,
+                        param.kernel_size_h_, param.kernel_size_w_,
+                        param.pad_h_, param.pad_w_,
+                        param.stride_h_, param.stride_w_));
+#endif
+          }
+
+          set_ = true;
+        }
+
+#ifdef NVIDIA_CUDNN
+        cudnnPoolingDescriptor_t Get() const {
+#endif
+#ifdef AMD_MIOPEN
+          miopenPoolingDescriptor_t Get() const {
+#endif
+            if (set_)
+              return pooling_desc_;
+            return nullptr;
+          }
+
+          void GetWorkspaceSize(const DataTensor<T> &y_desc,
+                                size_t *workspace_size) {
+#ifdef AMD_MIOPEN
+            if (set_)
+              MIOPEN_CALL(miopenPoolingGetWorkSpaceSize(y_desc.Get(), workspace_size));
+            else
+              LOG(FATAL) << "Pooling descriptor NOT set";
+#endif
+          }
+        };
+
+        template <typename T>
+        class LRNDesc : public Descriptor {
+        private:
+#ifdef NVIDIA_CUDNN
+          cudnnLRNDescriptor_t lrn_desc_;
+#endif
+#ifdef AMD_MIOPEN
+          miopenLRNDescriptor_t lrn_desc_;
+#endif
+        public:
+          LRNDesc()
+            : Descriptor() {
+#ifdef NVIDIA_CUDNN
+            CUDNN_CALL(cudnnCreateLRNDescriptor(&lrn_desc_));
+#endif
+#ifdef AMD_MIOPEN
+            MIOPEN_CALL(miopenCreateLRNDescriptor(&lrn_desc_));
+#endif
+          }
+
+          ~LRNDesc() {
+#ifdef NVIDIA_CUDNN
+            CUDNN_CALL(cudnnDestroyLRNDescriptor(lrn_desc_));
+#endif
+#ifdef AMD_MIOPEN
+            MIOPEN_CALL(miopenDestroyLRNDescriptor(lrn_desc_));
+#endif
+          }
+
+          void Set(const LRNParam &param) {
+            if (!set_) {
+#ifdef NVIDIA_CUDNN
+              CUDNN_CALL(cudnnSetLRNDescriptor(lrn_desc_,
+                                               param.local_size_,
+                                               param.alpha_, param.beta_,
+                                               param.k_));
+#endif
+#ifdef AMD_MIOPEN
+              MIOPEN_CALL(miopenSetLRNDescriptor(lrn_desc_,
+                                                 param.mode_,
+                                                 param.local_size_,
+                                                 param.alpha_, param.beta_,
+                                                 param.k_));
+#endif
+            }
+
+            set_ = true;
+          }
+
+#ifdef NVIDIA_CUDNN
+          cudnnLRNDescriptor_t Get() const {
+#endif
+#ifdef AMD_MIOPEN
+            miopenLRNDescriptor_t Get() const {
+#endif
+              if (set_)
+                return lrn_desc_;
+              return nullptr;
+            }
+
+            void GetWorkspaceSize(const DataTensor<T> &y_desc,
+                                  size_t *workspace_size) {
+#ifdef AMD_MIOPEN
+              if (set_)
+                MIOPEN_CALL(miopenLRNGetWorkSpaceSize(y_desc.Get(), workspace_size));
+              else
+                LOG(FATAL) << "LRN descriptor NOT set";
+#endif
+            }
+
+          };
+
+          template <typename T>
+          class ActivationDesc : public Descriptor {
+          private:
+#ifdef NVIDIA_CUDNN
+            cudnnActivationDescriptor_t activation_desc_;
+#endif
+#ifdef AMD_MIOPEN
+            miopenActivationDescriptor_t activation_desc_;
+#endif
+          public:
+            ActivationDesc()
+              : Descriptor() {
+#ifdef NVIDIA_CUDNN
+              CUDNN_CALL(cudnnCreateActivationDescriptor(&activation_desc_));
+#endif
+#ifdef AMD_MIOPEN
+              MIOPEN_CALL(miopenCreateActivationDescriptor(&activation_desc_));
+#endif
+            }
+
+            ~ActivationDesc() {
+#ifdef NVIDIA_CUDNN
+              CUDNN_CALL(cudnnDestroyActivationDescriptor(activation_desc_));
+#endif
+#ifdef AMD_MIOPEN
+              MIOPEN_CALL(miopenDestroyActivationDescriptor(activation_desc_));
+#endif
+            }
+
+            void Set(const ActivationParam &param) {
+              if (!set_) {
+#ifdef NVIDIA_CUDNN
+                CUDNN_CALL(cudnnSetActivationDescriptor(activation_desc_,
+                                                        param.mode_,
+                                                        CUDNN_PROPAGATE_NAN,
+                                                        double(0.0)));
+#endif
+#ifdef AMD_MIOPEN
+                MIOPEN_CALL(miopenSetActivationDescriptor(activation_desc_,
+                            param.mode_,
+                            param.alpha_,
+                            param.beta_,
+                            param.power_));
+#endif
+              }
+
+              set_ = true;
+            }
+
+#ifdef NVIDIA_CUDNN
+            cudnnActivationDescriptor_t Get() const {
+#endif
+#ifdef AMD_MIOPEN
+              miopenActivationDescriptor_t Get() const {
+#endif
+                if (set_)
+                  return activation_desc_;
+                return nullptr;
+              }
+
+            };
+
+            template <typename T>
+            class BypassDesc : public Descriptor {
+            private:
+#ifdef NVIDIA_CUDNN
+              DataDim dim_;
+#endif
+#ifdef AMD_MIOPEN
+              miopenActivationDescriptor_t activation_desc_;
+#endif
+            public:
+              BypassDesc()
+                : Descriptor() {
+#ifdef AMD_MIOPEN
+                MIOPEN_CALL(miopenCreateActivationDescriptor(&activation_desc_));
+#endif
+              }
+
+              ~BypassDesc() {
+#ifdef AMD_MIOPEN
+                MIOPEN_CALL(miopenDestroyActivationDescriptor(activation_desc_));
+#endif
+              }
+
+              void Set(DataDim dim) {
+                if (!set_) {
+#ifdef NVIDIA_CUDNN
+                  dim_.n_ = dim.n_;
+                  dim_.c_ = dim.c_;
+                  dim_.h_ = dim.h_;
+                  dim_.w_ = dim.w_;
+#endif
+#ifdef AMD_MIOPEN
+                  MIOPEN_CALL(miopenSetActivationDescriptor(activation_desc_,
+                              miopenActivationPASTHRU,
+                              0, 0, 0));
+#endif
+                }
+
+                set_ = true;
+              }
+
+#ifdef NVIDIA_CUDNN
+              DataDim Get() const {
+                return dim_;
+              }
+#endif
+#ifdef AMD_MIOPEN
+              miopenActivationDescriptor_t Get() const {
+                if (set_)
+                  return activation_desc_;
+                return nullptr;
+              }
+#endif
+            };
+
+            template <typename T>
+            class DropoutDesc : public Descriptor {
+            private:
+#ifdef NVIDIA_CUDNN
+              cudnnDropoutDescriptor_t dropout_desc_;
+#endif
+#ifdef AMD_MIOPEN
+#endif
+            public:
+              DropoutDesc()
+                : Descriptor() {
+#ifdef NVIDIA_CUDNN
+                CUDNN_CALL(cudnnCreateDropoutDescriptor(&dropout_desc_));
+#endif
+#ifdef AMD_MIOPEN
+#endif
+              }
+
+              ~DropoutDesc() {
+#ifdef NVIDIA_CUDNN
+                CUDNN_CALL(cudnnDestroyDropoutDescriptor(dropout_desc_));
+#endif
+#ifdef AMD_MIOPEN
+#endif
+              }
+
+              void SetStatesSize(const Handle &handle, RunMode mode, int idx,
+                                 size_t *state_size) {
+#ifdef NVIDIA_CUDNN
+                CUDNN_CALL(cudnnDropoutGetStatesSize(mode ?
+                                                     handle.GetCudnn(idx) :
+                                                     handle.GetCudnn(),
+                                                     state_size));
+#endif
+#ifdef AMD_MIOPEN
+#endif
+              }
+
+              void SetReserveSpaceSize(DataTensor<T> &bottom_desc,
+                                       size_t *reserve_space_size) {
+#ifdef NVIDIA_CUDNN
+                CUDNN_CALL(cudnnDropoutGetReserveSpaceSize(bottom_desc.Get(),
+                           reserve_space_size));
+#endif
+#ifdef AMD_MIOPEN
+#endif
+              }
+
+              void Set(const Handle &handle, RunMode mode, int idx,
+                       const DropoutParam &dropout_param,
+                       void *states, size_t state_size) {
+                if (!set_) {
+#ifdef NVIDIA_CUDNN
+                  if (state_size > 0)
+                    CUDNN_CALL(cudnnSetDropoutDescriptor(dropout_desc_,
+                                                         mode == COMPOSED ?
+                                                         handle.GetCudnn(idx) :
+                                                         handle.GetCudnn(),
+                                                         dropout_param.dropout_p_,
+                                                         states,
+                                                         state_size,
+                                                         dropout_param.random_seed_));
+                  else
+                    LOG(FATAL) << "The size is ZERO";
+#endif
+#ifdef AMD_MIOPEN
+#endif
+                }
+
+                set_ = true;
+              }
+
+#ifdef NVIDIA_CUDNN
+              cudnnDropoutDescriptor_t Get() const {
+                return dropout_desc_;
+              }
+#endif
+#ifdef AMD_MIOPEN
+#endif
+            };
+
+            template <typename T>
+            class ConvAlgo {
+#ifdef NVIDIA_CUDNN
+            private:
+              cudnnConvolutionFwdAlgo_t fwd_algo_;
+              cudnnConvolutionBwdFilterAlgo_t bwd_filter_algo_;
+              cudnnConvolutionBwdDataAlgo_t bwd_data_algo_;
+              std::string bwd_filter_algo_par;
+
+            public:
+              ConvAlgo()
+                : fwd_algo_(CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD),
+                  bwd_filter_algo_(CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0),
+                  bwd_data_algo_(CUDNN_CONVOLUTION_BWD_DATA_ALGO_0),
+                  bwd_filter_algo_par("") {}
 
 
-  cudnnConvolutionBwdFilterAlgo_t GetBwdFilterAlgo() const {
-    return bwd_filter_algo_;
-  }
-  void GetBwdFilterWorkspaceSize(const Handle &handle, RunMode mode, int idx,
+              cudnnConvolutionBwdDataAlgo_t getDataAlgo() {
+                return (bwd_data_algo_);
+              }
+
+
+              void SetFwdAlgo(std::string algo) {
+                LOG(INFO) << "Setting FWD algo to " << algo << ".\n";
+                if (!algo.compare("fft")) {
+                  fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_FFT;
+                } else if (!algo.compare("winograd")) {
+                  fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD;
+                } else if (algo != "") {
+                  if (algo == "0") {
+                    fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+                  } else if (algo == "1") {
+                    fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+                  } else if (algo == "2") {
+                    fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_GEMM;
+                  } else if (algo == "3") {
+                    fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_DIRECT;
+                  } else if (algo == "4") {
+                    fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_FFT;
+                  } else if (algo == "5") {
+                    fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING;
+                  } else if (algo == "6") {
+                    fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD;
+                  } else if (algo == "7") {
+                    fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED;
+                  } else {
+                    std::cerr << "Fwd Convolution Algorithm not recognized:" << algo << "\n";
+
+                    std::cout << "FWD algo list:\n";
+                    std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM=" << CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM << "\n";
+                    std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM=" << CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM << "\n";
+                    std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_GEMM=" << CUDNN_CONVOLUTION_FWD_ALGO_GEMM << "\n";
+                    std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_DIRECT=" << CUDNN_CONVOLUTION_FWD_ALGO_DIRECT << "\n";
+                    std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_FFT=" << CUDNN_CONVOLUTION_FWD_ALGO_FFT << ",fft\n";
+                    std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING=" << CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING << "\n";
+                    std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD=" << CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD << ",winograd\n";
+                    std::cout << " CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED=" << CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED << "\n";
+                  }
+                }
+              }
+              void SetFwdAlgo(cudnnConvolutionFwdAlgo_t fwd_algo) {
+                fwd_algo_ = fwd_algo;
+              }
+
+
+              void GetFwdAlgo_v7(const Handle &handle, RunMode mode, int idx,
                                  const DataTensor<T> &bottom_desc,
-                                 const DataTensor<T> &top_desc,
                                  const ConvolutionDesc<T> &conv_desc,
-                                 size_t *workspace_size) {
-    CUDNN_CALL(cudnnGetConvolutionBackwardFilterWorkspaceSize(
-               mode == COMPOSED ?
-               handle.GetCudnn(idx) : handle.GetCudnn(),
-               bottom_desc.Get(),
-               top_desc.Get(),
-               conv_desc.GetConv(),
-               conv_desc.GetFilter(),
-               bwd_filter_algo_,
-               workspace_size));
-  }
-  cudnnConvolutionBwdDataAlgo_t GetBwdDataAlgo() const {
-    return bwd_data_algo_;
-  }
-  void GetBwdDataWorkspaceSize(const Handle &handle, RunMode mode, int idx,
+                                 const DataTensor<T> &top_desc) {
+                const int max_algos = 3;
+                cudnnConvolutionFwdAlgoPerf_t perf_results[max_algos];
+                int returned_algo_count;
+                LOG(INFO) << "Calling cudnnGetConvolutionForwardAlgorithm_v7().\n";
+                CUDNN_CALL(cudnnGetConvolutionForwardAlgorithm_v7(
+                             mode == COMPOSED ?
+                             handle.GetCudnn(idx) : handle.GetCudnn(),
+                             bottom_desc.Get(),
+                             conv_desc.GetFilter(),
+                             conv_desc.GetConv(),
+                             top_desc.Get(),
+                             max_algos, &returned_algo_count,
+                             perf_results));
+                if (returned_algo_count > 0) {
+                  fwd_algo_ = perf_results->algo;
+                } else {
+                  fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+                }
+              }
+
+
+              void FindFwdAlgo(const Handle &handle, RunMode mode, int idx,
                                const DataTensor<T> &bottom_desc,
-                               const DataTensor<T> &top_desc,
                                const ConvolutionDesc<T> &conv_desc,
-                               size_t *workspace_size) {
-    CUDNN_CALL(cudnnGetConvolutionBackwardDataWorkspaceSize(
-               mode == COMPOSED ?
-               handle.GetCudnn(idx) : handle.GetCudnn(),
-               conv_desc.GetFilter(),
-               top_desc.Get(),
-               conv_desc.GetConv(),
-               bottom_desc.Get(),
-               bwd_data_algo_,
-               workspace_size));
-  }
+                               const DataTensor<T> &top_desc) {
+                const int max_algos = 3;
+                cudnnConvolutionFwdAlgoPerf_t perf_results[max_algos];
+                int returned_algo_count;
+                LOG(INFO) << "Calling cudnnFindConvolutionForwardAlgorithm().\n";
+                CUDNN_CALL(cudnnFindConvolutionForwardAlgorithm(
+                             mode == COMPOSED ?
+                             handle.GetCudnn(idx) : handle.GetCudnn(),
+                             bottom_desc.Get(),
+                             conv_desc.GetFilter(),
+                             conv_desc.GetConv(),
+                             top_desc.Get(),
+                             max_algos, &returned_algo_count,
+                             perf_results));
+                if (returned_algo_count > 0) {
+                  fwd_algo_ = perf_results->algo;
+                } else {
+                  fwd_algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+                }
+              }
 
-  // Dictionary for storing best bwd convolution algorithms
-  std::map<std::string, int> Algo4DataShape;
 
-  void checkAlgo4DataShape(const cudnnTensorDescriptor_t x,
-                                            const cudnnTensorDescriptor_t dy,
-                                            const cudnnFilterDescriptor_t dw)
-                                             // size_t workspace_in_bytes)
-  {
+              void SetBwdFilterAlgo(cudnnConvolutionBwdFilterAlgo_t bwd_filter_algo) {
+                bwd_filter_algo_ = bwd_filter_algo;
+              }
+              void SetBwdFilterAlgo(std::string algo) {
+                if (algo.empty()) {
+                  return;
+                }
+                if (!algo.compare("fft")) {
+                  bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT;
+                } else if (!algo.compare("winograd")) {
+                  bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD;
+                } else if (algo == "0") {
+                  bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
+                } else if (algo == "1") {
+                  bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
+                } else if (algo == "2") {
+                  bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT;
+                } else if (algo == "3") {
+                  bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3;
+                } else if (algo == "4") {
+                  bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD;
+                } else if (algo == "5") {
+                  bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED;
+                } else if (algo == "6") {
+                  bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING;
+                } else if (algo != "") {
+                  std::cerr << "BWD Convolution Filter Algorithm not recognized: " << algo << "\n";
+                  std::cout << "BWD Filter algo list:\n";
+                  std::cout << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 << "\n"
+                            << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 << "\n"
+                            << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT << ",fft\n"
+                            << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 << "\n"
+                            << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD << ",winograd\n"
+                            << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED << "\n"
+                            << " CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING=" << CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING << "\n";
+                }
+              }
 
-    int n,c,h, w, k, nStride, cStride, hStride, wStride;
-    cudnnDataType_t datat;
-    cudnnTensorFormat_t format;
-    std::cout << "Call to checkAlgo4DataShape \n";
-    CUDNN_CALL(cudnnGetTensor4dDescriptor(x,
-                                          &datat,
-                                          &n, &c, &h, &w,
-                                          &nStride, &cStride, &hStride, &wStride));
-    std::cout << "x shape: " << n <<" "<< c << " " << h << "x" << w << "\n";
-    CUDNN_CALL(cudnnGetTensor4dDescriptor(dy,
-                                          &datat,
-                                          &n, &c, &h, &w,
-                                          &nStride, &cStride, &hStride, &wStride));
-    std::cout << "dy shape: " << n <<" "<< c << " " << h << "x" << w << "\n";
-    CUDNN_CALL(cudnnGetFilter4dDescriptor(dw,
-                                          &datat, &format,
-                                          &k, &c, &h, &w));
-    std::cout << "dw shape: " << k <<" "<< c << " " << h << "x" << w << "\n";
-    // std::string hash = std::to_string(x)+"/"+std::to_string(*dy)+"/"+std::to_string(*dw)+"/"+std::to_string(workspace_in_bytes);
-    // std::cout << "datashape hash:" << hash << "x:" << x << "dy:" << y << "w:" << w  "\n";
-  }
+
+              void GetdBwdFilterAlgo_v7(const Handle &handle, RunMode mode, int idx,
+                                        const DataTensor<T> &bottom_desc,
+                                        const ConvolutionDesc<T> &conv_desc,
+                                        const DataTensor<T> &top_desc) {
+                int max_algos = 3;
+                cudnnConvolutionBwdFilterAlgoPerf_t perf_results[max_algos];
+                int returned_algo_count;
+                LOG(INFO) << "Calling cudnnGetConvolutionBackwardFilterAlgorithm_v7().\n";
+                CUDNN_CALL(cudnnGetConvolutionBackwardFilterAlgorithm_v7(
+                             mode == COMPOSED ?
+                             handle.GetCudnn(idx) : handle.GetCudnn(),
+                             bottom_desc.Get(),
+                             top_desc.Get(),
+                             conv_desc.GetConv(),
+                             conv_desc.GetFilter(),
+                             max_algos, &returned_algo_count,
+                             perf_results));
+                cudnnConvolutionBwdFilterAlgo_t algo = static_cast<cudnnConvolutionBwdFilterAlgo_t>(perf_results->algo);
+                if (returned_algo_count > 0) {
+                  bwd_filter_algo_ = perf_results->algo;
+                } else {
+                  bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
+                }
+              }
+
+
+              void FindBwdFilterAlgo(const Handle &handle, RunMode mode, int idx,
+                                     const DataTensor<T> &bottom_desc,
+                                     const ConvolutionDesc<T> &conv_desc,
+                                     const DataTensor<T> &top_desc) {
+                int max_algos = 4;
+                cudnnConvolutionBwdFilterAlgoPerf_t perf_results[max_algos];
+                int returned_algo_count;
+                // Set the math type to allow cuDNN to use Tensor Cores:
+                CUDNN_CALL(cudnnSetConvolutionMathType(conv_desc.GetConv(), CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION) );
+                CUDNN_CALL(cudnnFindConvolutionBackwardFilterAlgorithm(
+                             mode == COMPOSED ?
+                             handle.GetCudnn(idx) : handle.GetCudnn(),
+                             bottom_desc.Get(),
+                             top_desc.Get(),
+                             conv_desc.GetConv(),
+                             conv_desc.GetFilter(),
+                             max_algos, &returned_algo_count,
+                             perf_results));
+                cudnnConvolutionBwdFilterAlgo_t algo = static_cast<cudnnConvolutionBwdFilterAlgo_t>(perf_results->algo);
+                if (returned_algo_count > 0) {
+                  bwd_filter_algo_ = perf_results->algo;
+                  LOG(INFO) << "Algo count " << returned_algo_count << ". Fastest algos:"; // << perf_results->algo;
+                  for (int ii = 0; ii < returned_algo_count; ii++) {
+                    LOG(INFO) << "Algo " << perf_results[ii].algo << " : " << perf_results[ii].time << "ms : " << perf_results[ii].memory << "B : " << perf_results[ii].mathType;
+                  }
+                } else {
+                  bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
+                }
+              }
+
+              void FindBwdFilterAlgoEx(const Handle &handle, RunMode mode, int idx,
+                                       const DataTensor<T> &bottom_desc,
+                                       const ConvolutionDesc<T> &conv_desc,
+                                       const DataTensor<T> &top_desc,
+                                       const void *x,
+                                       const void *dy,
+                                       void       *dw,
+                                       void       *workSpace,
+                                       size_t     workspace_size)
+              {
+                LOG(INFO) << "In FindBwdFilterAlgoEx.";
+                LOG(INFO) << "Calling cudnnFindConvolutionBackwardFilterAlgorithmEx().\n";
+                int max_algos = 4;
+                cudnnConvolutionBwdFilterAlgoPerf_t perf_results[max_algos];
+                int returned_algo_count;
+
+                // Set the math type to allow cuDNN to use Tensor Cores:
+                // CUDNN_CALL(cudnnSetConvolutionMathType(conv_desc.GetConv(), CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION) );
+                // Set the math type to allow cuDNN to use Tensor Cores:
+                CUDNN_CALL( cudnnSetConvolutionMathType(conv_desc.GetConv(), CUDNN_TENSOR_OP_MATH) );
+                CUDNN_CALL(cudnnFindConvolutionBackwardFilterAlgorithmEx(
+                             mode == COMPOSED ?
+                             handle.GetCudnn(idx) : handle.GetCudnn(),
+                             bottom_desc.Get(), x,
+                             top_desc.Get(), dy,
+                             conv_desc.GetConv(),
+                             conv_desc.GetFilter(), dw,
+                             max_algos, &returned_algo_count,
+                             perf_results,
+                             workSpace, workspace_size));
+
+                if (returned_algo_count > 0) {
+                  bwd_filter_algo_ = perf_results[0].algo;
+                  LOG(INFO) << "Algo count " << returned_algo_count << ". Fastest algos:"; // << perf_results->algo;
+                  for (int ii = 0; ii < returned_algo_count; ii++) {
+                    LOG(INFO) << "Algo " << perf_results[ii].algo << " : " << perf_results[ii].time << "ms : " << perf_results[ii].memory << "B : " << perf_results[ii].mathType;
+                  }
+                } else {
+                  bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
+                  LOG(INFO) << "No algo returned. Using Algo 0.";
+                }
+              }
+
+              void SetBwdDataAlgo(cudnnConvolutionBwdDataAlgo_t bwd_data_algo) {
+                bwd_data_algo_ = bwd_data_algo;
+              }
+              void SetBwdDataAlgo(std::string algo) {
+                if (algo.empty()) {
+                  return;
+                }
+                if (!algo.compare("fft")) {
+                  bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT;
+                } else if (!algo.compare("winograd")) {
+                  bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD;
+                } else if (algo == "0") {
+                  bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+                } else if (algo == "1") {
+                  bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
+                } else if (algo == "2") {
+                  bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT;
+                } else if (algo == "3") {
+                  bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING;
+                } else if (algo == "4") {
+                  bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD;
+                } else if (algo == "5") {
+                  bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED;
+                } else if (!algo.compare("winograd_nonfused")) {
+                  bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED;
+                } else if (!algo.compare("fft_tiling")) {
+                  bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING;
+                }
+              }
+
+
+              void GetBwdDataAlgo_v7(const Handle &handle, RunMode mode, int idx,
+                                     const DataTensor<T> &bottom_desc,
+                                     const ConvolutionDesc<T> &conv_desc,
+                                     const DataTensor<T> &top_desc) {
+                int max_algos = 3;
+                cudnnConvolutionBwdDataAlgoPerf_t perf_results[max_algos];
+                int returned_algo_count;
+                LOG(INFO) << "Calling cudnnGetConvolutionBackwardDataAlgorithm_v7().\n";
+                CUDNN_CALL(cudnnGetConvolutionBackwardDataAlgorithm_v7(
+                             mode == COMPOSED ?
+                             handle.GetCudnn(idx) : handle.GetCudnn(),
+                             conv_desc.GetFilter(),
+                             top_desc.Get(),
+                             conv_desc.GetConv(),
+                             bottom_desc.Get(),
+                             1, &returned_algo_count,
+                             perf_results));
+                if (returned_algo_count > 0) {
+                  bwd_data_algo_ = perf_results->algo;
+                } else {
+                  bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+                }
+              }
+
+
+              void FindBwdDataAlgo(const Handle &handle, RunMode mode, int idx,
+                                   const DataTensor<T> &bottom_desc,
+                                   const ConvolutionDesc<T> &conv_desc,
+                                   const DataTensor<T> &top_desc) {
+                int max_algos = 3;
+                cudnnConvolutionBwdDataAlgoPerf_t perf_results[max_algos];
+                int returned_algo_count;
+                CUDNN_CALL(cudnnFindConvolutionBackwardDataAlgorithm(
+                             mode == COMPOSED ?
+                             handle.GetCudnn(idx) : handle.GetCudnn(),
+                             conv_desc.GetFilter(),
+                             top_desc.Get(),
+                             conv_desc.GetConv(),
+                             bottom_desc.Get(),
+                             1, &returned_algo_count,
+                             perf_results));
+                if (returned_algo_count > 0) {
+                  bwd_data_algo_ = perf_results->algo;
+                } else {
+                  bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+                }
+              }
+
+              cudnnConvolutionFwdAlgo_t GetFwdAlgo() const {
+                return fwd_algo_;
+              }
+              void GetFwdWorkspaceSize(const Handle &handle, RunMode mode, int idx,
+                                       const DataTensor<T> &bottom_desc,
+                                       const DataTensor<T> &top_desc,
+                                       const ConvolutionDesc<T> &conv_desc,
+                                       size_t *workspace_size) {
+                CUDNN_CALL(cudnnGetConvolutionForwardWorkspaceSize(
+                             mode == COMPOSED ?
+                             handle.GetCudnn(idx) : handle.GetCudnn(),
+                             bottom_desc.Get(),
+                             conv_desc.GetFilter(),
+                             conv_desc.GetConv(),
+                             top_desc.Get(),
+                             fwd_algo_,
+                             workspace_size));
+              }
+
+              std::string GetBwdFilterAlgoParameter() {
+                return bwd_filter_algo_par;
+              }
+
+
+              cudnnConvolutionBwdFilterAlgo_t GetBwdFilterAlgo() const {
+                return bwd_filter_algo_;
+              }
+              void GetBwdFilterWorkspaceSize(const Handle &handle, RunMode mode, int idx,
+                                             const DataTensor<T> &bottom_desc,
+                                             const DataTensor<T> &top_desc,
+                                             const ConvolutionDesc<T> &conv_desc,
+                                             size_t *workspace_size) {
+                CUDNN_CALL(cudnnGetConvolutionBackwardFilterWorkspaceSize(
+                             mode == COMPOSED ?
+                             handle.GetCudnn(idx) : handle.GetCudnn(),
+                             bottom_desc.Get(),
+                             top_desc.Get(),
+                             conv_desc.GetConv(),
+                             conv_desc.GetFilter(),
+                             bwd_filter_algo_,
+                             workspace_size));
+              }
+              cudnnConvolutionBwdDataAlgo_t GetBwdDataAlgo() const {
+                return bwd_data_algo_;
+              }
+              void GetBwdDataWorkspaceSize(const Handle &handle, RunMode mode, int idx,
+                                           const DataTensor<T> &bottom_desc,
+                                           const DataTensor<T> &top_desc,
+                                           const ConvolutionDesc<T> &conv_desc,
+                                           size_t *workspace_size) {
+                CUDNN_CALL(cudnnGetConvolutionBackwardDataWorkspaceSize(
+                             mode == COMPOSED ?
+                             handle.GetCudnn(idx) : handle.GetCudnn(),
+                             conv_desc.GetFilter(),
+                             top_desc.Get(),
+                             conv_desc.GetConv(),
+                             bottom_desc.Get(),
+                             bwd_data_algo_,
+                             workspace_size));
+              }
+
+              // Dictionary for storing best bwd convolution algorithms
+              std::map<std::string, int> Algo4DataShape;
+
+              void checkAlgo4DataShape(const cudnnTensorDescriptor_t x,
+                                       const cudnnTensorDescriptor_t dy,
+                                       const cudnnFilterDescriptor_t dw)
+              // size_t workspace_in_bytes)
+              {
+
+                int n, c, h, w, k, nStride, cStride, hStride, wStride;
+                cudnnDataType_t datat;
+                cudnnTensorFormat_t format;
+                std::cout << "Call to checkAlgo4DataShape \n";
+                CUDNN_CALL(cudnnGetTensor4dDescriptor(x,
+                                                      &datat,
+                                                      &n, &c, &h, &w,
+                                                      &nStride, &cStride, &hStride, &wStride));
+                std::cout << "x shape: " << n << " " << c << " " << h << "x" << w << "\n";
+                CUDNN_CALL(cudnnGetTensor4dDescriptor(dy,
+                                                      &datat,
+                                                      &n, &c, &h, &w,
+                                                      &nStride, &cStride, &hStride, &wStride));
+                std::cout << "dy shape: " << n << " " << c << " " << h << "x" << w << "\n";
+                CUDNN_CALL(cudnnGetFilter4dDescriptor(dw,
+                                                      &datat, &format,
+                                                      &k, &c, &h, &w));
+                std::cout << "dw shape: " << k << " " << c << " " << h << "x" << w << "\n";
+                // std::string hash = std::to_string(x)+"/"+std::to_string(*dy)+"/"+std::to_string(*dw)+"/"+std::to_string(workspace_in_bytes);
+                // std::cout << "datashape hash:" << hash << "x:" << x << "dy:" << y << "w:" << w  "\n";
+              }
 
 
 #endif
 #ifdef AMD_MIOPEN
- private:
-  miopenConvFwdAlgorithm_t fwd_algo_;
-  miopenConvBwdWeightsAlgorithm_t bwd_filter_algo_;
-  miopenConvBwdDataAlgorithm_t bwd_data_algo_;
+            private:
+              miopenConvFwdAlgorithm_t fwd_algo_;
+              miopenConvBwdWeightsAlgorithm_t bwd_filter_algo_;
+              miopenConvBwdDataAlgorithm_t bwd_data_algo_;
 
- public:
-  ConvAlgo()
-  : fwd_algo_(miopenConvolutionFwdAlgoGEMM),
-    bwd_filter_algo_(miopenConvolutionBwdWeightsAlgoGEMM),
-    bwd_data_algo_(miopenConvolutionBwdDataAlgoGEMM) {}
+            public:
+              ConvAlgo()
+                : fwd_algo_(miopenConvolutionFwdAlgoGEMM),
+                  bwd_filter_algo_(miopenConvolutionBwdWeightsAlgoGEMM),
+                  bwd_data_algo_(miopenConvolutionBwdDataAlgoGEMM) {}
 
-  void SetFwdAlgo(miopenConvFwdAlgorithm_t fwd_algo) {
-    fwd_algo_ = fwd_algo;
-  }
-  void SetFwdAlgo(std::string algo) {
-  }
-  void FindFwdAlgo(const Handle &handle, RunMode mode, int idx,
-                   const DataTensor<T> &bottom_desc,
-                   const ConvolutionDesc<T> &conv_desc,
-                   const DataTensor<T> &top_desc,
-                   const void *x,
-                   const void *w,
-                   void *y,
-                   void *workspace,
-                   size_t workspace_size) {
-    miopenConvAlgoPerf_t perf_results;
-    int returned_algo_count;
-    MIOPEN_CALL(miopenFindConvolutionForwardAlgorithm(
-                mode == COMPOSED ?
-                handle.GetMIOpen(idx) : handle.GetMIOpen(),
-                bottom_desc.Get(), x,
-                conv_desc.GetFilter(), w,
-                conv_desc.GetConv(),
-                top_desc.Get(), y,
-                1, &returned_algo_count,
-                &perf_results, workspace, workspace_size, false));
-    if (returned_algo_count > 0) {
-      fwd_algo_ = perf_results.fwd_algo;
-    } else {
-      fwd_algo_ = miopenConvolutionFwdAlgoGEMM;
-    }
-  }
-  void SetBwdFilterAlgo(miopenConvBwdWeightsAlgorithm_t bwd_filter_algo) {
-    bwd_filter_algo_ = bwd_filter_algo;
-  }
-  void SetBwdFilterAlgo(std::string algo) {
-  }
-  void FindBwdFilterAlgo(const Handle &handle, RunMode mode, int idx,
-                         const DataTensor<T> &bottom_desc,
-                         const ConvolutionDesc<T> &conv_desc,
-                         const DataTensor<T> &top_desc,
-                         const void *x,
-                         const void *dy,
-                         void *dw,
-                         void *workspace,
-                         size_t workspace_size) {
-    miopenConvAlgoPerf_t perf_results;
-    int returned_algo_count;
-    MIOPEN_CALL(miopenFindConvolutionBackwardWeightsAlgorithm(
-                mode == COMPOSED ?
-                handle.GetMIOpen(idx) : handle.GetMIOpen(),
-                top_desc.Get(), dy,
-                bottom_desc.Get(), x,
-                conv_desc.GetConv(),
-                conv_desc.GetFilter(), dw,
-                1, &returned_algo_count,
-                &perf_results, workspace, workspace_size, false));
-    if (returned_algo_count > 0) {
-      bwd_filter_algo_ = perf_results.bwd_weights_algo;
-    } else {
-      bwd_filter_algo_ = miopenConvolutionBwdWeightsAlgoGEMM;
-    }
-  }
-  void SetBwdDataAlgo(miopenConvBwdDataAlgorithm_t bwd_data_algo) {
-    bwd_data_algo_ = bwd_data_algo;
-  }
-  void SetBwdDataAlgo(std::string algo) {
-  }
-  void FindBwdDataAlgo(const Handle &handle, RunMode mode, int idx,
-                       const DataTensor<T> &bottom_desc,
-                       const ConvolutionDesc<T> &conv_desc,
-                       const DataTensor<T> &top_desc,
-                       const void *dy,
-                       const void *w,
-                       void *dx,
-                       void *workspace,
-                       size_t workspace_size) {
-    miopenConvAlgoPerf_t perf_results;
-    int returned_algo_count;
-    MIOPEN_CALL(miopenFindConvolutionBackwardDataAlgorithm(
-                mode == COMPOSED ?
-                handle.GetMIOpen(idx) : handle.GetMIOpen(),
-                top_desc.Get(), dy,
-                conv_desc.GetFilter(), w,
-                conv_desc.GetConv(),
-                bottom_desc.Get(), dx,
-                1, &returned_algo_count,
-                &perf_results, workspace, workspace_size, false));
-    if (returned_algo_count > 0) {
-      bwd_data_algo_ = perf_results.bwd_data_algo;
-    } else {
-      bwd_data_algo_ = miopenConvolutionBwdDataAlgoGEMM;
-    }
-  }
-
-  miopenConvFwdAlgorithm_t GetFwdAlgo() const {
-    return fwd_algo_;
-  }
-  void GetFwdWorkspaceSize(const Handle &handle, RunMode mode, int idx,
-                           const DataTensor<T> &bottom_desc,
-                           const DataTensor<T> &top_desc,
-                           const ConvolutionDesc<T> &conv_desc,
-                           size_t *workspace_size) {
-    MIOPEN_CALL(miopenConvolutionForwardGetWorkSpaceSize(
-                mode == COMPOSED ?
-                handle.GetMIOpen(idx) : handle.GetMIOpen(),
-                conv_desc.GetFilter(),
-                bottom_desc.Get(),
-                conv_desc.GetConv(),
-                top_desc.Get(),
-                workspace_size));
-  }
-  miopenConvBwdWeightsAlgorithm_t GetBwdFilterAlgo() const {
-    return bwd_filter_algo_;
-  }
-  void GetBwdFilterWorkspaceSize(const Handle &handle, RunMode mode, int idx,
-                                 const DataTensor<T> &bottom_desc,
-                                 const DataTensor<T> &top_desc,
-                                 const ConvolutionDesc<T> &conv_desc,
-                                 size_t *workspace_size) {
-    MIOPEN_CALL(miopenConvolutionBackwardWeightsGetWorkSpaceSize(
-                mode == COMPOSED ?
-                handle.GetMIOpen(idx) : handle.GetMIOpen(),
-                top_desc.Get(),
-                bottom_desc.Get(),
-                conv_desc.GetConv(),
-                conv_desc.GetFilter(),
-                workspace_size));
-  }
-  miopenConvBwdDataAlgorithm_t GetBwdDataAlgo() const {
-    return bwd_data_algo_;
-  }
-  void GetBwdDataWorkspaceSize(const Handle &handle, RunMode mode, int idx,
+              void SetFwdAlgo(miopenConvFwdAlgorithm_t fwd_algo) {
+                fwd_algo_ = fwd_algo;
+              }
+              void SetFwdAlgo(std::string algo) {
+              }
+              void FindFwdAlgo(const Handle &handle, RunMode mode, int idx,
                                const DataTensor<T> &bottom_desc,
-                               const DataTensor<T> &top_desc,
                                const ConvolutionDesc<T> &conv_desc,
-                               size_t *workspace_size) {
-    MIOPEN_CALL(miopenConvolutionBackwardDataGetWorkSpaceSize(
-                mode == COMPOSED ?
-                handle.GetMIOpen(idx) : handle.GetMIOpen(),
-                top_desc.Get(),
-                conv_desc.GetFilter(),
-                conv_desc.GetConv(),
-                bottom_desc.Get(),
-                workspace_size));
-  }
+                               const DataTensor<T> &top_desc,
+                               const void *x,
+                               const void *w,
+                               void *y,
+                               void *workspace,
+                               size_t workspace_size) {
+                miopenConvAlgoPerf_t perf_results;
+                int returned_algo_count;
+                MIOPEN_CALL(miopenFindConvolutionForwardAlgorithm(
+                              mode == COMPOSED ?
+                              handle.GetMIOpen(idx) : handle.GetMIOpen(),
+                              bottom_desc.Get(), x,
+                              conv_desc.GetFilter(), w,
+                              conv_desc.GetConv(),
+                              top_desc.Get(), y,
+                              1, &returned_algo_count,
+                              &perf_results, workspace, workspace_size, false));
+                if (returned_algo_count > 0) {
+                  fwd_algo_ = perf_results.fwd_algo;
+                } else {
+                  fwd_algo_ = miopenConvolutionFwdAlgoGEMM;
+                }
+              }
+              void SetBwdFilterAlgo(miopenConvBwdWeightsAlgorithm_t bwd_filter_algo) {
+                bwd_filter_algo_ = bwd_filter_algo;
+              }
+              void SetBwdFilterAlgo(std::string algo) {
+              }
+              void FindBwdFilterAlgo(const Handle &handle, RunMode mode, int idx,
+                                     const DataTensor<T> &bottom_desc,
+                                     const ConvolutionDesc<T> &conv_desc,
+                                     const DataTensor<T> &top_desc,
+                                     const void *x,
+                                     const void *dy,
+                                     void *dw,
+                                     void *workspace,
+                                     size_t workspace_size) {
+                miopenConvAlgoPerf_t perf_results;
+                int returned_algo_count;
+                MIOPEN_CALL(miopenFindConvolutionBackwardWeightsAlgorithm(
+                              mode == COMPOSED ?
+                              handle.GetMIOpen(idx) : handle.GetMIOpen(),
+                              top_desc.Get(), dy,
+                              bottom_desc.Get(), x,
+                              conv_desc.GetConv(),
+                              conv_desc.GetFilter(), dw,
+                              1, &returned_algo_count,
+                              &perf_results, workspace, workspace_size, false));
+                if (returned_algo_count > 0) {
+                  bwd_filter_algo_ = perf_results.bwd_weights_algo;
+                } else {
+                  bwd_filter_algo_ = miopenConvolutionBwdWeightsAlgoGEMM;
+                }
+              }
+              void SetBwdDataAlgo(miopenConvBwdDataAlgorithm_t bwd_data_algo) {
+                bwd_data_algo_ = bwd_data_algo;
+              }
+              void SetBwdDataAlgo(std::string algo) {
+              }
+              void FindBwdDataAlgo(const Handle &handle, RunMode mode, int idx,
+                                   const DataTensor<T> &bottom_desc,
+                                   const ConvolutionDesc<T> &conv_desc,
+                                   const DataTensor<T> &top_desc,
+                                   const void *dy,
+                                   const void *w,
+                                   void *dx,
+                                   void *workspace,
+                                   size_t workspace_size) {
+                miopenConvAlgoPerf_t perf_results;
+                int returned_algo_count;
+                MIOPEN_CALL(miopenFindConvolutionBackwardDataAlgorithm(
+                              mode == COMPOSED ?
+                              handle.GetMIOpen(idx) : handle.GetMIOpen(),
+                              top_desc.Get(), dy,
+                              conv_desc.GetFilter(), w,
+                              conv_desc.GetConv(),
+                              bottom_desc.Get(), dx,
+                              1, &returned_algo_count,
+                              &perf_results, workspace, workspace_size, false));
+                if (returned_algo_count > 0) {
+                  bwd_data_algo_ = perf_results.bwd_data_algo;
+                } else {
+                  bwd_data_algo_ = miopenConvolutionBwdDataAlgoGEMM;
+                }
+              }
+
+              miopenConvFwdAlgorithm_t GetFwdAlgo() const {
+                return fwd_algo_;
+              }
+              void GetFwdWorkspaceSize(const Handle &handle, RunMode mode, int idx,
+                                       const DataTensor<T> &bottom_desc,
+                                       const DataTensor<T> &top_desc,
+                                       const ConvolutionDesc<T> &conv_desc,
+                                       size_t *workspace_size) {
+                MIOPEN_CALL(miopenConvolutionForwardGetWorkSpaceSize(
+                              mode == COMPOSED ?
+                              handle.GetMIOpen(idx) : handle.GetMIOpen(),
+                              conv_desc.GetFilter(),
+                              bottom_desc.Get(),
+                              conv_desc.GetConv(),
+                              top_desc.Get(),
+                              workspace_size));
+              }
+              miopenConvBwdWeightsAlgorithm_t GetBwdFilterAlgo() const {
+                return bwd_filter_algo_;
+              }
+              void GetBwdFilterWorkspaceSize(const Handle &handle, RunMode mode, int idx,
+                                             const DataTensor<T> &bottom_desc,
+                                             const DataTensor<T> &top_desc,
+                                             const ConvolutionDesc<T> &conv_desc,
+                                             size_t *workspace_size) {
+                MIOPEN_CALL(miopenConvolutionBackwardWeightsGetWorkSpaceSize(
+                              mode == COMPOSED ?
+                              handle.GetMIOpen(idx) : handle.GetMIOpen(),
+                              top_desc.Get(),
+                              bottom_desc.Get(),
+                              conv_desc.GetConv(),
+                              conv_desc.GetFilter(),
+                              workspace_size));
+              }
+              miopenConvBwdDataAlgorithm_t GetBwdDataAlgo() const {
+                return bwd_data_algo_;
+              }
+              void GetBwdDataWorkspaceSize(const Handle &handle, RunMode mode, int idx,
+                                           const DataTensor<T> &bottom_desc,
+                                           const DataTensor<T> &top_desc,
+                                           const ConvolutionDesc<T> &conv_desc,
+                                           size_t *workspace_size) {
+                MIOPEN_CALL(miopenConvolutionBackwardDataGetWorkSpaceSize(
+                              mode == COMPOSED ?
+                              handle.GetMIOpen(idx) : handle.GetMIOpen(),
+                              top_desc.Get(),
+                              conv_desc.GetFilter(),
+                              conv_desc.GetConv(),
+                              bottom_desc.Get(),
+                              workspace_size));
+              }
 #endif
-};
+            };
+
 
 // Profiling marker
-inline void ProfilerStart(const Handle &handle, RunMode mode, int idx,
-                          Timer *timer, const std::string &layer) {
+            inline void ProfilerStart(const Handle &handle, RunMode mode, int idx,
+                                      Timer *timer, const std::string &layer) {
 #ifdef NVIDIA_CUDNN
-  cudaProfilerStart();
+              cudaProfilerStart();
 #endif
 #ifdef AMD_MIOPEN
-  miopenEnableProfiling(mode == COMPOSED ?
-                        handle.GetMIOpen(idx) : handle.GetMIOpen(), true);
+              miopenEnableProfiling(mode == COMPOSED ?
+                                    handle.GetMIOpen(idx) : handle.GetMIOpen(), true);
 #endif
-  timer->Start(layer + "_" + std::to_string(idx));
-}
-inline void ProfilerStop(const Handle &handle, RunMode mode, int idx,
-                         Timer *timer, const std::string &layer) {
+              timer->Start(layer + "_" + std::to_string(idx));
+            }
+            inline void ProfilerStop(const Handle &handle, RunMode mode, int idx,
+                                     Timer *timer, const std::string &layer) {
 #ifdef NVIDIA_CUDNN
-  cudaProfilerStop();
-  CUDA_CALL(cudaDeviceSynchronize());
+              cudaProfilerStop();
+              timer->StopCPU(layer + "_" + std::to_string(idx));
+              CUDA_CALL(cudaDeviceSynchronize());
 #endif
 #ifdef AMD_MIOPEN
-  miopenEnableProfiling(mode == COMPOSED ?
-                        handle.GetMIOpen(idx) : handle.GetMIOpen(), false);
-  HIP_CALL(hipDeviceSynchronize());
+              miopenEnableProfiling(mode == COMPOSED ?
+                                    handle.GetMIOpen(idx) : handle.GetMIOpen(), false);
+              HIP_CALL(hipDeviceSynchronize());
 #endif
-  timer->Stop(layer + "_" + std::to_string(idx));
-}
+              timer->Stop(layer + "_" + std::to_string(idx));
+            }
 
-} // namespace dnnmark
+          } // namespace dnnmark
 
 #endif // CORE_INCLUDE_DNN_UTILITY_H_
