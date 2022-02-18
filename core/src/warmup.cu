@@ -166,7 +166,7 @@ void printGPUStateInfo(nvmlDevice_t device, std::string message) {
 
 // Main warmup function
 void warmup(int FLAGS_warmup, int gpu_id, std::string message) {
-  LOG(INFO) << "Warmup function v.1.09." ;
+  LOG(INFO) << "Warmup function v.1.10." ;
   if (FLAGS_warmup == 0) {
     return;
   }
@@ -186,8 +186,8 @@ void warmup(int FLAGS_warmup, int gpu_id, std::string message) {
 int warmupGPU(int gpu_id, bool check_results, bool debug) {
   int elements_per_thread = 2;
   float target_warmup = 97.; //% of max app clock Hz
-  float last_freq = 0.; // Last observed frequency (%)
-  int maxiter = 100;
+  float reached_max = 0.; // Maximum observed frequency (%)
+  int maxiter = 100; // Maximum warmup iterations
   const int decrease_count_start = 10; // allow this many times of Hz not increasing before stopping warmup
   int decrease_count = decrease_count_start;
   nvmlDevice_t nvmldevice;
@@ -232,8 +232,8 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
 
   LOG(INFO) << "Warmup parameters: N=" << N << " elements, " << elements_per_thread 
             << " array elements per thread, "  << thread_blocks << " blocks x "
-            << block_size << " threads per block, elements/thread:"
-            << elements_per_thread << std::endl;
+            << block_size << " threads per block"
+            << std::endl;
 
   int *x, *y, *z, *xd, *yd, *zd;
   x = (int *)malloc(N * sizeof(int));
@@ -283,15 +283,15 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
               << "W, throttle: " << gpu_parameters.throttle
               << std::endl;
     // Compare frequency with previous iteration
-    if (clocks.clock_perf <= last_freq) {
+    if (clocks.clock_perf <= reached_max) {
       decrease_count--;
       if (decrease_count <=0) {
         LOG(INFO) << "SM frequency is not increasing. Stopping warmup." << std::endl;
       }
     } else {
-      decrease_count = decrease_count_start;;
+      decrease_count = decrease_count_start;
+      reached_max = clocks.clock_perf;
     }
-    last_freq = clocks.clock_perf;
     i++;
   }
   
