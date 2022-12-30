@@ -165,14 +165,14 @@ void printGPUStateInfo(nvmlDevice_t device, std::string message) {
 
 
 // Main warmup function
-void warmup(int FLAGS_warmup, int gpu_id, std::string message) {
-  LOG(INFO) << "Warmup function v.1.10." ;
+void warmup(int FLAGS_warmup, int gpu_id,  std::string message) {  
   if (FLAGS_warmup == 0) {
     return;
   }
+  LOG(INFO) << "Warmup function v.2.01" ;
   LOG(INFO) << message;
   auto start = std::chrono::high_resolution_clock::now();
-  int status = warmupGPU(gpu_id);
+  int status = warmupGPU(gpu_id, FLAGS_warmup);
   if (status != 0) {
     fprintf(stderr, "Error status: %d\n", status);
   }
@@ -183,9 +183,9 @@ void warmup(int FLAGS_warmup, int gpu_id, std::string message) {
 
 
 /* Call with device number and matrix size */
-int warmupGPU(int gpu_id, bool check_results, bool debug) {
-  int elements_per_thread = 2;
-  float target_warmup = 97.; //% of max app clock Hz
+// target_freq  -  % of max app clock Hz
+int warmupGPU(int gpu_id, int target_freq, bool check_results, bool debug) {
+  int elements_per_thread = 1;
   float reached_max = 0.; // Maximum observed frequency (%)
   int maxiter = 100; // Maximum warmup iterations
   const int decrease_count_start = 10; // allow this many times of Hz not increasing before stopping warmup
@@ -260,7 +260,7 @@ int warmupGPU(int gpu_id, bool check_results, bool debug) {
   // gpu_parameters = getGPUstate(nvmldevice);
   int i = 1;
   auto start = std::chrono::high_resolution_clock::now();
-  while (clocks.clock_perf < target_warmup and i <= maxiter and decrease_count > 0) {
+  while (clocks.clock_perf < target_freq and i <= maxiter and decrease_count > 0) {
     multiply <<< thread_blocks, block_size>>>(N, xd, yd, zd);
     cudaDeviceSynchronize();
     // Wait for GPU to finish before accessing on host

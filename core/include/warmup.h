@@ -11,10 +11,10 @@ void printGPUStateInfo(nvmlDevice_t device, std::string message);
 float getGPUclock(nvmlDevice_t device);
 
 /* Call with device number and matrix size */
-int warmupGPU(int gpu_id, bool check_results = false, bool debug = false);
+int warmupGPU(int gpu_id, int target_freq = 90, bool check_results = false, bool debug = false);
 
 // Main warmup function
-void warmup(int FLAGS_warmup, int gpu_id, std::string message);
+void warmup(int FLAGS_warmup, int gpu_id, std::string message = "");
 
 // Clock frequencies
 struct clocks_struct {
