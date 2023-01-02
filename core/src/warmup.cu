@@ -169,7 +169,7 @@ void warmup(int FLAGS_warmup, int gpu_id,  std::string message) {
   if (FLAGS_warmup == 0) {
     return;
   }
-  LOG(INFO) << "Warmup function v.2.01" ;
+  LOG(INFO) << "Warmup function v.2.02" ;
   LOG(INFO) << message;
   auto start = std::chrono::high_resolution_clock::now();
   int status = warmupGPU(gpu_id, FLAGS_warmup);
@@ -185,7 +185,7 @@ void warmup(int FLAGS_warmup, int gpu_id,  std::string message) {
 /* Call with device number and matrix size */
 // target_freq  -  % of max app clock Hz
 int warmupGPU(int gpu_id, int target_freq, bool check_results, bool debug) {
-  int elements_per_thread = 1;
+  int elements_per_thread = 2;
   float reached_max = 0.; // Maximum observed frequency (%)
   int maxiter = 100; // Maximum warmup iterations
   const int decrease_count_start = 10; // allow this many times of Hz not increasing before stopping warmup
