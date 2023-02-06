@@ -21,6 +21,9 @@
 // SOFTWARE.
 
 #include "common.h"
+#include <glog/logging.h>
+#include <regex>
+#include <fstream>
 
 namespace dnnmark {
 
@@ -45,3 +48,69 @@ const void* DataType<double>::zero =
 
 } // namespace dnnmark
 
+using namespace std;
+
+char* convert2chararr(string s) {  
+  char* arr = new char[s.length()+1];
+  strcpy(arr, s.c_str());
+  return arr;
+}
+
+vector<int> searchMBSinFile(const std::string &config_file) {
+    // cout << "Reading " << config_file << endl;
+    ifstream file;
+    string line;
+    string patt = "^n=([0-9,])+";
+    regex e(patt);
+    smatch m;
+
+    file.open(config_file);
+    string sx;
+    if (file.good()) {
+      while (getline(file, line)) {
+        if (regex_search(line, m, e)) {
+          for (auto x:m) {
+            sx = x;
+            // cout << "Match in file " << sx << endl;
+            break;
+          }
+        }
+      }
+    }
+    // Drop the right side of n=15,20,30
+    string rpart = sx.substr(sx.find('=')+1, sx.length());
+    // cout << "right part=" << rpart << "." << endl;
+    // Convert to int array arr
+    int n;
+    vector<int> arr;
+    stringstream strs(rpart);
+    while(strs.good()) {
+      string substr;
+      getline(strs, substr, ',');
+      n = stoi(substr);
+      arr.push_back(n);
+      // cout << "n=" << n << endl;
+    }
+    // # Move config_ file to tmp file
+    string tmpfile = "conv_tmp.tmp";
+    string command_s = "mv " + config_file + " " + tmpfile;
+    LOG(INFO) << command_s;
+    const char* command = convert2chararr(command_s);
+    system(command);
+    return arr;
+}
+
+string readAllFile(ifstream& is) {
+  string contents;
+  for (char c; is.get(c); contents.push_back(c)) {}
+  return contents;
+}
+
+void findReplaceInFile(const string filename, int mbs) {
+  string tmpfile = "conv_tmp.tmp";
+  string command_s = "sed 's/n=[0-9,]*/n=" + to_string(mbs) + "/g' " 
+  + tmpfile + " > " + filename;
+  const char* command = convert2chararr(command_s);
+  LOG(INFO) << "Execute: " << command;
+  system(command);
+}

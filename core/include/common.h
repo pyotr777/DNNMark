@@ -24,6 +24,10 @@
 #define CORE_INCLUDE_COMMON_H_
 
 #include <iostream>
+#include <vector>
+#include <regex>
+#include <fstream>
+
 
 #ifdef NVIDIA_CUDNN
 #include <cuda.h>
@@ -189,4 +193,10 @@ enum LayerType {
 } // namespace dnnmark
 
 #endif // CORE_INCLUDE_COMMON_H_
+
+
+char* convert2chararr(std::string);
+std::vector<int> searchMBSinFile(const std::string&);
+std::string readAllFile(std::ifstream&);
+void findReplaceInFile(const std::string, int);
 
