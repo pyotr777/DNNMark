@@ -128,6 +128,7 @@ public:
 
   // Reset all the recorded value to 0
   void Clear() {
+    LOG(INFO) << "Clearing...";
     layer_table_.clear();
     timing_table_.clear();
     cpu_times.clear();

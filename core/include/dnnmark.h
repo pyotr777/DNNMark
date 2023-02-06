@@ -108,6 +108,7 @@ public:
   int TearDown() {
     DataManager<T>::GetInstance()->DataManager<T>::~DataManager();
     layers_map_.clear();
+    num_layers_added_ = 0;
     return 0;
   };
 

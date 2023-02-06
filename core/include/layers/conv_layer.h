@@ -204,7 +204,7 @@ class ConvolutionLayer : public Layer<T> {
   void SetWorkspace(Direction direction) {
     // Direction: 0 - forward, 1 - backward, 2 - forward and backward
     int dir = static_cast<int>(direction);
-    LOG(INFO) << "Setup workspace of convolutional layer with direction " << direction;
+    LOG(INFO) << "Setup workspace of convolutional layer #"<<  layer_id_ <<" with direction " << direction;
     #ifdef NVIDIA_CUDNN
       // Forward pass
       if (dir != 1) {
