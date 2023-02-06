@@ -75,12 +75,14 @@ void DNNMark<T>::SetLayerParams(LayerType layer_type,
   switch(layer_type) {
     case CONVOLUTION: {
       // Obtain the data dimension and parameters variable
-      // within specified layer
+      // within specified layer      
       input_dim = std::dynamic_pointer_cast<ConvolutionLayer<T>>
                   (layers_map_[current_layer_id])->getInputDim();
       conv_param = std::dynamic_pointer_cast<ConvolutionLayer<T>>
                    (layers_map_[current_layer_id])->getConvParam();
-
+      if (var=="n") {
+            LOG(INFO) << "Creating convolutional layer " << current_layer_id 
+              << " with MBS " << var << "=" << val;}
       if(isKeywordExist(var, data_config_keywords))
         break;
 
