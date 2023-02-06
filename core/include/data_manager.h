@@ -37,6 +37,7 @@ class Data {
  private:
   PseudoNumGenerator *png_;
   size_t size_, total, free;
+  float freeGB, totalGB;
   T *gpu_ptr_;
   bool filled=false;
  public:
@@ -47,7 +48,9 @@ class Data {
 #ifdef NVIDIA_CUDNN
     // Check available memory
     CUDA_CALL(cudaMemGetInfo(&free, &total));
-    LOG(INFO) << "Memory status: " << free << "/" << total;
+    freeGB = (float)free / 1000 / 1000 / 1000;
+    totalGB = (float)total / 1000 / 1000 / 1000;
+    LOG(INFO) << "Memory status: " << freeGB << "GB/" << totalGB << "GB ";
     CUDA_CALL(cudaMalloc(&gpu_ptr_, size * sizeof(T)));
 #endif
 #ifdef AMD_MIOPEN
