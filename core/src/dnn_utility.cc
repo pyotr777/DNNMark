@@ -21,21 +21,27 @@
 // SOFTWARE.
 
 #include "dnn_utility.h"
+#include "common.h"
 
 namespace dnnmark {
 
 Handle::Handle() {
 #ifdef NVIDIA_CUDNN
-  cudnn_handles_ = new cudnnHandle_t[1];
-  CUDNN_CALL(cudnnCreate(&cudnn_handles_[0]));
-  blas_handles_ = new cublasHandle_t[1];
-  CUBLAS_CALL(cublasCreate(&blas_handles_[0]));
-  num_cudnn_handles_ = 1;
-  num_blas_handles_ = 1;
 #if CUDNN_V >= 8
-  printf("Initialization for cuDNN8\n");
+  LOG(INFO) << "Initialization for cuDNN8";
   CUDNN_CALL(cudnnCnnInferVersionCheck());
 #endif
+  LOG(INFO) << "Creating cuDNN Handle()";
+  cudnn_handles_ = new cudnnHandle_t[1];
+  LOG(INFO) << "...";
+  CUDNN_CALL(cudnnCreate(&cudnn_handles_[0]));
+  LOG(INFO) << "Creating cuBLAS Handle()";
+  blas_handles_ = new cublasHandle_t[1];
+  CUBLAS_CALL(cublasCreate(&blas_handles_[0]));
+  LOG(INFO) << "Done";
+  num_cudnn_handles_ = 1;
+  num_blas_handles_ = 1;
+
 #endif
 #ifdef AMD_MIOPEN
   miopen_handles_ = new miopenHandle_t[1];
@@ -49,6 +55,7 @@ Handle::Handle() {
 
 Handle::Handle(int num) {
 #ifdef NVIDIA_CUDNN
+  LOG(INFO) << "Creating Handle (" << num << ")";
   cudnn_handles_ = new cudnnHandle_t[num];
   for (int i = 0; i < num; i++)
     CUDNN_CALL(cudnnCreate(&cudnn_handles_[i]));
@@ -59,8 +66,9 @@ Handle::Handle(int num) {
     CUBLAS_CALL(cublasCreate(&blas_handles_[i]));
   num_blas_handles_ = num;
 #if CUDNN_V >= 8
-  printf("Initialization for cuDNN8\n");
-  CUDNN_CALL(cudnnCnnInferVersionCheck());
+  LOG(INFO) << "Skipping Initialization for cuDNN8";
+  // printf("Skipping Initialization for cuDNN8 in Handle(num)...\n");
+  // CUDNN_CALL(cudnnCnnInferVersionCheck());
 #endif
 #endif
 #ifdef AMD_MIOPEN
