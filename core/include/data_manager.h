@@ -44,7 +44,7 @@ class Data {
   Data(size_t size)
   : size_(size) {
     // LOG(INFO) << "Create Data chunk of size " << size_;
-    LOG(INFO) << "Create Data chunk of size " << size << "*" << sizeof(T);
+    LOG(INFO) << "Create Data chunk of size " << (float)size / 1000 / 1000 / 1000 << "GB x" << sizeof(T);
 #ifdef NVIDIA_CUDNN
     // Check available memory
     CUDA_CALL(cudaMemGetInfo(&free, &total));

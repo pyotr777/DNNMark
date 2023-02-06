@@ -2,6 +2,7 @@ set(SUBDIRECTORIES
   test_one_layer
   test_fwd_conv
   test_bwd_conv
+  test_bwd_conv_multibs
   test_fwd_pool
   test_bwd_pool
   test_fwd_lrn
