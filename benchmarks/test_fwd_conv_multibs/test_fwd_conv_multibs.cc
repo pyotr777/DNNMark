@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
       dnnmark.Forward(fastiterations);
     }
     if (FLAGS_detailedtime) {
-      dnnmark.GetTimer()->PrintTimingTable();
+      dnnmark.GetTimer()->PrintTimingTable(convert2chararr("n=" + to_string(mbs[i])));
     }
     dnnmark.GetTimer()->SumRecords();
     dnnmark.TearDown();

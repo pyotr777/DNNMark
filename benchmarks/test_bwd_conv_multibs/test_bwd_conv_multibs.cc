@@ -4,10 +4,8 @@
 #include "usage.h"
 #include "warmup.h"
 
-
 using namespace dnnmark;
 using namespace std;
-
 
 int main(int argc, char **argv) {
   float run_time = 0.;

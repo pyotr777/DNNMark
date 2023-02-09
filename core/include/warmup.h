@@ -33,6 +33,7 @@ clocks_struct getClocks(nvmlDevice_t device);
 struct gpu_parameters_struct {
   unsigned int temp;
   unsigned int throttle;
+  unsigned long long clock_throt_reason;
   unsigned int power;
 };
 

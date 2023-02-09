@@ -7,9 +7,11 @@
 #include <cuda_runtime.h>
 #include <nvToolsExt.h>
 #include <nvml.h>
+#include <unistd.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include "warmup.h"
+
 
 
 // multiply each element of X to each element of Y and sum
@@ -33,10 +35,15 @@ gpu_parameters_struct getGPUstate(nvmlDevice_t device) {
   unsigned int temperature = 0;
   unsigned int power = 0;
   unsigned long long clock_throt_reason = 0.0;
-  // throttles: 0 - no throttles, 1 - app clock settings,
-  // 2 - HW power brake, 3 - HW slowdown, 4 - HW thermal,
-  // 5 - power cap, 6 - SW thermal, 7 - other
-  unsigned int throttle = 0; 
+  //nvmlClocksThrottleReasonNone                      0x0000000000000000LL
+  //nvmlClocksThrottleReasonGpuIdle                   0x0000000000000001LL
+  //nvmlClocksThrottleReasonApplicationsClocksSetting 0x0000000000000002LL
+  //nvmlClocksThrottleReasonSwPowerCap                0x0000000000000004LL
+  //nvmlClocksThrottleReasonHwSlowdown                0x0000000000000008LL
+  //nvmlClocksThrottleReasonSwThermalSlowdown         0x0000000000000020LL
+  //nvmlClocksThrottleReasonHwThermalSlowdown         0x0000000000000040LL
+  //nvmlClocksThrottleReasonHwPowerBrakeSlowdown      0x0000000000000080LL
+  //nvmlClocksThrottleReasonDisplayClockSetting       0x0000000000000100LL
   nvmlReturn_t nvmlRet;
   nvmlRet = nvmlDeviceGetTemperature(device, NVML_TEMPERATURE_GPU, &temperature);
   if (nvmlRet != 0) {
@@ -44,42 +51,19 @@ gpu_parameters_struct getGPUstate(nvmlDevice_t device) {
     exit(EXIT_FAILURE);
   }
   nvmlRet = nvmlDeviceGetCurrentClocksThrottleReasons(device, &clock_throt_reason);
+
   if (nvmlRet != 0) {
     printf("Ret: %d\n", nvmlRet);
     exit(EXIT_FAILURE);
   }
-  switch (clock_throt_reason) {
-    case 0x0000000000000000LL:
-      throttle = 0;
-      break;
-    case 0x0000000000000002LL:
-      throttle = 1;
-      break;
-    case 0x0000000000000080LL:
-      throttle = 2;
-      break;
-    case 0x0000000000000008LL:
-      throttle = 3;
-      break;
-    case 0x0000000000000040LL:
-      throttle = 4;
-      break;
-    case 0x0000000000000004LL:
-      throttle = 5;
-      break;
-    case 0x0000000000000020LL:
-      throttle = 6;
-      break;
-    default:
-      throttle = 7;
-  }
+
   nvmlRet = nvmlDeviceGetPowerUsage(device, &power);
   if (nvmlRet != 0) {
     printf("Ret: %d\n", nvmlRet);
     exit(EXIT_FAILURE);
   }
   gpu_parameters.temp = temperature;
-  gpu_parameters.throttle = throttle;
+  gpu_parameters.clock_throt_reason = clock_throt_reason;
   gpu_parameters.power = power;
   return gpu_parameters;
 }
@@ -169,7 +153,7 @@ void warmup(int FLAGS_warmup, int gpu_id,  std::string message) {
   if (FLAGS_warmup == 0) {
     return;
   }
-  LOG(INFO) << "Warmup function v.2.02" ;
+  LOG(INFO) << "Warmup function v.2.03" ;
   LOG(INFO) << message;
   auto start = std::chrono::high_resolution_clock::now();
   int status = warmupGPU(gpu_id, FLAGS_warmup);
@@ -197,6 +181,7 @@ int warmupGPU(int gpu_id, int target_freq, bool check_results, bool debug) {
   std::string message;
   char deviceName [50];
   cudaError_t error;
+  bool need_warmup = true;
 
   // Init NVML
   nvmlRet = nvmlInit_v2();
@@ -211,111 +196,121 @@ int warmupGPU(int gpu_id, int target_freq, bool check_results, bool debug) {
   }  
   message = "Before:";
   printGPUStateInfo(nvmldevice, message);
+
+  gpu_parameters = getGPUstate(nvmldevice);
+  while (gpu_parameters.clock_throt_reason > 0) {
+      LOG(INFO) << "GPU throttle:" << gpu_parameters.clock_throt_reason;
+      need_warmup = false; // No need to warmup
+      sleep(3);
+      gpu_parameters = getGPUstate(nvmldevice);
+  }  
+
+  if (need_warmup) {
+    // Get GPU properties (Max threads, blocks etc.)
+    cudaSetDevice(gpu_id);
+    cudaDeviceProp dev_prop;
+    cudaGetDeviceProperties(&dev_prop, gpu_id);
+    int SMs = dev_prop.multiProcessorCount;
+    int SMmax = dev_prop.maxThreadsPerMultiProcessor;
+    int max_block_size = dev_prop.maxThreadsPerBlock;
+    // get Device name
+    nvmlDeviceGetName(nvmldevice, &deviceName[0], 50);
+    LOG(INFO) << "GPU " << deviceName << ", " << SMs << " SMs, " << SMmax 
+              << " Max threads per SM, " << max_block_size << " max threads per block" << std::endl;
   
-  // Get GPU properties (Max threads, blocks etc.)
-  cudaSetDevice(gpu_id);
-  cudaDeviceProp dev_prop;
-  cudaGetDeviceProperties(&dev_prop, gpu_id);
-  int SMs = dev_prop.multiProcessorCount;
-  int SMmax = dev_prop.maxThreadsPerMultiProcessor;
-  int max_block_size = dev_prop.maxThreadsPerBlock;
-  // get Device name
-  nvmlDeviceGetName(nvmldevice, &deviceName[0], 50);
-  LOG(INFO) << "GPU " << deviceName << ", " << SMs << " SMs, " << SMmax 
-            << " Max threads per SM, " << max_block_size << " max threads per block" << std::endl;
-
-
-  // Set warmup parameters
-  int block_size = max_block_size;
-  unsigned int N = SMmax * SMs * elements_per_thread;
-  int thread_blocks = (N + block_size - 1) / block_size;
-
-  LOG(INFO) << "Warmup parameters: N=" << N << " elements, " << elements_per_thread 
-            << " array elements per thread, "  << thread_blocks << " blocks x "
-            << block_size << " threads per block"
-            << std::endl;
-
-  int *x, *y, *z, *xd, *yd, *zd;
-  x = (int *)malloc(N * sizeof(int));
-  y = (int *)malloc(N * sizeof(int));
-  z = (int *)malloc(N * sizeof(int));
-  cudaMalloc(&xd, N * sizeof(int));
-  cudaMalloc(&yd, N * sizeof(int));
-  cudaMalloc(&zd, N * sizeof(int));
-
-
-  // initialize x and y arrays on the host
-  for (unsigned long i = 0; i < N; i++) {
-    x[i] = 1;
-    y[i] = 2;
-    z[i] = 0;
-  }
-
-  cudaMemcpy(xd, x, N * sizeof(int), cudaMemcpyHostToDevice);
-  cudaMemcpy(yd, y, N * sizeof(int), cudaMemcpyHostToDevice);
-  cudaMemcpy(zd, z, N * sizeof(int), cudaMemcpyHostToDevice);
-
-  // Call Warmup procedure
-  clocks = getClocks(nvmldevice);
-  // gpu_parameters = getGPUstate(nvmldevice);
-  int i = 1;
-  auto start = std::chrono::high_resolution_clock::now();
-  while (clocks.clock_perf < target_freq and i <= maxiter and decrease_count > 0) {
-    multiply <<< thread_blocks, block_size>>>(N, xd, yd, zd);
-    cudaDeviceSynchronize();
-    // Wait for GPU to finish before accessing on host
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> diff = end - start;
-    error = cudaGetLastError();
-    if (error != 0) {
-      std::cout << "CUDA error? " << error << std::endl;
-      exit(EXIT_FAILURE);
-    }
-    // curr_clock = getGPUclock(nvmldevice);
-    clocks = getClocks(nvmldevice);
-    gpu_parameters = getGPUstate(nvmldevice);
-    LOG(INFO) << i << "/" << maxiter << " clock " << clocks.clock_perf << "%, time "
-              << diff.count() * 1e+3 << "ms"
-              << " CLOCKS (graph,sm,mem,vid): " << clocks.gr_clock << "," << clocks.sm_clock << ","
-              << clocks.mem_clock << "," << clocks.vid_clock 
-              << ", temp: " << gpu_parameters.temp 
-              << "˚C, pwr: " << gpu_parameters.power/1000.
-              << "W, throttle: " << gpu_parameters.throttle
+  
+    // Set warmup parameters
+    int block_size = max_block_size;
+    unsigned int N = SMmax * SMs * elements_per_thread;
+    int thread_blocks = (N + block_size - 1) / block_size;
+  
+    LOG(INFO) << "Warmup parameters: N=" << N << " elements, " << elements_per_thread 
+              << " array elements per thread, "  << thread_blocks << " blocks x "
+              << block_size << " threads per block"
               << std::endl;
-    // Compare frequency with previous iteration
-    if (clocks.clock_perf <= reached_max) {
-      decrease_count--;
-      if (decrease_count <=0) {
-        LOG(INFO) << "SM frequency is not increasing. Stopping warmup." << std::endl;
-      }
-    } else {
-      decrease_count = decrease_count_start;
-      reached_max = clocks.clock_perf;
-    }
-    i++;
-  }
   
-  if (check_results) {
-    // Check for errors (all values should be 3.0f)
-    cudaMemcpy(z, zd, N * sizeof(int), cudaMemcpyDeviceToHost);
-    int maxError = 0;
-    unsigned long correct = 2 * N;
-    std::cout << "Checking result..." << std::endl;
-    for (unsigned long i = 0; i < fmin(N, 10000); i++) {
-      maxError = fmax(maxError, fabs(z[i] - correct));
-      std::cout << "\r" << i + 1 << "/" << N;
+    int *x, *y, *z, *xd, *yd, *zd;
+    x = (int *)malloc(N * sizeof(int));
+    y = (int *)malloc(N * sizeof(int));
+    z = (int *)malloc(N * sizeof(int));
+    cudaMalloc(&xd, N * sizeof(int));
+    cudaMalloc(&yd, N * sizeof(int));
+    cudaMalloc(&zd, N * sizeof(int));
+  
+  
+    // initialize x and y arrays on the host
+    for (unsigned long i = 0; i < N; i++) {
+      x[i] = 1;
+      y[i] = 2;
+      z[i] = 0;
     }
-    std::cout << std::endl;
-    std::cout << "Max error: " << maxError << std::endl;
+  
+    cudaMemcpy(xd, x, N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(yd, y, N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(zd, z, N * sizeof(int), cudaMemcpyHostToDevice);
+  
+    // Call Warmup procedure
+    clocks = getClocks(nvmldevice);
+    // gpu_parameters = getGPUstate(nvmldevice);
+    int i = 1;
+    auto start = std::chrono::high_resolution_clock::now();
+    // Repeat warming up until target Hz reached, max number of warmup iterations reached, Hz not increasing or throttle is ON
+    while (clocks.clock_perf < target_freq and i <= maxiter and decrease_count > 0 and gpu_parameters.clock_throt_reason < 2) {
+      multiply <<< thread_blocks, block_size>>>(N, xd, yd, zd);
+      cudaDeviceSynchronize();
+      // Wait for GPU to finish before accessing on host
+      auto end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> diff = end - start;
+      error = cudaGetLastError();
+      if (error != 0) {
+        std::cout << "CUDA error? " << error << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      // curr_clock = getGPUclock(nvmldevice);
+      clocks = getClocks(nvmldevice);
+      gpu_parameters = getGPUstate(nvmldevice);
+      LOG(INFO) << i << "/" << maxiter << " clock " << clocks.clock_perf << "%, time "
+                << diff.count() * 1e+3 << "ms"
+                << " CLOCKS (graph,sm,mem,vid): " << clocks.gr_clock << "," << clocks.sm_clock << ","
+                << clocks.mem_clock << "," << clocks.vid_clock 
+                << ", temp: " << gpu_parameters.temp 
+                << "˚C, pwr: " << gpu_parameters.power/1000.
+                << "W, throttle: " << gpu_parameters.clock_throt_reason;
+  
+      // Compare frequency with previous iteration
+      if (clocks.clock_perf <= reached_max) {
+        decrease_count--;
+        if (decrease_count <=0) {
+          LOG(INFO) << "SM frequency is not increasing. Stopping warmup." << std::endl;
+        }
+      } else {
+        decrease_count = decrease_count_start;
+        reached_max = clocks.clock_perf;
+      }
+      i++;
+    }
+    
+    if (check_results) {
+      // Check for errors (all values should be 3.0f)
+      cudaMemcpy(z, zd, N * sizeof(int), cudaMemcpyDeviceToHost);
+      int maxError = 0;
+      unsigned long correct = 2 * N;
+      std::cout << "Checking result..." << std::endl;
+      for (unsigned long i = 0; i < fmin(N, 10000); i++) {
+        maxError = fmax(maxError, fabs(z[i] - correct));
+        std::cout << "\r" << i + 1 << "/" << N;
+      }
+      std::cout << std::endl;
+      std::cout << "Max error: " << maxError << std::endl;
+    }
+  
+    cudaFree(xd);
+    cudaFree(yd);
+    cudaFree(zd);
+    free(x);
+    free(y);
+    free(z);
   }
-
-  cudaFree(xd);
-  cudaFree(yd);
-  cudaFree(zd);
-  free(x);
-  free(y);
-  free(z);
-
   message = "After :";
   printGPUStateInfo(nvmldevice, message);
   // Shutdown NVML
