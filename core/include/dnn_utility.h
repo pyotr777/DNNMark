@@ -1171,6 +1171,7 @@ public:
             inline void ProfilerStart(const Handle &handle, RunMode mode, int idx,
                                       Timer *timer, const std::string &layer) {
 #ifdef NVIDIA_CUDNN
+              CUDA_CALL(cudaDeviceSynchronize());
               cudaProfilerStart();
 #endif
 #ifdef AMD_MIOPEN

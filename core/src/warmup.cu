@@ -198,11 +198,9 @@ int warmupGPU(int gpu_id, int target_freq, bool check_results, bool debug) {
   printGPUStateInfo(nvmldevice, message);
 
   gpu_parameters = getGPUstate(nvmldevice);
-  while (gpu_parameters.clock_throt_reason > 0) {
+  if (gpu_parameters.clock_throt_reason > 0) {
       LOG(INFO) << "GPU throttle:" << gpu_parameters.clock_throt_reason;
-      need_warmup = false; // No need to warmup
-      sleep(3);
-      gpu_parameters = getGPUstate(nvmldevice);
+      need_warmup = false; // No need to warmup      
   }  
 
   if (need_warmup) {

@@ -5,12 +5,13 @@
 #include "warmup.h"
 
 using namespace dnnmark;
+using namespace std;
 
 int main(int argc, char **argv) {
   float run_time = 0.;
   INIT_FLAGS(argc, argv);
   INIT_LOG(argv);
-  LOG(INFO) << "DNNMark suites version " << version << ": Start...";
+  cout << "DNNMark suites version " << version << ": Start..." << endl;
   DNNMark<TestType> dnnmark(2);
   dnnmark.ParseGeneralConfig(FLAGS_config);
   dnnmark.ParseLayerConfig(FLAGS_config);

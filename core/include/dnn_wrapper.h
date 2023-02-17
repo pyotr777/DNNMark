@@ -29,6 +29,7 @@
 #include "dnn_utility.h"
 #include "data_manager.h"
 #include "timer.h"
+#include <nvToolsExt.h>
 
 namespace dnnmark {
 
@@ -52,8 +53,9 @@ inline void dnnmarkConvolutionForward(const Handle &handle,
                                       void *y, int iterations) {
 #ifdef NVIDIA_CUDNN
   LOG(INFO) << "Calling cudnnConvolutionForward " << iterations << " times, workspace " << workspace_in_bytes << "B, algo " << conv_algo->GetFwdAlgo();
-  ProfilerStart(handle, mode, idx, timer, "ConvFwd");
   for (int i = 0; i < iterations; i++) {
+    nvtxRangePush("Forward conv");
+    ProfilerStart(handle, mode, idx, timer, "ConvFwd");
     CUDNN_CALL(
       cudnnConvolutionForward(
         mode == COMPOSED ?
@@ -65,8 +67,10 @@ inline void dnnmarkConvolutionForward(const Handle &handle,
         conv_algo->GetFwdAlgo(), workspace, workspace_in_bytes,
         beta,
         top_desc.Get(), y));
+    ProfilerStop(handle, mode, idx, timer, "ConvFwd");
+    nvtxRangePop();
   }
-  ProfilerStop(handle, mode, idx, timer, "ConvFwd");
+  
 #endif
 #ifdef AMD_MIOPEN
 
@@ -111,8 +115,10 @@ inline void dnnmarkConvolutionBackwardData(const Handle &handle,
     void *dx, int iterations) {
 #ifdef NVIDIA_CUDNN
   LOG(INFO) << "Calling cudnnConvolutionBackwardData " << iterations << " times, workspace " << workspace_in_bytes << "B, algo " << conv_algo->GetBwdDataAlgo();
-  ProfilerStart(handle, mode, idx, timer, "ConvBwdData");
+  
   for (int i = 0; i < iterations; i++) {
+    nvtxRangePush("ConvBwdData");
+    ProfilerStart(handle, mode, idx, timer, "ConvBwdData");
     CUDNN_CALL(cudnnConvolutionBackwardData(
                  mode == COMPOSED ?
                  handle.GetCudnn(idx) : handle.GetCudnn(),
@@ -124,8 +130,10 @@ inline void dnnmarkConvolutionBackwardData(const Handle &handle,
                  workspace, workspace_in_bytes,
                  beta,
                  bottom_desc.Get(), dx));
+    ProfilerStop(handle, mode, idx, timer, "ConvBwdData");
+    nvtxRangePop();
   }
-  ProfilerStop(handle, mode, idx, timer, "ConvBwdData");
+  
 #endif
 #ifdef AMD_MIOPEN
   conv_algo->FindBwdDataAlgo(handle, mode, idx,
@@ -171,7 +179,7 @@ inline void dnnmarkConvolutionBackwardFilter(const Handle &handle,
   // std::string conv_algo_param;
   LOG(INFO) << "Calling cudnnConvolutionBackwardFilter " << iterations << " times, workspace " << workspace_in_bytes << ", algo " << conv_algo->GetBwdFilterAlgo();
   cudnnFilterDescriptor_t filter_t = conv_desc.GetFilter();
-  ProfilerStart(handle, mode, idx, timer, "ConvBwdFilter");
+  
   // conv_algo_param = conv_algo->GetBwdFilterAlgoParameter();
   // // std::cout << "algo_param "<< conv_algo_param <<"\n";
   // if (conv_algo_param == "autoex") {
@@ -188,6 +196,8 @@ inline void dnnmarkConvolutionBackwardFilter(const Handle &handle,
   //   std::cout << "cuDNN AUTO selected bwd convolution filter algorithm:"<<conv_algo->GetBwdFilterAlgo()<<"\n";
   // }
   for (int i = 0; i < iterations; i++) {
+    nvtxRangePush("ConvBwdFilter");
+    ProfilerStart(handle, mode, idx, timer, "ConvBwdFilter");
     CUDNN_CALL(cudnnConvolutionBackwardFilter(
                  mode == COMPOSED ?
                  handle.GetCudnn(idx) : handle.GetCudnn(),
@@ -199,8 +209,10 @@ inline void dnnmarkConvolutionBackwardFilter(const Handle &handle,
                  workspace, workspace_in_bytes,
                  beta,
                  filter_t, dw));
+    ProfilerStop(handle, mode, idx, timer, "ConvBwdFilter");
+    nvtxRangePop();
   }
-  ProfilerStop(handle, mode, idx, timer, "ConvBwdFilter");
+  
 #endif
 #ifdef AMD_MIOPEN
   conv_algo->FindBwdFilterAlgo(handle, mode, idx,

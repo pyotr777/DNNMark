@@ -1,6 +1,15 @@
 # Include the DNNMark include path
 include_directories(${DNNMARK_INCLUDES})
 
+# NVTX
+find_library(CUDA_NVTX_LIBRARY
+  NAMES nvToolsExt nvTools nvtoolsext nvtools nvtx NVTX
+  PATHS "${CUDA_CUDART_LIBRARY_DIR}" "${CUDA_TOOLKIT_ROOT_DIR}" ENV LD_LIBRARY_PATH
+  PATH_SUFFIXES "lib64" "common/lib64" "common/lib" "lib"
+  DOC "Location of the CUDA Toolkit Extension (NVTX) library"
+  NO_DEFAULT_PATH
+)
+
 # Include the gflag include path
 #include_directories(${})
 
@@ -28,5 +37,6 @@ add_dependencies(${BENCHMARK_NAME} ${GFLAGS_LIBRARY})
 # Link libraries
 target_link_libraries(${BENCHMARK_NAME}
     ${PROJECT_NAME}
-    ${GFLAGS_LIBRARY})
+    ${GFLAGS_LIBRARY}
+    ${CUDA_NVTX_LIBRARY})
 

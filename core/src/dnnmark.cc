@@ -21,7 +21,7 @@
 // SOFTWARE.
 
 #ifdef NVIDIA_CUDNN
-#include "cudnn.h"
+#include "helper_cuda.h"
 #endif
 #ifdef AMD_MIOPEN
 #include <miopen/miopen.h>
