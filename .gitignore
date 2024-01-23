@@ -25,3 +25,4 @@ Dockerfile
 *.log
 *.txt
 *.tar
+add_user.sh
