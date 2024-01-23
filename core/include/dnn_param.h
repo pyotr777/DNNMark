@@ -86,7 +86,7 @@ struct ConvolutionParam {
 #ifdef AMD_MIOPEN
   miopenConvAlgoPerf_t *pref_;
 #endif
-  ConvolutionParam()
+  ConvolutionParam();
 #ifdef NVIDIA_CUDNN
   : mode_(CUDNN_CROSS_CORRELATION),
 #endif
