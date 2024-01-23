@@ -13,3 +13,4 @@ num_output=32
 kernel_size=5
 pad=2
 stride=1
+deltaion=1
