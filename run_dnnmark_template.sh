@@ -3,9 +3,9 @@
 # Wrapper API for DNNMark
 # 2018-2022 (C) Peter Bryzgalov @ CHITECH Stair Lab
 
-version="1.04"
+version="1.04a"
 IFS='' read -r -d '' usage <<USAGEBLOCK
-Run DNNMark with parameters from CLI. v${version}.
+Run DNNMark template with parameters from CLI. v${version}.
 Usage:
 $(basename $0)  [-b <benchmark executable, default=test_composed_model>]
                 [ --template - benchmark configuration template file]

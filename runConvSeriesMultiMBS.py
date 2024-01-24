@@ -16,11 +16,12 @@ import argparse
 import pandas as pd
 import sys
 
-sys.path.append('../lib')
+# sys.path.append('../lib')
+from lib import lib3
 import multigpuexec
 import subprocess
 
-version = '4.08b'
+version = '5.0b'
 
 
 def main(args_main):
@@ -40,8 +41,7 @@ def main(args_main):
     template = "conv_alone_config"
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--text", "-t", default="", help="Notes to save to README file.")
-    parser.add_argument("--host", default=None, help="Host name")
+    parser.add_argument("--host", default=host, help="Host name. Default is {}.".format(host))
     parser.add_argument("--dir", "-d", default="./logs",
                         help="Path to the top level of dnnmark logs directories.")
     parser.add_argument(
@@ -50,10 +50,9 @@ def main(args_main):
     parser.add_argument("--runs", "-r", type=int, default=1,
                         help="Number of runs for each configuration and mini-batch size")
     parser.add_argument(
-        "--profiling", choices=['plain', 'profile', 'trace'], default='plain', help=
-        "Run plain, profiling or tracing for each configuration and mini-batch size. Same number of runs as in --runs option. Valid choices: plain, profile, trace."
+        "--profiling", choices=['off', 'profile', 'trace'], default='off', help=
+        "Run nvprof (profile) or nsys (trace) for each configuration and mini-batch size. Valid choices: off (default), profile, trace."
     )
-
     parser.add_argument('--date', default=None, help='Set date for the logs path.')
     parser.add_argument(
         "--template", default=template,
@@ -69,21 +68,24 @@ def main(args_main):
     parser.add_argument("--detailedtime", action="store_true", default=False,
                         help="Print time for each operation on each iteration")
     parser.add_argument(
-        "--convconfig", default=None,
-        help="Model convolutional layers configuration. By default VGG16 cofiguration is used.")
-    parser.add_argument("--model", default=None, help="CNN model to simulate with convolutional layers.")
-    parser.add_argument("--cnns", type=str, default=None, nargs='*',
-                        help="If --model set to 'all', but only want to benchmark these CNNs")
-    parser.add_argument("--ignore-cnns", type=str, default=None, nargs='*',
-                        help="Opposite effect to the --cnns option: benchmark all CNN but these ones.")
+        "--convconfigs", default=None, type=str, nargs='*', help=
+        "Convolutional layers configurations in hyphen-sepated WHCKSPUD format, e.g. 224-224-3-16-3-1-2-1"
+    )
+    parser.add_argument(
+        "--cnns", type=str, default=None, nargs='*', help=
+        "CNNs names.Can be set to 'all'. Benchmark all CNNs from the file convconfigs/<policy>_<cnns>_<dataset>.csv"
+    )
+    parser.add_argument(
+        "--ignore-cnns", type=str, default=None, nargs='*',
+        help="Opposite effect to the --cnns option: exclude these CNNs from benchmarking.")
     parser.add_argument("--dataset", default="imagenet",
                         help="Dataset name (imagenet, cifar, ...). Default: imagenet.")
     parser.add_argument("--gpus", type=int, nargs='*', default=None, help="GPU numbers")
     parser.add_argument("--iter", default=10, help="Use fixed number of iterations per epoch.")
     parser.add_argument("--datasetsize", default=50000, type=int,
                         help="Size of the training dataset. Defines number of iterations per one epoch.")
-    parser.add_argument("--benchmarks", default=None, nargs='*',
-                        help="DNNMark benchmark(s) (as a Python list).")
+    parser.add_argument("--benchmarks", default=['test_fwd_conv_multibs', 'test_bwd_conv_multibs'],
+                        nargs='*', type=str, help="DNNMark benchmark(s) (as a Python list).")
     parser.add_argument("--mbs", type=int, default=None, nargs='*',
                         help="Space-separated list of mini-batch sizes.")
     parser.add_argument(
@@ -97,6 +99,7 @@ def main(args_main):
                         help="Maximum GPU temperature. Use for running tasks on cooler GPUs.")
     parser.add_argument('--taskgroup', type=int, default=1,
                         help="Number of tasks executed consecutively.")
+    parser.add_argument("--text", "-t", default="", help="Notes to save to README file.")
     parser.add_argument('--parse', action='store_true', default=False, help='Parse time logs')
     parser.add_argument("--cudnnlogs", action="store_true", default=False, help="Record cuDNN API logs.")
     args = parser.parse_args(args_main)
@@ -128,7 +131,7 @@ def main(args_main):
     runs = list(range(args.runs))
     print("{} runs".format(args.runs))
 
-    batchsizes = [5, 6, 7, 8, 9, 10, 12, 15] + list(range(20, 501, 10))
+    batchsizes = None
     # Set mini-batch sizes
     if args.mbs is None:
         if args.mbsrange is not None:
@@ -151,42 +154,37 @@ def main(args_main):
             batchsizes = range(mbsstart, mbsend + 1)
     else:
         batchsizes = args.mbs
-    print("Mini-batch sizes: {}".format(batchsizes))
-
-    # VGG model convolution shapes
-    model = ''
+    print("Mini-batch sizes: {}".format(lib3.list2shortstring(batchsizes)))
 
     configs_path = "convconfigs"
-    if args.model is not None:
-        model = args.model
-        csvfile = '{}/{}_{}_{}.csv'.format(configs_path, args.policy, model.lower(),
-                                           args.dataset.lower())
-        # Special case: 'all' in --model and --cnns not None
-        if model == 'all' and (args.cnns is not None or args.ignore_cnns is not None):
-            # Read configs with CNN names in 'cnn' column
-            csvfile = '{}/{}_{}_configs.csv'.format(configs_path, args.policy, args.dataset.lower())
-        print("Reading {}".format(csvfile))
-        if not os.path.exists(csvfile):
-            print("Not found {}".format(csvfile))
-            csvfile = '{}/{}.csv'.format(configs_path, model.lower())
+    configs = []
+    if args.cnns is not None:
+        for cnn in args.cnns:
+            csvfile = '{}/{}_{}_{}.csv'.format(configs_path, args.policy, cnn.lower(),
+                                               args.dataset.lower())
             print("Reading {}".format(csvfile))
             if not os.path.exists(csvfile):
                 print("Not found {}".format(csvfile))
-                print("Please check --model and --dataset options or provide --convconfig option")
+                print("Check --cnns and --dataset options and check configuration files in {}/".format(
+                    configs_path))
                 sys.exit(1)
-        configs = pd.read_csv(csvfile)
+            config = pd.read_csv(csvfile)
+            config.loc[:, 'nopropagation'] = False
+            if args.model != 'all':
+                config.loc[0, 'nopropagation'] = True
+            configs.append(config)
+
+        # Merge configs for individual CNNs into one Dataframe
+        configs = pd.concat(configs, ignore_index=True)
     else:
-        if args.convconfig is None:
-            print("Need CNN model. Please, provide --model or --convconfig option.")
-            parser.print_help()
-            sys.exit(1)
-        else:
-            model = '.'.join(os.path.basename(args.convconfig).split('.')[:-1])
-            configs = pd.read_csv(args.convconfig)
-    if args.model == 'all':
+        # Read convolution parameters from args.convconfigs
+        # Convert to a dataframe
+        configs = pd.DataFrame(
+            columns=[
+                'image height', 'image width', 'input channels', 'output channels', 'kernel size',
+                'padding', 'stride', 'delation'
+            ], data=[x.split('-') for x in args.convconfigs])
         configs.loc[:, 'nopropagation'] = False
-    else:
-        configs.loc[0, 'nopropagation'] = True
 
     # Drop duplicate layer configurations
     configs.drop_duplicates(inplace=True)
@@ -205,8 +203,6 @@ def main(args_main):
         "pytorch": "--algofwd cudnnv7 --algo cudnnv7 --algod cudnnv7 --conv_mode cross_correlation"
     }
     algoconf = algo_configs[args.policy]
-    multigpuexec.message("Simulating convolutional layers of {} for {}.".format(model, args.policy))
-    print('Model architecture: {}.'.format(model))
 
     datestr = ''
     if args.date:
@@ -250,7 +246,7 @@ def main(args_main):
         if args.dir:
             logroot = args.dir
         logdir = os.path.join(logroot, host, logfolder,
-                              "dnnmark_{}_{}_ConvSeries_{}/".format(args.policy, model, datestr))
+                              "dnnmark_{}_ConvSeries_{}/".format(args.policy, datestr))
     else:
         logdir = args.logdir
 
@@ -275,7 +271,7 @@ def main(args_main):
             f.write(text)
             print("Saved {}".format(filename))
 
-    benchmarks = ['test_fwd_conv', 'test_bwd_conv']
+    benchmarks = None
     if args.benchmarks is not None:
         # benchmarks = ast.literal_eval(args.benchmarks)
         benchmarks = args.benchmarks
@@ -323,19 +319,21 @@ def main(args_main):
                     S = config['kernel size']
                     P = config['padding']
                     U = config['stride']
+                    D = config['delation']  # Not used TODO: add delation parameter to DNNMark
                     noprop = ''
                     if config['nopropagation'] == True:
                         noprop = " --nopropagation "
-                    logname = "{}_shape{H}-{W}-{C}-{K}-{S}-{P}-{U}_algos{algos}".format(
-                        logfile_base, H=H, W=W, C=C, K=K, S=S, P=P, U=U, algos=args.policy)
+                    logname = "{}_shape{W}-{H}-{C}-{K}-{S}-{P}-{U}-{D}_algos{algos}".format(
+                        logfile_base, H=W, W=H, C=C, K=K, S=S, P=P, U=U, D=D, algos=args.policy)
 
                     logfile = os.path.join(logdir, "{}_{:02d}.log".format(logname, run))
                     if os.path.isfile(logfile):
                         print("file", logfile, "exists.")
                     else:
-                        command_pars = command + " -b {benchmark} -h {H} -w {W} -c {C} -k {K} -s {S} " \
+                        # TODO: Add delation parameter after it is supported by DNNMark
+                        command_pars = command + " -b {benchmark} -w {W} -h {H} -c {C} -k {K} -s {S} " \
                             "-p {P} -u {U} -n {batch} --iter {iter} {other}{noprop} {debug}".format(
-                            benchmark=benchmark, H=H, W=W, C=C, K=K, S=S, P=P, U=U,
+                            benchmark=benchmark, W=W, H=H, C=C, K=K, S=S, P=P, U=U,
                             batch=batch, iter=iterations, other=other_options,
                             noprop=noprop, debug=debuginfo_option)
 
@@ -374,19 +372,20 @@ def main(args_main):
                     S = config['kernel size']
                     P = config['padding']
                     U = config['stride']
+                    D = config['delation']
                     noprop = ''
                     if config['nopropagation'] is not None:
                         noprop = " --nopropagation "
                     iterations = 10
-                    logname = "{}_shape{H}-{W}-{C}-{K}-{S}-{P}-{U}_algos{algos}".format(
-                        logfile_base, H=H, W=W, C=C, K=K, S=S, P=P, U=U, algos=args.policy)
+                    logname = "{}_shape{W}-{H}-{C}-{K}-{S}-{P}-{U}-{D}_algos{algos}".format(
+                        logfile_base, W=W, H=H, C=C, K=K, S=S, P=P, U=U, D=D, algos=args.policy)
                     nvlogname = "{}_iter{}_{:02d}".format(logname, iterations, run)
                     logfile = os.path.join(logdir, "{}_%p.nvprof".format(nvlogname))
                     if os.path.isfile(logfile):
                         print("file", logfile, "exists.")
                     else:
-                        command_pars += " -h {H} -w {W} -c {C} -k {K} -s {S} -p {P} -u {U} -n {batch} --iter {iter} {other}{noprop} --warmup 0".format(
-                            H=H, W=W, C=C, K=K, S=S, P=P, U=U, batch=batch, iter=iterations,
+                        command_pars += " -w {W} -h {H} -c {C} -k {K} -s {S} -p {P} -u {U} -d {D} -n {batch} --iter {iter} {other}{noprop} --warmup 0".format(
+                            W=W, H=H, C=C, K=K, S=S, P=P, U=U, D=D, batch=batch, iter=iterations,
                             other=other_options, noprop=noprop)
                         profcommand = "{} {} {}".format(profile_command, logfile, command_pars)
                         task = {"comm": profcommand, "logfile": logfile, "nvsmi": False}
