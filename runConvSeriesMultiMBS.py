@@ -21,7 +21,7 @@ from lib import lib3
 import multigpuexec
 import subprocess
 
-version = '5.0b'
+version = '5.0c'
 
 
 def main(args_main):
@@ -423,6 +423,8 @@ def main(args_main):
                 gpu, query=
                 "name,memory.total,memory.free,pstate,temperature.gpu,clocks.mem,clocks.sm,clocks_throttle_reasons.active"
             )
+            # Add GPU number to run_dnnmark_template command
+            tasks[i]["comm"] = tasks[i]["comm"] + f" --gpu {gpu}"
             f.write("command:{}\n".format(tasks[i]["comm"]))
             f.write("GPU{}: {}\n".format(gpu, gpu_info))
             f.write("{}\n".format(cpu_info))

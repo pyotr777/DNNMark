@@ -56,6 +56,21 @@ char* convert2chararr(string s) {
   return arr;
 }
 
+
+string replaceInString(const std::string& original, const std::string& substring, const std::string& replacement) {
+  // Replace substring in original string with replacement
+  // Return new string after replacement
+  size_t pos = original.find(substring);
+  if (pos != std::string::npos) {
+    std::string newstring = original;
+    newstring.replace(pos, substring.length(), replacement);
+    return newstring;
+  } else {
+    // Substring not found
+    std::cout << "Substring not found." << std::endl;
+  }
+}
+
 vector<int> searchMBSinFile(const std::string &config_file) {
     // cout << "Reading " << config_file << endl;
     ifstream file;
@@ -91,8 +106,10 @@ vector<int> searchMBSinFile(const std::string &config_file) {
       arr.push_back(n);
       // cout << "n=" << n << endl;
     }
-    // # Move config_ file to tmp file
-    string tmpfile = "conv_tmp.tmp";
+    // Move config_file to tmp file with same name but '.tmp' extension
+    // Replace extension in the config file
+    std::string tmpfile = replaceInString(config_file,".dnnmark",".tmp");
+    // config_file.replace(config_file.find(".dnnmark"), sizeof(".dnnmark")-1, ".tmp");   // "conv_tmp.tmp"
     string command_s = "mv " + config_file + " " + tmpfile;
     LOG(INFO) << command_s;
     const char* command = convert2chararr(command_s);
@@ -107,10 +124,12 @@ string readAllFile(ifstream& is) {
 }
 
 void findReplaceInFile(const string filename, int mbs) {
-  string tmpfile = "conv_tmp.tmp";
+  // tmp file has the same name but '.tmp' extension
+  std::string tmpfile = replaceInString(filename,".dnnmark",".tmp");
   string command_s = "sed 's/n=[0-9,]*/n=" + to_string(mbs) + "/g' " 
   + tmpfile + " > " + filename;
   const char* command = convert2chararr(command_s);
   LOG(INFO) << "Execute: " << command;
   system(command);
 }
+

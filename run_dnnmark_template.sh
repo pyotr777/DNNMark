@@ -3,21 +3,22 @@
 # Wrapper API for DNNMark
 # 2018-2022 (C) Peter Bryzgalov @ CHITECH Stair Lab
 
-version="1.04a"
+version="1.05a"
 IFS='' read -r -d '' usage <<USAGEBLOCK
 Run DNNMark template with parameters from CLI. v${version}.
 Usage:
 $(basename $0)  [-b <benchmark executable, default=test_composed_model>]
                 [ --template - benchmark configuration template file]
-                [ -d <dataset size> - number of samples in dataset, derives number of iterations from batch size and datasetsize]
+                [-d <dataset size> - number of samples in dataset, derives number of iterations from batch size and datasetsize]
                 [ --warmup <int> - number of warmup iterations]
-                [ --debug - debug info ]
+                [ --debug <int> - debug info ]
                 [ --help  - usage info ]
                 [ --root <path> - DNNMark installation root]
                 [ --iter <int> - number of FWD+BWD passes to measure time]
                 [ --cachediterations - use faster iterations without data initialisation for FC, convolutional and BN layers]
                 [ --detailedtime - print time for each operation on each iteration]
                 [-n <number of images, batch size>]
+                [ --gpu <int> - number of the GPU device (starting from 0)]
 
                 # Convolutional layer parameter
                 [-c <number of channels in input images>]
@@ -46,9 +47,9 @@ Configuration is saved to temporary file conf_tmp.dnnmark.
 USAGEBLOCK
 
 template="config_example/conf_convolution_block.dnntemplate"
-config_file="conf_tmp.dnnmark"
 
 # Defaults
+GPU=0
 default_conv_bwd_filter_pref="fastest"
 default_conv_fwd_pref="fastest"
 default_conv_bwd_data_pref="fastest"
@@ -111,6 +112,9 @@ while test $# -gt 0; do
             ;;
         -d)
             datasetsize="$2";shift;
+            ;;
+        --gpu)
+            GPU="$2";shift;
             ;;
         --algo)
             CBFA="$2";shift;
@@ -184,6 +188,8 @@ while test $# -gt 0; do
 done
 
 echo "Running DNNMark with CLI parameters. v${version}."
+
+config_file="conf_tmp${GPU}.dnnmark"
 
 if [ $CBFA ];then
     CUDNN_CBFA="algo=$CBFA"$'\n'  # Insert new line; inside double quotes not expanded.
