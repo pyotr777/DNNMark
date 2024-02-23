@@ -2,7 +2,7 @@
 FROM nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
 # cuDNN 8.2.0.53-1+cuda11.3
 LABEL maintainer="Peter Bryzgalov"
-LABEL date="2024/02/22"
+LABEL date="2024/02/23"
 ENV dnnmark_branch="cnntimecost"
 
 ENV CUDA_HOME="/usr/local/cuda-11.3"
@@ -26,7 +26,9 @@ RUN chmod +x /get_nvidia_versions.sh
 RUN env | grep -i cuda
 RUN /get_nvidia_versions.sh
 
-RUN echo "Installing DNNMark ${dnnmark_branch} branch"
+# Print DNNMark version
+RUN echo "Installing DNNMark from the disk"
+RUN cat core/include/dnnmark.h | grep "version = " | awk '{print $5}'
 
 WORKDIR /
 RUN mkdir /DNNMark
@@ -62,7 +64,7 @@ RUN make
 RUN chmod -R 755 /DNNMark
 ADD ./conf_tmp.dnnmark /DNNMark/conf_tmp.dnnmark
 RUN chmod a+w /DNNMark/conf_tmp.dnnmark
-RUN echo "Installed DNNMark ${dnnmark_branch}."
+RUN echo "Installed DNNMark from the disk"
 
 # Install more Python packages
 RUN pip3 install --no-cache-dir --upgrade pip

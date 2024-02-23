@@ -68,6 +68,7 @@ string replaceInString(const std::string& original, const std::string& substring
   } else {
     // Substring not found
     std::cout << "Substring not found." << std::endl;
+    return original;
   }
 }
 

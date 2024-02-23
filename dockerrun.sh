@@ -1,6 +1,6 @@
 #!/bin/bash
 # Starting Docker container and mounting ml/ folder
-image="pyotr777/cnnbench:dnnmark209"
+image="pyotr777/dnnmark:latest"
 mem="16GB"
 if [[ $# -ge 2 ]]; then
     mem=$2
